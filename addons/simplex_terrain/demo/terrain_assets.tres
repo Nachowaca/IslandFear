@@ -1,0 +1,114 @@
+[gd_resource type="Terrain3DAssets" format=3 uid="uid://cb5n2g8w3f1h"]
+
+[ext_resource type="Texture2D" uid="uid://cwqv44cg6xr57" path="res://addons/simplex_terrain/demo/textures/Ground067/albedo.png" id="1_ground_albedo"]
+[ext_resource type="Texture2D" uid="uid://bvv6g2a2g5di5" path="res://addons/simplex_terrain/demo/textures/Ground067/normal.png" id="2_ground_normal"]
+[ext_resource type="Texture2D" uid="uid://b3wiqgnep8a28" path="res://addons/simplex_terrain/demo/textures/Rock050/albedo.png" id="3_rock_albedo"]
+[ext_resource type="Texture2D" uid="uid://chbt26o2chxmp" path="res://addons/simplex_terrain/demo/textures/Rock050/normal.png" id="4_rock_normal"]
+[ext_resource type="Texture2D" uid="uid://djuqn8bb7yijp" path="res://addons/simplex_terrain/demo/textures/Rock032/albedo.png" id="5_cliff_albedo"]
+[ext_resource type="Texture2D" uid="uid://bmricpuj4rlwf" path="res://addons/simplex_terrain/demo/textures/Rock032/normal.png" id="6_cliff_normal"]
+[ext_resource type="Texture2D" uid="uid://47awmu5kpi67" path="res://addons/simplex_terrain/demo/textures/Ground090/albedo.png" id="7_sand_albedo"]
+[ext_resource type="Texture2D" uid="uid://bfoexfvrger4" path="res://addons/simplex_terrain/demo/textures/Ground090/normal.png" id="8_sand_normal"]
+[ext_resource type="Texture2D" uid="uid://d4fbtq30nldv8" path="res://addons/simplex_terrain/demo/textures/Grass008/albedo.png" id="9_grass_albedo"]
+[ext_resource type="Texture2D" uid="uid://3g3y676e0x4j" path="res://addons/simplex_terrain/demo/textures/Grass008/normal.png" id="10_grass_normal"]
+[ext_resource type="Texture2D" uid="uid://di0odu7n8wgc2" path="res://addons/simplex_terrain/demo/textures/Rock026/albedo.png" id="11_stone_albedo"]
+[ext_resource type="Texture2D" uid="uid://cwiu5mwak7mbc" path="res://addons/simplex_terrain/demo/textures/Rock026/normal.png" id="12_stone_normal"]
+[ext_resource type="Texture2D" uid="uid://rj6a3bcl7auh" path="res://addons/simplex_terrain/demo/textures/Grass003/albedo.png" id="13_grass003_albedo"]
+[ext_resource type="Texture2D" uid="uid://bqg3r7w0rvoa4" path="res://addons/simplex_terrain/demo/textures/Grass003/normal.png" id="14_grass003_normal"]
+[ext_resource type="Texture2D" uid="uid://cnluyt26d4dbt" path="res://addons/simplex_terrain/demo/textures/Rock029/albedo.png" id="15_rock029_albedo"]
+[ext_resource type="Texture2D" uid="uid://lxsc70juuymd" path="res://addons/simplex_terrain/demo/textures/Rock029/normal.png" id="16_rock029_normal"]
+[ext_resource type="Texture2D" uid="uid://ckiykefikfq01" path="res://addons/simplex_terrain/demo/textures/Snow008A/albedo.png" id="17_snow_albedo"]
+[ext_resource type="Texture2D" uid="uid://cdvvmlqeoerw3" path="res://addons/simplex_terrain/demo/textures/Snow008A/normal.png" id="18_snow_normal"]
+[ext_resource type="Texture2D" uid="uid://bc5yr0isr0h6q" path="res://addons/simplex_terrain/demo/textures/Ice002/albedo.png" id="19_ice_albedo"]
+[ext_resource type="Texture2D" uid="uid://dl2u2c7447xda" path="res://addons/simplex_terrain/demo/textures/Ice002/normal.png" id="20_ice_normal"]
+[ext_resource type="Texture2D" uid="uid://byb4fhsoebbm2" path="res://addons/simplex_terrain/demo/textures/RockFace/albedo.png" id="21_rockface_albedo"]
+[ext_resource type="Texture2D" uid="uid://cprs5rq1555ri" path="res://addons/simplex_terrain/demo/textures/RockFace/normal.png" id="22_rockface_normal"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_eq2xf"]
+transparency = 4
+cull_mode = 2
+vertex_color_use_as_albedo = true
+backlight_enabled = true
+backlight = Color(0.5, 0.5, 0.5, 1)
+distance_fade_mode = 1
+distance_fade_min_distance = 128.0
+distance_fade_max_distance = 96.0
+
+[sub_resource type="Terrain3DMeshAsset" id="Terrain3DMeshAsset_2ujud"]
+generated_type = 1
+height_offset = 0.5
+material_override = SubResource("StandardMaterial3D_eq2xf")
+last_lod = 0
+last_shadow_lod = 0
+lod0_range = 128.0
+
+[sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_ground"]
+name = "Ground"
+albedo_texture = ExtResource("1_ground_albedo")
+normal_texture = ExtResource("2_ground_normal")
+
+[sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_rock"]
+name = "Rock"
+id = 1
+albedo_color = Color(0.85, 0.8, 0.75, 1)
+albedo_texture = ExtResource("3_rock_albedo")
+normal_texture = ExtResource("4_rock_normal")
+
+[sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_cliff"]
+name = "Cliff"
+id = 2
+albedo_texture = ExtResource("5_cliff_albedo")
+normal_texture = ExtResource("6_cliff_normal")
+
+[sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_sandcrack"]
+name = "SandCrack"
+id = 3
+albedo_texture = ExtResource("7_sand_albedo")
+normal_texture = ExtResource("8_sand_normal")
+
+[sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_grass008"]
+name = "Grass008"
+id = 4
+albedo_texture = ExtResource("9_grass_albedo")
+normal_texture = ExtResource("10_grass_normal")
+
+[sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_rock026"]
+name = "Rock026"
+id = 5
+albedo_texture = ExtResource("11_stone_albedo")
+normal_texture = ExtResource("12_stone_normal")
+
+[sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_grass003"]
+name = "Grass003"
+id = 6
+albedo_texture = ExtResource("13_grass003_albedo")
+normal_texture = ExtResource("14_grass003_normal")
+
+[sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_rock029"]
+name = "Rock029"
+id = 7
+albedo_color = Color(0.85, 0.8, 0.75, 1)
+albedo_texture = ExtResource("15_rock029_albedo")
+normal_texture = ExtResource("16_rock029_normal")
+
+[sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_snow"]
+name = "Snow"
+id = 8
+albedo_texture = ExtResource("17_snow_albedo")
+normal_texture = ExtResource("18_snow_normal")
+
+[sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_ice"]
+name = "Ice"
+id = 9
+albedo_color = Color(0.9, 0.95, 1, 1)
+albedo_texture = ExtResource("19_ice_albedo")
+normal_texture = ExtResource("20_ice_normal")
+
+[sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_rockface"]
+name = "rockface"
+id = 10
+albedo_texture = ExtResource("21_rockface_albedo")
+normal_texture = ExtResource("22_rockface_normal")
+
+[resource]
+mesh_list = Array[Terrain3DMeshAsset]([SubResource("Terrain3DMeshAsset_2ujud")])
+texture_list = Array[Terrain3DTextureAsset]([SubResource("Terrain3DTextureAsset_ground"), SubResource("Terrain3DTextureAsset_rock"), SubResource("Terrain3DTextureAsset_cliff"), SubResource("Terrain3DTextureAsset_sandcrack"), SubResource("Terrain3DTextureAsset_grass008"), SubResource("Terrain3DTextureAsset_rock026"), SubResource("Terrain3DTextureAsset_grass003"), SubResource("Terrain3DTextureAsset_rock029"), SubResource("Terrain3DTextureAsset_snow"), SubResource("Terrain3DTextureAsset_ice"), SubResource("Terrain3DTextureAsset_rockface")])

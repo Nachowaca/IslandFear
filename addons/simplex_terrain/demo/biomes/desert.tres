@@ -1,0 +1,122 @@
+[gd_resource type="Resource" script_class="TerrainGraphResource" format=3 uid="uid://bdesertdemo12"]
+
+[ext_resource type="Script" uid="uid://pu2qqp2hcaxt" path="res://addons/simplex_terrain/src/Core/Graph/GraphCommentData.cs" id="1_cghe1"]
+[ext_resource type="Script" uid="uid://bgc2h1felq5au" path="res://addons/simplex_terrain/src/Core/Graph/GraphFrameData.cs" id="3_60vei"]
+[ext_resource type="Script" uid="uid://cncctu3yo61ko" path="res://addons/simplex_terrain/src/Core/Graph/ConnectionData.cs" id="connection_script"]
+[ext_resource type="Script" uid="uid://cw84vxkatjbv" path="res://addons/simplex_terrain/src/Core/Nodes/Output/Terrain3DControlOutputNodeResource.cs" id="control_output_script"]
+[ext_resource type="Script" uid="uid://w2mu31gpttql" path="res://addons/simplex_terrain/src/Core/Nodes/Height/CurveNodeResource.cs" id="curve_script"]
+[ext_resource type="Script" uid="uid://coejrr5lrvfbs" path="res://addons/simplex_terrain/src/Core/Graph/TerrainGraphResource.cs" id="graph_script"]
+[ext_resource type="Script" uid="uid://2x2r0ba1x115" path="res://addons/simplex_terrain/src/Core/Nodes/Output/HeightOutputNodeResource.cs" id="height_output_script"]
+[ext_resource type="Script" uid="uid://bvu2avrv22mej" path="res://addons/simplex_terrain/src/Core/Nodes/Height/LevelsNodeResource.cs" id="levels_script"]
+[ext_resource type="Script" uid="uid://hsm5srk736wi" path="res://addons/simplex_terrain/src/Core/Nodes/Base/TerrainNodeResource.cs" id="node_base_script"]
+[ext_resource type="Script" uid="uid://duwhdbtoh6wuh" path="res://addons/simplex_terrain/src/Core/Nodes/Height/ParallaxDisplacementNodeResource.cs" id="parallax_script"]
+[ext_resource type="Script" uid="uid://cor35ou4iqg8c" path="res://addons/simplex_terrain/src/Core/Nodes/Height/PerlinNoiseNodeResource.cs" id="perlin_script"]
+[ext_resource type="Script" uid="uid://bihtagh72dwem" path="res://addons/simplex_terrain/src/Core/Nodes/Height/SplatNodeResource.cs" id="splat_script"]
+
+[sub_resource type="Resource" id="Conn_0"]
+script = ExtResource("connection_script")
+FromNodeId = "Base_Noise"
+ToNodeId = "Dune_Curve"
+
+[sub_resource type="Resource" id="Conn_1"]
+script = ExtResource("connection_script")
+FromNodeId = "Dune_Curve"
+ToNodeId = "Wind_Shift"
+
+[sub_resource type="Resource" id="Conn_2"]
+script = ExtResource("connection_script")
+FromNodeId = "Dune_Curve"
+ToNodeId = "Wind_Shift"
+ToPort = 1
+
+[sub_resource type="Resource" id="Conn_3"]
+script = ExtResource("connection_script")
+FromNodeId = "Wind_Shift"
+ToNodeId = "Levels_Final"
+
+[sub_resource type="Resource" id="Conn_4"]
+script = ExtResource("connection_script")
+FromNodeId = "Levels_Final"
+ToNodeId = "HeightOutput"
+
+[sub_resource type="Resource" id="Conn_5"]
+script = ExtResource("connection_script")
+FromNodeId = "Constant_One"
+ToNodeId = "Splat"
+
+[sub_resource type="Resource" id="Conn_6"]
+script = ExtResource("connection_script")
+FromNodeId = "Splat"
+ToNodeId = "ControlOutput"
+
+[sub_resource type="Resource" id="SubRes_Base_Noise"]
+script = ExtResource("perlin_script")
+Seed = 882211
+Frequency = 0.004
+ScaleX = 3.5
+ScaleZ = 1.2
+OutputMin = -0.2
+OutputMax = 1.05
+NodeId = "Base_Noise"
+NodeType = "PerlinNoiseNode"
+EditorPosition = Vector2(-1200, -200)
+
+[sub_resource type="Curve" id="DuneSCurve"]
+_data = [Vector2(0, 0), 0.0, 0.2, 0, 0, Vector2(0.4, 0.1), 0.5, 0.5, 0, 0, Vector2(0.75, 0.35), 1.2, 1.2, 0, 0, Vector2(0.95, 0.7), 3.0, 3.0, 0, 0, Vector2(0.99, 0.9), 10.0, 10.0, 0, 0, Vector2(1, 1), 20.0, 0.0, 0, 0]
+point_count = 6
+
+[sub_resource type="Resource" id="SubRes_Dune_Curve"]
+script = ExtResource("curve_script")
+CurveToApply = SubResource("DuneSCurve")
+BypassShoulders = false
+NodeId = "Dune_Curve"
+NodeType = "CurveNode"
+EditorPosition = Vector2(-900, -200)
+
+[sub_resource type="Resource" id="SubRes_Wind_Shift"]
+script = ExtResource("parallax_script")
+DirectionX = -1.0
+MaxOffset = 20.0
+NodeId = "Wind_Shift"
+NodeType = "ParallaxDisplacementNode"
+EditorPosition = Vector2(-600, -100)
+
+[sub_resource type="Resource" id="SubRes_Levels_Final"]
+script = ExtResource("levels_script")
+NodeId = "Levels_Final"
+NodeType = "LevelsNode"
+EditorPosition = Vector2(-300, -100)
+
+[sub_resource type="Resource" id="SubRes_HeightOutput"]
+script = ExtResource("height_output_script")
+TerrainNodePath = NodePath("../Terrain3D")
+HeightScale = 300.0
+NodeId = "HeightOutput"
+NodeType = "HeightOutputNode"
+EditorPosition = Vector2(0, -100)
+
+[sub_resource type="Resource" id="SubRes_Constant_One"]
+script = ExtResource("levels_script")
+OutputMin = 1.0
+NodeId = "Constant_One"
+NodeType = "LevelsNode"
+EditorPosition = Vector2(-300, 200)
+
+[sub_resource type="Resource" id="SubRes_Splat"]
+script = ExtResource("splat_script")
+TextureIds = Array[int]([3, 3])
+NodeId = "Splat"
+NodeType = "SplatNode"
+EditorPosition = Vector2(0, 200)
+
+[sub_resource type="Resource" id="SubRes_ControlOutput"]
+script = ExtResource("control_output_script")
+TerrainNodePath = NodePath("../Terrain3D")
+NodeId = "ControlOutput"
+NodeType = "Terrain3DControlOutputNode"
+EditorPosition = Vector2(300, 200)
+
+[resource]
+script = ExtResource("graph_script")
+Nodes = Array[ExtResource("node_base_script")]([SubResource("SubRes_Base_Noise"), SubResource("SubRes_Dune_Curve"), SubResource("SubRes_Wind_Shift"), SubResource("SubRes_Levels_Final"), SubResource("SubRes_HeightOutput"), SubResource("SubRes_Constant_One"), SubResource("SubRes_Splat"), SubResource("SubRes_ControlOutput")])
+Connections = Array[ExtResource("connection_script")]([SubResource("Conn_0"), SubResource("Conn_1"), SubResource("Conn_2"), SubResource("Conn_3"), SubResource("Conn_4"), SubResource("Conn_5"), SubResource("Conn_6")])

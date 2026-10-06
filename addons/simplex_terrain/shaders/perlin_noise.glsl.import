@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://dyey016ahki4e"
+path="res://.godot/imported/perlin_noise.glsl-2b791821260d608fa6cbbd0f757a235e.res"
+
+[deps]
+
+source_file="res://addons/simplex_terrain/shaders/perlin_noise.glsl"
+dest_files=["res://.godot/imported/perlin_noise.glsl-2b791821260d608fa6cbbd0f757a235e.res"]
+
+[params]
+

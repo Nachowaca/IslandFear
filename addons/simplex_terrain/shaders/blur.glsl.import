@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://s70xolmhpjah"
+path="res://.godot/imported/blur.glsl-3d6239eac4672a1e518499f164c174e9.res"
+
+[deps]
+
+source_file="res://addons/simplex_terrain/shaders/blur.glsl"
+dest_files=["res://.godot/imported/blur.glsl-3d6239eac4672a1e518499f164c174e9.res"]
+
+[params]
+

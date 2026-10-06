@@ -5,6 +5,52 @@ extends Node
 ## Uso: Isla.registrar_evento("animal_molestado", posicion_o_celda, intensidad)
 
 signal emocion_cambiada(nombre: String, valor: float)
+signal evento_registrado(tipo: String, zona: Vector3, intensidad: float)
+signal etapa_cambiada(idx: int, subio: bool)
+
+## Relación lenta (oculta para el jugador) entre la isla y el náufrago: -100 hostil … +100 aliada.
+## A diferencia de las emociones (que suben y bajan rápido), el vínculo cambia despacio y es lo que decide
+## si la isla puede atacar, ayudar o convivir.
+const ETAPAS: Array[String] = ["Hostil", "Desconfiada", "Extraña", "Tolerante", "Aceptante", "Aliada"]
+const ETAPA_LIMITES: Array[float] = [-40.0, -10.0, 15.0, 45.0, 75.0]
+const VINCULO_FX: Dictionary = {
+	"arbol_cortado": -8.0, "fuego": -3.0, "animal_cazado": -12.0, "animal_molestado": -0.6,
+	"fruto_tomado": -0.15, "zona_sagrada": -0.5,
+	"ofrenda": 7.0, "cuidado": 1.0, "explorar": 0.2,
+}
+const PAZ_TOPE: float = 40.0                 ## la paz sola no pasa de aquí: para más hacen falta gestos (ofrendas)
+
+var vinculo: float = 0.0
+var _etapa_prev: int = 2
+var _t_dano: float = 999.0                   ## segundos desde la última ofensa
+
+func etapa_idx() -> int:
+	var i: int = 0
+	for lim: float in ETAPA_LIMITES:
+		if vinculo >= lim:
+			i += 1
+	return i
+
+func etapa_nombre() -> String:
+	return ETAPAS[etapa_idx()]
+
+func _ajustar_vinculo(v: float) -> void:
+	vinculo = clampf(vinculo + v, -100.0, 100.0)
+	if v < 0.0:
+		_t_dano = 0.0
+	var e: int = etapa_idx()
+	if e != _etapa_prev:
+		var subio: bool = e > _etapa_prev
+		_etapa_prev = e
+		etapa_cambiada.emit(e, subio)
+
+## Tiempo en paz: tras 90 s sin ofensas el vínculo mejora solo, y las heridas viejas sanan.
+func tick_paz(delta: float) -> void:
+	if _t_dano > 90.0:
+		if vinculo < PAZ_TOPE:
+			_ajustar_vinculo(0.02 * delta)
+		if vinculo < 0.0:
+			_ajustar_vinculo(0.03 * delta)
 
 const EMOCIONES: Array[String] = ["confianza", "enojo", "miedo", "curiosidad"]
 const SAVE_PATH: String = "user://isla.json"
@@ -28,6 +74,15 @@ const EVENTOS: Dictionary = {
 }
 
 const VIDAS_MAX: int = 7
+
+var tumbas: Array = []                  ## piedras de las vidas pasadas del ciclo: {x, y, z, texto}
+
+## Talla una tumba donde murió el jugador, con un epitafio según cómo vivió esa vida (llamar ANTES de cerrar_vida).
+func registrar_tumba(pos: Vector3, causa: String) -> void:
+	var texto: String = StelaTexts.epitafio(vida, causa, vida_actual)
+	tumbas.append({"x": pos.x, "y": pos.y, "z": pos.z, "texto": texto})
+	if tumbas.size() > VIDAS_MAX:
+		tumbas.pop_front()
 
 var vida: int = 1                       ## vida en curso (1..7)
 var ciclo: int = 1                      ## cuántas veces se completaron las 7 vidas + 1
@@ -65,6 +120,7 @@ func _personalidad_inicial() -> void:
 	sensibilidad = _rng.randf_range(0.8, 1.3)
 
 func _process(delta: float) -> void:
+	_t_dano += delta
 	for e: String in EMOCIONES:
 		var v: float = float(valor[e])
 		v = lerpf(v, float(base[e]), 1.0 - exp(-float(DECAIMIENTO[e]) * delta))
@@ -101,6 +157,10 @@ func registrar_evento(tipo: String, zona: Variant = Vector2i.ZERO, intensidad: f
 	var fx: Dictionary = ev["fx"]
 	for e: String in fx.keys():
 		_mover(e, float(fx[e]) * intensidad * sensibilidad)
+	if VINCULO_FX.has(tipo):
+		_ajustar_vinculo(float(VINCULO_FX[tipo]) * intensidad)
+	var pos3: Vector3 = zona if zona is Vector3 else Vector3(float(cell.x) * CELDA, 0.0, float(cell.y) * CELDA)
+	evento_registrado.emit(tipo, pos3, intensidad)
 
 ## Para contadores que son tiempo (tiempo_corriendo, tiempo_explorando...).
 func sumar_tiempo(contador: String, segundos: float) -> void:
@@ -133,6 +193,8 @@ func cerrar_vida() -> Dictionary:
 	_desplazar("miedo", 0.05 * d - 0.03 * c)
 	_desplazar("curiosidad", 0.04 * calma - 0.02 * d)
 	vida += 1
+	vinculo *= 0.5                       # la relación se enfría con la muerte, pero no se borra
+	_etapa_prev = etapa_idx()
 	for k: String in CONTADORES:
 		vida_actual[k] = 0.0
 	for e: String in EMOCIONES:
@@ -166,6 +228,9 @@ func calcular_final() -> Dictionary:
 func nuevo_ciclo(tipo_final: String) -> void:
 	ciclo += 1
 	vida = 1
+	tumbas.clear()
+	vinculo = 0.0
+	_etapa_prev = etapa_idx()
 	ultimo_final = tipo_final
 	for k: String in CONTADORES:
 		total[k] = 0.0
@@ -238,7 +303,7 @@ func _celdas(d: Dictionary) -> Dictionary:
 
 func guardar() -> void:
 	var data: Dictionary = {
-		"vida": vida, "ciclo": ciclo, "ultimo_final": ultimo_final, "base": base, "valor": valor, "sensibilidad": sensibilidad,
+		"vida": vida, "ciclo": ciclo, "ultimo_final": ultimo_final, "vinculo": vinculo, "tumbas": tumbas, "base": base, "valor": valor, "sensibilidad": sensibilidad,
 		"total": total, "vida_actual": vida_actual,
 		"calor_paso": _claves(calor_paso), "calor_dano": _claves(calor_dano),
 	}
@@ -257,6 +322,9 @@ func cargar() -> bool:
 	vida = clampi(int(d.get("vida", 1)), 1, VIDAS_MAX)
 	ciclo = int(d.get("ciclo", 1))
 	ultimo_final = str(d.get("ultimo_final", ""))
+	vinculo = float(d.get("vinculo", 0.0))
+	tumbas = d.get("tumbas", []) as Array
+	_etapa_prev = etapa_idx()
 	sensibilidad = float(d.get("sensibilidad", 1.0))
 	for e: String in EMOCIONES:
 		base[e] = float((d.get("base", {}) as Dictionary).get(e, base[e]))

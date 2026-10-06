@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://ct83vy5367d4g"
+path="res://.godot/imported/blend.glsl-9c9519aeb418eb0b63d22039fcce78d9.res"
+
+[deps]
+
+source_file="res://addons/simplex_terrain/shaders/blend.glsl"
+dest_files=["res://.godot/imported/blend.glsl-9c9519aeb418eb0b63d22039fcce78d9.res"]
+
+[params]
+

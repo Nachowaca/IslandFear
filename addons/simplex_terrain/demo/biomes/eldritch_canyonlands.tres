@@ -1,0 +1,225 @@
+[gd_resource type="Resource" script_class="TerrainGraphResource" format=3 uid="uid://dsow7b17x88ca"]
+
+[ext_resource type="Script" uid="uid://pu2qqp2hcaxt" path="res://addons/simplex_terrain/src/Core/Graph/GraphCommentData.cs" id="1_scwn2"]
+[ext_resource type="Script" uid="uid://bgc2h1felq5au" path="res://addons/simplex_terrain/src/Core/Graph/GraphFrameData.cs" id="3_eqhvx"]
+[ext_resource type="Script" uid="uid://cncctu3yo61ko" path="res://addons/simplex_terrain/src/Core/Graph/ConnectionData.cs" id="connection_script"]
+[ext_resource type="Script" uid="uid://cw84vxkatjbv" path="res://addons/simplex_terrain/src/Core/Nodes/Output/Terrain3DControlOutputNodeResource.cs" id="control_output_script"]
+[ext_resource type="Script" uid="uid://dseagehsifn3s" path="res://addons/simplex_terrain/src/Core/Nodes/Height/ErosionNodeResource.cs" id="erosion_script"]
+[ext_resource type="Script" uid="uid://dm18b63leb4lh" path="res://addons/simplex_terrain/src/Core/Nodes/Height/FractalNodeResource.cs" id="fractal_script"]
+[ext_resource type="Script" uid="uid://coejrr5lrvfbs" path="res://addons/simplex_terrain/src/Core/Graph/TerrainGraphResource.cs" id="graph_script"]
+[ext_resource type="Script" uid="uid://2x2r0ba1x115" path="res://addons/simplex_terrain/src/Core/Nodes/Output/HeightOutputNodeResource.cs" id="height_output_script"]
+[ext_resource type="Script" uid="uid://bjyu2f3ytdt70" path="res://addons/simplex_terrain/src/Core/Nodes/Height/LedgeNodeResource.cs" id="ledge_script"]
+[ext_resource type="Script" uid="uid://bvu2avrv22mej" path="res://addons/simplex_terrain/src/Core/Nodes/Height/LevelsNodeResource.cs" id="levels_script"]
+[ext_resource type="Script" uid="uid://hsm5srk736wi" path="res://addons/simplex_terrain/src/Core/Nodes/Base/TerrainNodeResource.cs" id="node_base_script"]
+[ext_resource type="Script" uid="uid://duwhdbtoh6wuh" path="res://addons/simplex_terrain/src/Core/Nodes/Height/ParallaxDisplacementNodeResource.cs" id="parallax_script"]
+[ext_resource type="Script" uid="uid://cor35ou4iqg8c" path="res://addons/simplex_terrain/src/Core/Nodes/Height/PerlinNoiseNodeResource.cs" id="perlin_script"]
+[ext_resource type="Script" uid="uid://by4bpj4jd2073" path="res://addons/simplex_terrain/src/Core/Nodes/Height/SlopeNodeResource.cs" id="slope_script"]
+[ext_resource type="Script" uid="uid://bihtagh72dwem" path="res://addons/simplex_terrain/src/Core/Nodes/Height/SplatNodeResource.cs" id="splat_script"]
+[ext_resource type="Script" uid="uid://hbucblewouan" path="res://addons/simplex_terrain/src/Core/Nodes/Height/TerraceNodeResource.cs" id="terrace_script"]
+
+[sub_resource type="Resource" id="Conn_0"]
+script = ExtResource("connection_script")
+FromNodeId = "Canyon_Base_Noise"
+ToNodeId = "Canyon_Base_Fractal"
+
+[sub_resource type="Resource" id="Conn_1"]
+script = ExtResource("connection_script")
+FromNodeId = "Canyon_Base_Fractal"
+ToNodeId = "Canyon_Ledges"
+
+[sub_resource type="Resource" id="Conn_2"]
+script = ExtResource("connection_script")
+FromNodeId = "Canyon_Ledges"
+ToNodeId = "Canyon_Terraces"
+
+[sub_resource type="Resource" id="Conn_3"]
+script = ExtResource("connection_script")
+FromNodeId = "Canyon_Wind_Warp_Noise"
+ToNodeId = "Canyon_Wind_Warp_Fractal"
+
+[sub_resource type="Resource" id="Conn_4"]
+script = ExtResource("connection_script")
+FromNodeId = "Canyon_Wind_Warp_Fractal"
+ToNodeId = "Canyon_Wind_Warp_Levels"
+
+[sub_resource type="Resource" id="Conn_5"]
+script = ExtResource("connection_script")
+FromNodeId = "Canyon_Terraces"
+ToNodeId = "Canyon_Warp"
+
+[sub_resource type="Resource" id="Conn_6"]
+script = ExtResource("connection_script")
+FromNodeId = "Canyon_Wind_Warp_Levels"
+ToNodeId = "Canyon_Warp"
+ToPort = 1
+
+[sub_resource type="Resource" id="Conn_7"]
+script = ExtResource("connection_script")
+FromNodeId = "Canyon_Warp"
+ToNodeId = "Canyon_Erosion"
+
+[sub_resource type="Resource" id="Conn_8"]
+script = ExtResource("connection_script")
+FromNodeId = "Canyon_Erosion"
+ToNodeId = "Canyon_Levels_Final"
+
+[sub_resource type="Resource" id="Conn_9"]
+script = ExtResource("connection_script")
+FromNodeId = "Canyon_Levels_Final"
+ToNodeId = "Canyon_Height_Output"
+
+[sub_resource type="Resource" id="Conn_10"]
+script = ExtResource("connection_script")
+FromNodeId = "Canyon_Levels_Final"
+ToNodeId = "Slope_Cliffs"
+
+[sub_resource type="Resource" id="Conn_11"]
+script = ExtResource("connection_script")
+FromNodeId = "Canyon_Levels_Final"
+ToNodeId = "Slope_Flats"
+
+[sub_resource type="Resource" id="Conn_12"]
+script = ExtResource("connection_script")
+FromNodeId = "Slope_Flats"
+ToNodeId = "Canyon_Splat"
+
+[sub_resource type="Resource" id="Conn_13"]
+script = ExtResource("connection_script")
+FromNodeId = "Slope_Cliffs"
+ToNodeId = "Canyon_Splat"
+ToPort = 2
+
+[sub_resource type="Resource" id="Conn_14"]
+script = ExtResource("connection_script")
+FromNodeId = "Canyon_Splat"
+ToNodeId = "Canyon_Control_Output"
+
+[sub_resource type="Resource" id="SubRes_Canyon_Base_Noise"]
+script = ExtResource("perlin_script")
+Seed = 334455
+Frequency = 0.0005
+NodeId = "Canyon_Base_Noise"
+NodeType = "PerlinNoiseNode"
+EditorPosition = Vector2(-1500, -300)
+
+[sub_resource type="Resource" id="SubRes_Canyon_Base_Fractal"]
+script = ExtResource("fractal_script")
+Octaves = 6
+Frequency = 0.0005
+NodeId = "Canyon_Base_Fractal"
+NodeType = "FractalNode"
+EditorPosition = Vector2(-1200, -300)
+
+[sub_resource type="Resource" id="SubRes_Canyon_Terraces"]
+script = ExtResource("terrace_script")
+Steps = 6
+Steepness = 0.85
+Uniformity = 0.8
+NodeId = "Canyon_Terraces"
+NodeType = "TerraceNode"
+EditorPosition = Vector2(-900, -300)
+
+[sub_resource type="Resource" id="SubRes_Canyon_Ledges"]
+script = ExtResource("ledge_script")
+ContourLevel = 0.55
+TopShoulder = 0.12
+BottomShoulder = 0.08
+CliffHeight = 0.22
+Steepness = 25.0
+NodeId = "Canyon_Ledges"
+NodeType = "LedgeNode"
+EditorPosition = Vector2(-600, -300)
+
+[sub_resource type="Resource" id="SubRes_Canyon_Wind_Warp_Noise"]
+script = ExtResource("perlin_script")
+Seed = 556677
+Frequency = 0.004
+NodeId = "Canyon_Wind_Warp_Noise"
+NodeType = "PerlinNoiseNode"
+EditorPosition = Vector2(-1200, 100)
+
+[sub_resource type="Resource" id="SubRes_Canyon_Wind_Warp_Fractal"]
+script = ExtResource("fractal_script")
+Octaves = 4
+Frequency = 0.004
+NodeId = "Canyon_Wind_Warp_Fractal"
+NodeType = "FractalNode"
+EditorPosition = Vector2(-900, 100)
+
+[sub_resource type="Resource" id="SubRes_Canyon_Wind_Warp_Levels"]
+script = ExtResource("levels_script")
+OutputMax = 0.08
+NodeId = "Canyon_Wind_Warp_Levels"
+NodeType = "LevelsNode"
+EditorPosition = Vector2(-600, 100)
+
+[sub_resource type="Resource" id="SubRes_Canyon_Warp"]
+script = ExtResource("parallax_script")
+DirectionX = 0.7
+DirectionZ = 0.7
+MaxOffset = 15.0
+NodeId = "Canyon_Warp"
+NodeType = "ParallaxDisplacementNode"
+EditorPosition = Vector2(-300, -200)
+
+[sub_resource type="Resource" id="SubRes_Canyon_Erosion"]
+script = ExtResource("erosion_script")
+Durability = 0.4
+ErosionStrength = 0.5
+SedimentDensity = 0.18
+Fluidity = 6
+Iterations = 12
+NodeId = "Canyon_Erosion"
+NodeType = "ErosionNode"
+EditorPosition = Vector2(0, -200)
+
+[sub_resource type="Resource" id="SubRes_Canyon_Levels_Final"]
+script = ExtResource("levels_script")
+OutputMax = 0.65
+NodeId = "Canyon_Levels_Final"
+NodeType = "LevelsNode"
+EditorPosition = Vector2(300, -200)
+
+[sub_resource type="Resource" id="SubRes_Canyon_Height_Output"]
+script = ExtResource("height_output_script")
+TerrainNodePath = NodePath("../Terrain3D")
+NodeId = "Canyon_Height_Output"
+NodeType = "HeightOutputNode"
+EditorPosition = Vector2(600, -300)
+
+[sub_resource type="Resource" id="SubRes_Slope_Cliffs"]
+script = ExtResource("slope_script")
+MinAngle = 20.0
+SmoothAngle = 6.0
+HeightScale = 500.0
+NodeId = "Slope_Cliffs"
+NodeType = "SlopeNode"
+EditorPosition = Vector2(600, 100)
+
+[sub_resource type="Resource" id="SubRes_Slope_Flats"]
+script = ExtResource("slope_script")
+MaxAngle = 20.0
+SmoothAngle = 6.0
+HeightScale = 500.0
+NodeId = "Slope_Flats"
+NodeType = "SlopeNode"
+EditorPosition = Vector2(600, -100)
+
+[sub_resource type="Resource" id="SubRes_Canyon_Splat"]
+script = ExtResource("splat_script")
+TextureIds = Array[int]([4, 2])
+NodeId = "Canyon_Splat"
+NodeType = "SplatNode"
+EditorPosition = Vector2(900, 0)
+
+[sub_resource type="Resource" id="SubRes_Canyon_Control_Output"]
+script = ExtResource("control_output_script")
+TerrainNodePath = NodePath("../Terrain3D")
+NodeId = "Canyon_Control_Output"
+NodeType = "Terrain3DControlOutputNode"
+EditorPosition = Vector2(1200, 0)
+
+[resource]
+script = ExtResource("graph_script")
+Nodes = Array[ExtResource("node_base_script")]([SubResource("SubRes_Canyon_Base_Noise"), SubResource("SubRes_Canyon_Base_Fractal"), SubResource("SubRes_Canyon_Terraces"), SubResource("SubRes_Canyon_Ledges"), SubResource("SubRes_Canyon_Wind_Warp_Noise"), SubResource("SubRes_Canyon_Wind_Warp_Fractal"), SubResource("SubRes_Canyon_Wind_Warp_Levels"), SubResource("SubRes_Canyon_Warp"), SubResource("SubRes_Canyon_Erosion"), SubResource("SubRes_Canyon_Levels_Final"), SubResource("SubRes_Canyon_Height_Output"), SubResource("SubRes_Slope_Cliffs"), SubResource("SubRes_Slope_Flats"), SubResource("SubRes_Canyon_Splat"), SubResource("SubRes_Canyon_Control_Output")])
+Connections = Array[ExtResource("connection_script")]([SubResource("Conn_0"), SubResource("Conn_1"), SubResource("Conn_2"), SubResource("Conn_3"), SubResource("Conn_4"), SubResource("Conn_5"), SubResource("Conn_6"), SubResource("Conn_7"), SubResource("Conn_8"), SubResource("Conn_9"), SubResource("Conn_10"), SubResource("Conn_11"), SubResource("Conn_12"), SubResource("Conn_13"), SubResource("Conn_14")])

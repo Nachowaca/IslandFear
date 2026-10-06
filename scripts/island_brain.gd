@@ -85,6 +85,7 @@ var _vel_smooth: Vector3 = Vector3.ZERO
 var _satisfaction: float = 0.0
 var _think_timer: float = 6.0
 var _global_attack_cd: float = 0.0
+var _attack_rest: float = 0.0           ## descanso largo entre ataques (días de juego)
 var _cooldowns: Dictionary = {}
 var _trap_active: bool = false
 var _trap_ominous: float = 0.0
@@ -104,6 +105,8 @@ func _ready() -> void:
 	_rng.randomize()
 	_world = get_parent() as Node3D
 	voice.rng.randomize()
+	Isla.evento_registrado.connect(_on_evento)
+	Isla.etapa_cambiada.connect(_on_etapa)
 	s_deaths = maxi(s_deaths, Isla.vida - 1)       # las vidas gastadas sobreviven al cerrar el juego
 	_cargar_catalogo()
 	var lf: FileAccess = FileAccess.open(LOG_PATH, FileAccess.WRITE)     # un registro nuevo por partida
@@ -171,10 +174,14 @@ func _process(delta: float) -> void:
 
 	_satisfaction = maxf(_satisfaction - delta, 0.0)
 	_global_attack_cd = maxf(_global_attack_cd - delta, 0.0)
+	_attack_rest = maxf(_attack_rest - delta, 0.0)
+	Isla.tick_paz(delta)
 	for k: String in _cooldowns.keys():
 		_cooldowns[k] = maxf(float(_cooldowns[k]) - delta, 0.0)
 
 	# luz de la cueva según el humor de la isla
+	if features != null:
+		features.set_cave_warmth(clampf((Isla.vinculo - 15.0) / 45.0, 0.0, 1.0))
 	if features != null and not _trap_active:
 		var base: float = clampf((_effective_hostility() - 30.0) / 70.0, 0.0, 1.0) * 0.6 * _night
 		_trap_ominous = move_toward(_trap_ominous, base, delta * 0.4)
@@ -235,7 +242,10 @@ func _observe(delta: float, speed: float, ppos: Vector3) -> void:
 		Isla.registrar_evento("animal_molestado", ppos, amount)
 		if not _study_done:
 			_study_bonus += 1.0                     # molestar a sus criaturas acorta su paciencia
-	var count: int = get_tree().get_nodes_in_group("pickup").size()
+	var count: int = 0
+	for pk: Node in get_tree().get_nodes_in_group("pickup"):      # solo la comida cuenta como "tomar" de la isla
+		if pk is WorldItem and (pk as WorldItem).edible and not pk.is_queued_for_deletion():
+			count += 1
 	if _pickup_count >= 0 and count < _pickup_count:
 		_obs_add("taken", float(_pickup_count - count))
 		_add_offense(0.5 * float(_pickup_count - count), "taken")   # tomar frutos molesta apenas
@@ -291,7 +301,16 @@ func _update_study() -> void:
 
 func _tone() -> int:
 	var eff: float = _effective_hostility()
-	return 0 if eff < 25.0 else (1 if eff < 55.0 else 2)
+	var etapa: int = Isla.etapa_idx()
+	if etapa >= 3 and eff < 40.0:
+		return 0                            # con confianza habla con curiosidad, no con dureza
+	if etapa <= 1 or eff >= 55.0:
+		return 2
+	return 0 if eff < 25.0 else 1
+
+## Clima emocional de la isla para el escenario: -1 hostil … +1 cálida (según el vínculo).
+func ambient_mood() -> float:
+	return clampf(Isla.vinculo / 60.0, -1.0, 1.0)
 
 ## Cómo te llama la isla según lo que vio de vos.
 func _who() -> String:
@@ -479,8 +498,13 @@ func _disponible(a: AccionIsla) -> bool:
 	if float(_cooldowns.get(a.id, 0.0)) > 0.0 or energy < a.costo:
 		return false
 	if a.dano:
-		if not _study_done or _global_attack_cd > 0.0:
-			return false                    # primero te estudia; un ataque cada tanto
+		if not _study_done or _global_attack_cd > 0.0 or _attack_rest > 0.0:
+			return false                    # primero te estudia; entre un golpe y otro pasan días
+		var etapa: int = Isla.etapa_idx()
+		if etapa >= 4:
+			return false                    # aceptante / aliada: no te lastima
+		if etapa == 3 and offense < 35.0:
+			return false                    # tolerante: solo reacciona a ofensas graves
 		if a.id != "cave_trap" and _in_cave:
 			return false                    # la cueva protege
 		if _effective_hostility() < a.min_hostilidad:
@@ -609,6 +633,9 @@ func _execute(a: AccionIsla) -> void:
 	action_taken.emit(id)
 	if a.dano:
 		_global_attack_cd = 7.0
+		# después de herir, la isla se retira: de 1 a 3 "días" según qué tan enojada esté
+		var enojo: float = clampf(_effective_hostility() / 100.0, 0.0, 1.0)
+		_attack_rest = day_length_seconds * _rng.randf_range(1.0, 3.0) * lerpf(1.3, 0.6, enojo)
 	match id:
 		"whisper":
 			_say(_speak_about_player(), "whisper")
@@ -969,6 +996,41 @@ static func olvidar_todo() -> void:
 	s_deaths = 0
 	s_grievance = ""
 
+var _t_react: float = 0.0
+
+## La relación cambió de etapa: la isla lo dice (y el escenario lo refleja desde ahora).
+func _on_etapa(idx: int, subio: bool) -> void:
+	if player == null or not is_instance_valid(player) or player.dead:
+		return
+	var topic: String = "etapa_%s_%d" % ["up" if subio else "down", idx]
+	if IslandVoice.POOLS.has(topic):
+		_say(voice.line(topic, {"who": _who()}, _tone()), "info" if subio else "omen")
+		_t_ultima_accion = 0.0
+
+## Reacciones en vivo a lo que el jugador acaba de hacer (talar, fuego, ofrendas...).
+func _on_evento(tipo: String, _zona: Vector3, intensidad: float) -> void:
+	if player == null or not is_instance_valid(player) or player.dead:
+		return
+	var now: float = Time.get_ticks_msec() / 1000.0
+	match tipo:
+		"arbol_cortado":
+			_add_offense(6.0 * intensidad, "trees")
+		"fuego":
+			_add_offense(2.5 * intensidad, "fire")
+	var topic: String = ""
+	match tipo:
+		"arbol_cortado":
+			topic = "react_trees"
+		"fuego":
+			topic = "react_fire"
+		"ofrenda":
+			topic = "react_offering"
+	if topic == "" or now - _t_react < 6.0:
+		return
+	_t_react = now
+	_t_ultima_accion = 0.0                  # lo que acaba de decir cuenta como acción: se calla un rato
+	_say(voice.line(topic, {"who": _who()}, _tone()), "omen" if tipo != "ofrenda" else "whisper")
+
 func notify_death() -> void:
 	s_deaths += 1
 	Isla.registrar_evento("muerte_jugador")
@@ -998,6 +1060,7 @@ func hottest_zone() -> String:
 func status_lines() -> Array[String]:
 	var lines: Array[String] = []
 	lines.append("Estado: %s" % MOOD_NAMES[mood])
+	lines.append("Vínculo: %d (%s)   Descanso entre ataques: %d s" % [int(Isla.vinculo), Isla.etapa_nombre(), int(_attack_rest)])
 	lines.append("Emociones: %s" % Isla.resumen())
 	lines.append("Agravios: %.1f (solo suben si le hacés mal)   Curiosidad: %d%%   Humor: %d%%" % [offense, int(_curiosity * 100.0), int(_noise * 100.0)])
 	lines.append("Hostilidad: %d / 100" % int(_effective_hostility()))

@@ -34,6 +34,7 @@ var _beat: float = 0.0
 
 var _flash: ColorRect
 var _toast: Label
+var _toast_panel: PanelContainer
 var _toast_time: float = 0.0
 var _panel: PanelContainer
 var _panel_label: Label
@@ -70,20 +71,42 @@ func _ready() -> void:
 
 	_build_health()
 
+	# hambre y sed, a la derecha del medidor de salud
+	var needs := NeedsBar.new()
+	needs.player = player
+	needs.anchor_top = 1.0
+	needs.anchor_bottom = 1.0
+	needs.offset_left = 318.0
+	needs.offset_top = -152.0
+	add_child(needs)
+
 	# mensajes de la isla
+	# frases de la isla: tipografía sans legible sobre un fondo oscuro translúcido
+	_toast_panel = PanelContainer.new()
+	_toast_panel.anchor_left = 0.5
+	_toast_panel.anchor_right = 0.5
+	_toast_panel.anchor_top = 0.0
+	_toast_panel.anchor_bottom = 0.0
+	_toast_panel.offset_top = 96.0
+	_toast_panel.offset_bottom = 96.0
+	_toast_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_toast_panel.grow_vertical = Control.GROW_DIRECTION_END
+	_toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tst: StyleBoxFlat = UiTheme.panel_style(14, Color(0.5, 0.65, 0.7, 0.35), Color(0.0, 0.0, 0.0, 0.72), 1)
+	tst.shadow_size = 0
+	tst.content_margin_left = 30.0
+	tst.content_margin_right = 30.0
+	tst.content_margin_top = 14.0
+	tst.content_margin_bottom = 16.0
+	_toast_panel.add_theme_stylebox_override("panel", tst)
+	_toast_panel.modulate.a = 0.0
 	_toast = Label.new()
-	_toast.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_toast.anchor_left = 0.0
-	_toast.anchor_right = 1.0
-	_toast.offset_top = 110.0
-	_toast.offset_bottom = 160.0
 	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_toast.add_theme_font_size_override("font_size", 26)
-	_toast.add_theme_color_override("font_outline_color", Color.BLACK)
-	_toast.add_theme_constant_override("outline_size", 8)
-	_toast.modulate.a = 0.0
+	_toast.add_theme_font_override("font", UiTheme.sans())
+	_toast.add_theme_font_size_override("font_size", 30)
 	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_toast)
+	_toast_panel.add_child(_toast)
+	add_child(_toast_panel)
 
 	# panel de depuración "Mente de la isla"
 	_panel = PanelContainer.new()
@@ -95,7 +118,8 @@ func _ready() -> void:
 	_panel.visible = false
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel_label = Label.new()
-	_panel_label.add_theme_font_size_override("font_size", 14)
+	_panel.add_theme_stylebox_override("panel", UiTheme.panel_style(12, UiTheme.C_TEAL, Color(0.02, 0.05, 0.07, 0.9), 2))
+	_panel_label.add_theme_font_size_override("font_size", 18)
 	_panel_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_panel.add_child(_panel_label)
 	add_child(_panel)
@@ -105,7 +129,8 @@ func _ready() -> void:
 	_death.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_death.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_death.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_death.add_theme_font_size_override("font_size", 36)
+	_death.add_theme_font_override("font", UiTheme.TITLE)
+	_death.add_theme_font_size_override("font_size", 46)
 	_death.add_theme_color_override("font_outline_color", Color.BLACK)
 	_death.add_theme_constant_override("outline_size", 10)
 	_death.modulate.a = 0.0
@@ -202,14 +227,14 @@ func _on_damaged(amount: float, source: String) -> void:
 		show_toast("Herido por %s" % source, Color(0.95, 0.35, 0.3))
 
 func _on_thought(text: String, kind: String) -> void:
-	var c: Color = Color(0.8, 0.75, 1.0)
+	var c: Color = Color(0.86, 0.82, 1.0)
 	match kind:
 		"omen":
-			c = Color(1.0, 0.8, 0.4)
+			c = Color(1.0, 0.86, 0.5)
 		"attack":
-			c = Color(1.0, 0.4, 0.35)
+			c = Color(1.0, 0.52, 0.46)
 		"info":
-			c = Color(0.8, 0.85, 0.85)
+			c = Color(0.88, 0.92, 0.92)
 	show_toast(text, c)
 
 func show_toast(text: String, color: Color) -> void:
@@ -314,7 +339,7 @@ func _process(delta: float) -> void:
 	_flash.color.a = move_toward(_flash.color.a, 0.0, delta * 1.2)
 	if _toast_time > 0.0:
 		_toast_time -= delta
-		_toast.modulate.a = clampf(_toast_time / 1.2, 0.0, 1.0)
+		_toast_panel.modulate.a = clampf(_toast_time / 1.2, 0.0, 1.0)
 	var down: bool = Input.is_physical_key_pressed(KEY_I)
 	if down and not _i_was_down:
 		_panel.visible = not _panel.visible

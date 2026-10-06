@@ -23,6 +23,11 @@ var _mats: Dictionary = {}
 var _crystal_mats: Array[StandardMaterial3D] = []
 var _cave_light: OmniLight3D
 var _ominous: float = 0.0
+var _warm: float = 0.0            ## 0 = fría, 1 = cálida (la isla confía en el jugador)
+
+## La isla expresa su vínculo con el jugador a través del brillo de la cueva.
+func set_cave_warmth(w: float) -> void:
+	_warm = clampf(w, 0.0, 1.0)
 var _seal_body: StaticBody3D
 var _seal_mesh: MeshInstance3D
 var _seal_shape: CollisionShape3D
@@ -428,7 +433,7 @@ func _process(delta: float) -> void:
 			_night = dn.get("night_amount")
 	# cristales de la cueva: turquesa tranquilo -> rojo violeta que late
 	var pulse: float = 0.5 + 0.5 * sin(_time * lerpf(1.2, 3.6, _ominous))
-	var calm: Color = Color(0.3, 0.9, 0.9)
+	var calm: Color = Color(0.3, 0.9, 0.9).lerp(Color(1.0, 0.72, 0.35), _warm)   # con confianza, la cueva se vuelve cálida (dorada)
 	var bad: Color = Color(0.95, 0.15, 0.4)
 	var col: Color = calm.lerp(bad, _ominous)
 	var energy: float = lerpf(1.2, 4.5, _ominous * (0.4 + 0.6 * pulse)) * lerpf(0.7, 1.4, _night)

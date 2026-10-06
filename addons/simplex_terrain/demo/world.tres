@@ -1,0 +1,454 @@
+[gd_resource type="Resource" script_class="TerrainGraphResource" format=3 uid="uid://kgtkiy1pgc01"]
+
+[ext_resource type="Script" uid="uid://pu2qqp2hcaxt" path="res://addons/simplex_terrain/src/Core/Graph/GraphCommentData.cs" id="1"]
+[ext_resource type="Script" uid="uid://bgc2h1felq5au" path="res://addons/simplex_terrain/src/Core/Graph/GraphFrameData.cs" id="2"]
+[ext_resource type="Script" uid="uid://cncctu3yo61ko" path="res://addons/simplex_terrain/src/Core/Graph/ConnectionData.cs" id="3"]
+[ext_resource type="Script" uid="uid://coejrr5lrvfbs" path="res://addons/simplex_terrain/src/Core/Graph/TerrainGraphResource.cs" id="4"]
+[ext_resource type="Script" uid="uid://hsm5srk736wi" path="res://addons/simplex_terrain/src/Core/Nodes/Base/TerrainNodeResource.cs" id="5"]
+[ext_resource type="Script" uid="uid://2x2r0ba1x115" path="res://addons/simplex_terrain/src/Core/Nodes/Output/HeightOutputNodeResource.cs" id="6"]
+[ext_resource type="Script" uid="uid://cw84vxkatjbv" path="res://addons/simplex_terrain/src/Core/Nodes/Output/Terrain3DControlOutputNodeResource.cs" id="7"]
+[ext_resource type="Script" uid="uid://cor35ou4iqg8c" path="res://addons/simplex_terrain/src/Core/Nodes/Height/PerlinNoiseNodeResource.cs" id="8"]
+[ext_resource type="Script" uid="uid://dm18b63leb4lh" path="res://addons/simplex_terrain/src/Core/Nodes/Height/FractalNodeResource.cs" id="9"]
+[ext_resource type="Script" uid="uid://dfc2wyeup1xj5" path="res://addons/simplex_terrain/src/Core/Nodes/Biome/BiomeReferenceNodeResource.cs" id="11"]
+[ext_resource type="Script" uid="uid://c4ymxsd1a11en" path="res://addons/simplex_terrain/src/Core/Nodes/Biome/BiomeBlendNodeResource.cs" id="12"]
+[ext_resource type="Script" uid="uid://c0a80m7oypoi7" path="res://addons/simplex_terrain/src/Core/Nodes/Biome/WhittakerLookupNodeResource.cs" id="13"]
+[ext_resource type="Resource" uid="uid://ibs8nr60qp75" path="res://addons/simplex_terrain/demo/biomes/alpine_peaks.tres" id="14"]
+[ext_resource type="Resource" uid="uid://bbtlg1pt47d2l" path="res://addons/simplex_terrain/demo/biomes/mountains.tres" id="15"]
+[ext_resource type="Resource" uid="uid://bplainsdemo12" path="res://addons/simplex_terrain/demo/biomes/plains.tres" id="16"]
+[ext_resource type="Resource" uid="uid://b1ad0as1s1123" path="res://addons/simplex_terrain/demo/biomes/badlands_oasis.tres" id="17"]
+[ext_resource type="Resource" uid="uid://bdesertdemo12" path="res://addons/simplex_terrain/demo/biomes/desert.tres" id="18"]
+[ext_resource type="Resource" uid="uid://bfl2lqyiwxp1g" path="res://addons/simplex_terrain/demo/biomes/everest_range.tres" id="19"]
+[ext_resource type="Resource" uid="uid://c5uhf74nht5m7" path="res://addons/simplex_terrain/demo/biomes/glacial_valley.tres" id="20"]
+[ext_resource type="Resource" uid="uid://bp20ue4yhtlln" path="res://addons/simplex_terrain/demo/biomes/mountain_valleys.tres" id="21"]
+[ext_resource type="Resource" uid="uid://cgbaa88fbbadd" path="res://addons/simplex_terrain/demo/biomes/terraced_hills.tres" id="22"]
+[ext_resource type="Resource" uid="uid://dsow7b17x88ca" path="res://addons/simplex_terrain/demo/biomes/eldritch_canyonlands.tres" id="23"]
+[ext_resource type="Texture2D" uid="uid://djynuy56waqqw" path="res://addons/simplex_terrain/demo/whittaker_10_biomes.png" id="24"]
+
+[sub_resource type="Resource" id="Conn_Moist_NoiseToFractal"]
+script = ExtResource("3")
+FromNodeId = "Moist_Noise"
+ToNodeId = "Moist_Fractal"
+
+[sub_resource type="Resource" id="Conn_Whittaker_alpine_peaks"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+ToNodeId = "BiomeRef_alpine_peaks"
+
+[sub_resource type="Resource" id="Conn_BlendH_alpine_peaks"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_alpine_peaks"
+ToNodeId = "BiomeBlend"
+
+[sub_resource type="Resource" id="Conn_BlendS_alpine_peaks"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_alpine_peaks"
+FromPort = 1
+ToNodeId = "BiomeBlend"
+ToPort = 1
+
+[sub_resource type="Resource" id="Conn_BlendW_alpine_peaks"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+ToNodeId = "BiomeBlend"
+ToPort = 2
+
+[sub_resource type="Resource" id="Conn_Whittaker_mountains"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 1
+ToNodeId = "BiomeRef_mountains"
+
+[sub_resource type="Resource" id="Conn_BlendH_mountains"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_mountains"
+ToNodeId = "BiomeBlend"
+ToPort = 3
+
+[sub_resource type="Resource" id="Conn_BlendS_mountains"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_mountains"
+FromPort = 1
+ToNodeId = "BiomeBlend"
+ToPort = 4
+
+[sub_resource type="Resource" id="Conn_BlendW_mountains"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 1
+ToNodeId = "BiomeBlend"
+ToPort = 5
+
+[sub_resource type="Resource" id="Conn_Whittaker_plains"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 2
+ToNodeId = "BiomeRef_plains"
+
+[sub_resource type="Resource" id="Conn_BlendH_plains"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_plains"
+ToNodeId = "BiomeBlend"
+ToPort = 6
+
+[sub_resource type="Resource" id="Conn_BlendS_plains"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_plains"
+FromPort = 1
+ToNodeId = "BiomeBlend"
+ToPort = 7
+
+[sub_resource type="Resource" id="Conn_BlendW_plains"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 2
+ToNodeId = "BiomeBlend"
+ToPort = 8
+
+[sub_resource type="Resource" id="Conn_Whittaker_badlands_oasis"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 3
+ToNodeId = "BiomeRef_badlands_oasis"
+
+[sub_resource type="Resource" id="Conn_BlendH_badlands_oasis"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_badlands_oasis"
+ToNodeId = "BiomeBlend"
+ToPort = 9
+
+[sub_resource type="Resource" id="Conn_BlendS_badlands_oasis"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_badlands_oasis"
+FromPort = 1
+ToNodeId = "BiomeBlend"
+ToPort = 10
+
+[sub_resource type="Resource" id="Conn_BlendW_badlands_oasis"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 3
+ToNodeId = "BiomeBlend"
+ToPort = 11
+
+[sub_resource type="Resource" id="Conn_Whittaker_desert"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 4
+ToNodeId = "BiomeRef_desert"
+
+[sub_resource type="Resource" id="Conn_BlendH_desert"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_desert"
+ToNodeId = "BiomeBlend"
+ToPort = 12
+
+[sub_resource type="Resource" id="Conn_BlendS_desert"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_desert"
+FromPort = 1
+ToNodeId = "BiomeBlend"
+ToPort = 13
+
+[sub_resource type="Resource" id="Conn_BlendW_desert"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 4
+ToNodeId = "BiomeBlend"
+ToPort = 14
+
+[sub_resource type="Resource" id="Conn_Whittaker_everest_range"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 5
+ToNodeId = "BiomeRef_everest_range"
+
+[sub_resource type="Resource" id="Conn_BlendH_everest_range"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_everest_range"
+ToNodeId = "BiomeBlend"
+ToPort = 15
+
+[sub_resource type="Resource" id="Conn_BlendS_everest_range"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_everest_range"
+FromPort = 1
+ToNodeId = "BiomeBlend"
+ToPort = 16
+
+[sub_resource type="Resource" id="Conn_BlendW_everest_range"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 5
+ToNodeId = "BiomeBlend"
+ToPort = 17
+
+[sub_resource type="Resource" id="Conn_Whittaker_glacial_valley"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 6
+ToNodeId = "BiomeRef_glacial_valley"
+
+[sub_resource type="Resource" id="Conn_BlendH_glacial_valley"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_glacial_valley"
+ToNodeId = "BiomeBlend"
+ToPort = 18
+
+[sub_resource type="Resource" id="Conn_BlendS_glacial_valley"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_glacial_valley"
+FromPort = 1
+ToNodeId = "BiomeBlend"
+ToPort = 19
+
+[sub_resource type="Resource" id="Conn_BlendW_glacial_valley"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 6
+ToNodeId = "BiomeBlend"
+ToPort = 20
+
+[sub_resource type="Resource" id="Conn_Whittaker_mountain_valleys"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 7
+ToNodeId = "BiomeRef_mountain_valleys"
+
+[sub_resource type="Resource" id="Conn_BlendH_mountain_valleys"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_mountain_valleys"
+ToNodeId = "BiomeBlend"
+ToPort = 21
+
+[sub_resource type="Resource" id="Conn_BlendS_mountain_valleys"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_mountain_valleys"
+FromPort = 1
+ToNodeId = "BiomeBlend"
+ToPort = 22
+
+[sub_resource type="Resource" id="Conn_BlendW_mountain_valleys"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 7
+ToNodeId = "BiomeBlend"
+ToPort = 23
+
+[sub_resource type="Resource" id="Conn_Whittaker_terraced_hills"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 8
+ToNodeId = "BiomeRef_terraced_hills"
+
+[sub_resource type="Resource" id="Conn_BlendH_terraced_hills"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_terraced_hills"
+ToNodeId = "BiomeBlend"
+ToPort = 24
+
+[sub_resource type="Resource" id="Conn_BlendS_terraced_hills"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_terraced_hills"
+FromPort = 1
+ToNodeId = "BiomeBlend"
+ToPort = 25
+
+[sub_resource type="Resource" id="Conn_BlendW_terraced_hills"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 8
+ToNodeId = "BiomeBlend"
+ToPort = 26
+
+[sub_resource type="Resource" id="Conn_Whittaker_eldritch_canyonlands"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 9
+ToNodeId = "BiomeRef_eldritch_canyonlands"
+
+[sub_resource type="Resource" id="Conn_BlendH_eldritch_canyonlands"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_eldritch_canyonlands"
+ToNodeId = "BiomeBlend"
+ToPort = 27
+
+[sub_resource type="Resource" id="Conn_BlendS_eldritch_canyonlands"]
+script = ExtResource("3")
+FromNodeId = "BiomeRef_eldritch_canyonlands"
+FromPort = 1
+ToNodeId = "BiomeBlend"
+ToPort = 28
+
+[sub_resource type="Resource" id="Conn_BlendW_eldritch_canyonlands"]
+script = ExtResource("3")
+FromNodeId = "Whittaker"
+FromPort = 9
+ToNodeId = "BiomeBlend"
+ToPort = 29
+
+[sub_resource type="Resource" id="Conn_FinalH"]
+script = ExtResource("3")
+FromNodeId = "BiomeBlend"
+ToNodeId = "HeightOutput"
+
+[sub_resource type="Resource" id="Conn_FinalS"]
+script = ExtResource("3")
+FromNodeId = "BiomeBlend"
+FromPort = 1
+ToNodeId = "ControlOutput"
+
+[sub_resource type="Resource" id="Resource_nlxiq"]
+script = ExtResource("3")
+FromNodeId = "Temp_Noise"
+ToNodeId = "Temp_Fractal"
+
+[sub_resource type="Resource" id="Resource_mu658"]
+script = ExtResource("3")
+FromNodeId = "Temp_Fractal"
+ToNodeId = "Whittaker"
+
+[sub_resource type="Resource" id="Resource_moist_to_whittaker"]
+script = ExtResource("3")
+FromNodeId = "Moist_Fractal"
+ToNodeId = "Whittaker"
+ToPort = 1
+
+[sub_resource type="Resource" id="SubRes_Temp_Noise"]
+script = ExtResource("8")
+Seed = 44552
+Frequency = 0.00012
+NodeId = "Temp_Noise"
+NodeType = "PerlinNoiseNode"
+EditorPosition = Vector2(-2600, -300)
+
+[sub_resource type="Resource" id="SubRes_Temp_Fractal"]
+script = ExtResource("9")
+Octaves = 4
+Persistence = 0.45
+Frequency = 0.00012
+NodeId = "Temp_Fractal"
+NodeType = "FractalNode"
+EditorPosition = Vector2(-2250, -300)
+
+[sub_resource type="Resource" id="SubRes_Moist_Noise"]
+script = ExtResource("8")
+Seed = 99881
+Frequency = 0.00015
+NodeId = "Moist_Noise"
+NodeType = "PerlinNoiseNode"
+EditorPosition = Vector2(-2600, 300)
+
+[sub_resource type="Resource" id="SubRes_Moist_Fractal"]
+script = ExtResource("9")
+Octaves = 4
+Persistence = 0.45
+Frequency = 0.00015
+NodeId = "Moist_Fractal"
+NodeType = "FractalNode"
+EditorPosition = Vector2(-2250, 300)
+
+[sub_resource type="Resource" id="SubRes_Whittaker"]
+script = ExtResource("13")
+WhittakerDiagram = ExtResource("24")
+Softness = 0.4
+BiomeCount = 10
+Sharpness = 0.1
+NodeId = "Whittaker"
+NodeType = "WhittakerLookupNode"
+EditorPosition = Vector2(-1800, 0)
+
+[sub_resource type="Resource" id="SubRes_BiomeRef_alpine_peaks"]
+script = ExtResource("11")
+SubGraph = ExtResource("14")
+NodeId = "BiomeRef_alpine_peaks"
+NodeType = "BiomeReferenceNode"
+EditorPosition = Vector2(-1200, -900)
+
+[sub_resource type="Resource" id="SubRes_BiomeRef_mountains"]
+script = ExtResource("11")
+SubGraph = ExtResource("15")
+NodeId = "BiomeRef_mountains"
+NodeType = "BiomeReferenceNode"
+EditorPosition = Vector2(-1200, -700)
+
+[sub_resource type="Resource" id="SubRes_BiomeRef_plains"]
+script = ExtResource("11")
+SubGraph = ExtResource("16")
+NodeId = "BiomeRef_plains"
+NodeType = "BiomeReferenceNode"
+EditorPosition = Vector2(-1200, -500)
+
+[sub_resource type="Resource" id="SubRes_BiomeRef_badlands_oasis"]
+script = ExtResource("11")
+SubGraph = ExtResource("17")
+NodeId = "BiomeRef_badlands_oasis"
+NodeType = "BiomeReferenceNode"
+EditorPosition = Vector2(-1200, -300)
+
+[sub_resource type="Resource" id="SubRes_BiomeRef_desert"]
+script = ExtResource("11")
+SubGraph = ExtResource("18")
+NodeId = "BiomeRef_desert"
+NodeType = "BiomeReferenceNode"
+EditorPosition = Vector2(-1200, -100)
+
+[sub_resource type="Resource" id="SubRes_BiomeRef_everest_range"]
+script = ExtResource("11")
+SubGraph = ExtResource("19")
+NodeId = "BiomeRef_everest_range"
+NodeType = "BiomeReferenceNode"
+EditorPosition = Vector2(-1200, 100)
+
+[sub_resource type="Resource" id="SubRes_BiomeRef_glacial_valley"]
+script = ExtResource("11")
+SubGraph = ExtResource("20")
+NodeId = "BiomeRef_glacial_valley"
+NodeType = "BiomeReferenceNode"
+EditorPosition = Vector2(-1200, 300)
+
+[sub_resource type="Resource" id="SubRes_BiomeRef_mountain_valleys"]
+script = ExtResource("11")
+SubGraph = ExtResource("21")
+NodeId = "BiomeRef_mountain_valleys"
+NodeType = "BiomeReferenceNode"
+EditorPosition = Vector2(-1200, 500)
+
+[sub_resource type="Resource" id="SubRes_BiomeRef_terraced_hills"]
+script = ExtResource("11")
+SubGraph = ExtResource("22")
+NodeId = "BiomeRef_terraced_hills"
+NodeType = "BiomeReferenceNode"
+EditorPosition = Vector2(-1200, 700)
+
+[sub_resource type="Resource" id="SubRes_BiomeRef_eldritch_canyonlands"]
+script = ExtResource("11")
+SubGraph = ExtResource("23")
+NodeId = "BiomeRef_eldritch_canyonlands"
+NodeType = "BiomeReferenceNode"
+EditorPosition = Vector2(-1200, 900)
+
+[sub_resource type="Resource" id="SubRes_BiomeBlend"]
+script = ExtResource("12")
+BiomeCount = 10
+NodeId = "BiomeBlend"
+NodeType = "BiomeBlendNode"
+EditorPosition = Vector2(-500, 0)
+
+[sub_resource type="Resource" id="SubRes_HeightOutput"]
+script = ExtResource("6")
+TerrainNodePath = NodePath("../Terrain3D")
+NodeId = "HeightOutput"
+NodeType = "HeightOutputNode"
+EditorPosition = Vector2(0, -200)
+
+[sub_resource type="Resource" id="SubRes_ControlOutput"]
+script = ExtResource("7")
+TerrainNodePath = NodePath("../Terrain3D")
+NodeId = "ControlOutput"
+NodeType = "Terrain3DControlOutputNode"
+EditorPosition = Vector2(0, 200)
+
+[resource]
+script = ExtResource("4")
+Nodes = Array[ExtResource("5")]([SubResource("SubRes_Temp_Noise"), SubResource("SubRes_Temp_Fractal"), SubResource("SubRes_Moist_Noise"), SubResource("SubRes_Moist_Fractal"), SubResource("SubRes_Whittaker"), SubResource("SubRes_BiomeRef_alpine_peaks"), SubResource("SubRes_BiomeRef_mountains"), SubResource("SubRes_BiomeRef_plains"), SubResource("SubRes_BiomeRef_badlands_oasis"), SubResource("SubRes_BiomeRef_desert"), SubResource("SubRes_BiomeRef_everest_range"), SubResource("SubRes_BiomeRef_glacial_valley"), SubResource("SubRes_BiomeRef_mountain_valleys"), SubResource("SubRes_BiomeRef_terraced_hills"), SubResource("SubRes_BiomeRef_eldritch_canyonlands"), SubResource("SubRes_BiomeBlend"), SubResource("SubRes_HeightOutput"), SubResource("SubRes_ControlOutput")])
+Connections = Array[ExtResource("3")]([SubResource("Conn_Moist_NoiseToFractal"), SubResource("Conn_Whittaker_alpine_peaks"), SubResource("Conn_BlendH_alpine_peaks"), SubResource("Conn_BlendS_alpine_peaks"), SubResource("Conn_BlendW_alpine_peaks"), SubResource("Conn_Whittaker_mountains"), SubResource("Conn_BlendH_mountains"), SubResource("Conn_BlendS_mountains"), SubResource("Conn_BlendW_mountains"), SubResource("Conn_Whittaker_plains"), SubResource("Conn_BlendH_plains"), SubResource("Conn_BlendS_plains"), SubResource("Conn_BlendW_plains"), SubResource("Conn_Whittaker_badlands_oasis"), SubResource("Conn_BlendH_badlands_oasis"), SubResource("Conn_BlendS_badlands_oasis"), SubResource("Conn_BlendW_badlands_oasis"), SubResource("Conn_Whittaker_desert"), SubResource("Conn_BlendH_desert"), SubResource("Conn_BlendS_desert"), SubResource("Conn_BlendW_desert"), SubResource("Conn_Whittaker_everest_range"), SubResource("Conn_BlendH_everest_range"), SubResource("Conn_BlendS_everest_range"), SubResource("Conn_BlendW_everest_range"), SubResource("Conn_Whittaker_glacial_valley"), SubResource("Conn_BlendH_glacial_valley"), SubResource("Conn_BlendS_glacial_valley"), SubResource("Conn_BlendW_glacial_valley"), SubResource("Conn_Whittaker_mountain_valleys"), SubResource("Conn_BlendH_mountain_valleys"), SubResource("Conn_BlendS_mountain_valleys"), SubResource("Conn_BlendW_mountain_valleys"), SubResource("Conn_Whittaker_terraced_hills"), SubResource("Conn_BlendH_terraced_hills"), SubResource("Conn_BlendS_terraced_hills"), SubResource("Conn_BlendW_terraced_hills"), SubResource("Conn_Whittaker_eldritch_canyonlands"), SubResource("Conn_BlendH_eldritch_canyonlands"), SubResource("Conn_BlendS_eldritch_canyonlands"), SubResource("Conn_BlendW_eldritch_canyonlands"), SubResource("Conn_FinalH"), SubResource("Conn_FinalS"), SubResource("Resource_nlxiq"), SubResource("Resource_mu658"), SubResource("Resource_moist_to_whittaker")])

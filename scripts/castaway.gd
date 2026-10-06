@@ -42,15 +42,26 @@ var _shake: float = 0.0
 
 var controllable: bool = false
 
+## Los ataques de la isla hieren pero no matan: dejan al náufrago con al menos `island_floor` de salud.
+## (El hambre, la sed, el veneno o las caídas sí pueden matar.)
+const ISLAND_SOURCES: Array[String] = ["una roca", "raíces espinosas", "cangrejos"]
+@export var island_floor: float = 8.0
+
 func take_damage(amount: float, source: String = "") -> void:
 	if dead or amount <= 0.0:
 		return
+	if source in ISLAND_SOURCES:
+		amount = minf(amount, maxf(health - island_floor, 0.0))
+		if amount <= 0.0:
+			_shake = maxf(_shake, 0.6)       # la isla se contiene: el golpe pasa rozando
+			return
 	health = maxf(health - amount, 0.0)
 	_since_damage = 0.0
 	_shake = maxf(_shake, 0.4 + amount * 0.015)
 	damaged.emit(amount, source)
 	express("pain", 0.8)
 	if health <= 0.0:
+		death_cause = source
 		dead = true
 		controllable = false
 		died.emit()
@@ -58,6 +69,52 @@ func take_damage(amount: float, source: String = "") -> void:
 func heal(amount: float) -> void:
 	if not dead:
 		health = minf(health + amount, max_health)
+
+# ---------------------------------------------------------------- necesidades (hambre y sed)
+
+@export_group("Necesidades")
+@export var hunger_decay: float = 0.08      ## puntos por segundo (100 → 0 en ~21 min)
+@export var thirst_decay: float = 0.14      ## la sed baja más rápido (~12 min)
+@export var starve_damage: float = 0.6      ## salud por segundo con hambre en 0
+@export var dehydrate_damage: float = 1.0   ## salud por segundo con sed en 0
+const NEED_LOW: float = 10.0                ## por debajo de esto: rojo y sin regeneración
+
+var death_cause: String = ""                ## qué lo mató ("hambre", "sed", "una roca"…): se talla en su tumba
+var hambre: float = 100.0
+var sed: float = 100.0
+
+## Suma (o resta) a una necesidad: "hambre" o "sed".
+func add_need(need: String, amount: float) -> void:
+	if need == "hambre":
+		hambre = clampf(hambre + amount, 0.0, 100.0)
+	elif need == "sed":
+		sed = clampf(sed + amount, 0.0, 100.0)
+
+func needs_low() -> bool:
+	return hambre <= NEED_LOW or sed <= NEED_LOW
+
+## Daño lento (hambre/sed): sin destello ni mensajes, pero puede matar.
+func drain_health(amount: float, source: String = "") -> void:
+	if dead or amount <= 0.0:
+		return
+	health = maxf(health - amount, 0.0)
+	_since_damage = 0.0
+	if health <= 0.0:
+		death_cause = source
+		dead = true
+		controllable = false
+		died.emit()
+
+func _update_needs(delta: float) -> void:
+	if dead or not controllable:
+		return
+	var run: float = 1.6 if Vector2(velocity.x, velocity.z).length() > walk_speed * 1.15 else 1.0
+	hambre = maxf(hambre - hunger_decay * run * delta, 0.0)
+	sed = maxf(sed - thirst_decay * run * delta, 0.0)
+	if hambre <= 0.0:
+		drain_health(starve_damage * delta, "hambre")
+	if sed <= 0.0:
+		drain_health(dehydrate_damage * delta, "sed")
 
 func apply_slow(seconds: float) -> void:
 	_slow_timer = maxf(_slow_timer, seconds)
@@ -186,7 +243,8 @@ func _physics_process(delta: float) -> void:
 	_since_damage += delta
 	_slow_timer = maxf(_slow_timer - delta, 0.0)
 	_shake = move_toward(_shake, 0.0, delta * 0.7)
-	if not dead and _since_damage > regen_delay and health < max_health:
+	_update_needs(delta)
+	if not dead and _since_damage > regen_delay and health < max_health and not needs_low():
 		health = minf(health + (refuge_regen_rate if in_refuge else regen_rate) * delta, max_health)
 	if controllable and _camera.current:
 		_move(delta)

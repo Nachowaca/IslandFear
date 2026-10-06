@@ -1,0 +1,280 @@
+[gd_resource type="Resource" script_class="TerrainGraphResource" format=3 uid="uid://ibs8nr60qp75"]
+
+[ext_resource type="Script" uid="uid://pu2qqp2hcaxt" path="res://addons/simplex_terrain/src/Core/Graph/GraphCommentData.cs" id="1_kug0b"]
+[ext_resource type="Script" uid="uid://bgc2h1felq5au" path="res://addons/simplex_terrain/src/Core/Graph/GraphFrameData.cs" id="3_uhrq0"]
+[ext_resource type="Script" uid="uid://di1f8kvaut13t" path="res://addons/simplex_terrain/src/Core/Nodes/Height/BlendNodeResource.cs" id="blend_script"]
+[ext_resource type="Script" uid="uid://cncctu3yo61ko" path="res://addons/simplex_terrain/src/Core/Graph/ConnectionData.cs" id="connection_script"]
+[ext_resource type="Script" uid="uid://cw84vxkatjbv" path="res://addons/simplex_terrain/src/Core/Nodes/Output/Terrain3DControlOutputNodeResource.cs" id="control_output_script"]
+[ext_resource type="Script" uid="uid://w2mu31gpttql" path="res://addons/simplex_terrain/src/Core/Nodes/Height/CurveNodeResource.cs" id="curve_script"]
+[ext_resource type="Script" uid="uid://dseagehsifn3s" path="res://addons/simplex_terrain/src/Core/Nodes/Height/ErosionNodeResource.cs" id="erosion_script"]
+[ext_resource type="Script" uid="uid://dm18b63leb4lh" path="res://addons/simplex_terrain/src/Core/Nodes/Height/FractalNodeResource.cs" id="fractal_script"]
+[ext_resource type="Script" uid="uid://coejrr5lrvfbs" path="res://addons/simplex_terrain/src/Core/Graph/TerrainGraphResource.cs" id="graph_script"]
+[ext_resource type="Script" uid="uid://2x2r0ba1x115" path="res://addons/simplex_terrain/src/Core/Nodes/Output/HeightOutputNodeResource.cs" id="height_output_script"]
+[ext_resource type="Script" uid="uid://bvu2avrv22mej" path="res://addons/simplex_terrain/src/Core/Nodes/Height/LevelsNodeResource.cs" id="levels_script"]
+[ext_resource type="Script" uid="uid://hsm5srk736wi" path="res://addons/simplex_terrain/src/Core/Nodes/Base/TerrainNodeResource.cs" id="node_base_script"]
+[ext_resource type="Script" uid="uid://cor35ou4iqg8c" path="res://addons/simplex_terrain/src/Core/Nodes/Height/PerlinNoiseNodeResource.cs" id="perlin_script"]
+[ext_resource type="Script" uid="uid://by4bpj4jd2073" path="res://addons/simplex_terrain/src/Core/Nodes/Height/SlopeNodeResource.cs" id="slope_script"]
+[ext_resource type="Script" uid="uid://bihtagh72dwem" path="res://addons/simplex_terrain/src/Core/Nodes/Height/SplatNodeResource.cs" id="splat_script"]
+
+[sub_resource type="Resource" id="Conn_0"]
+script = ExtResource("connection_script")
+FromNodeId = "M_Noise"
+ToNodeId = "M_Fractal"
+
+[sub_resource type="Resource" id="Conn_1"]
+script = ExtResource("connection_script")
+FromNodeId = "M_Fractal"
+ToNodeId = "M_Curve"
+
+[sub_resource type="Resource" id="Conn_2"]
+script = ExtResource("connection_script")
+FromNodeId = "D_Noise"
+ToNodeId = "D_Fractal"
+
+[sub_resource type="Resource" id="Conn_3"]
+script = ExtResource("connection_script")
+FromNodeId = "M_Curve"
+ToNodeId = "Blend_Detail"
+
+[sub_resource type="Resource" id="Conn_4"]
+script = ExtResource("connection_script")
+FromNodeId = "D_Fractal"
+ToNodeId = "Blend_Detail"
+ToPort = 1
+
+[sub_resource type="Resource" id="Conn_5"]
+script = ExtResource("connection_script")
+FromNodeId = "Blend_Detail"
+ToNodeId = "Erosion"
+
+[sub_resource type="Resource" id="Conn_6"]
+script = ExtResource("connection_script")
+FromNodeId = "Erosion"
+ToNodeId = "Levels_Final"
+
+[sub_resource type="Resource" id="Conn_7"]
+script = ExtResource("connection_script")
+FromNodeId = "Levels_Final"
+ToNodeId = "Output"
+
+[sub_resource type="Resource" id="Conn_8"]
+script = ExtResource("connection_script")
+FromNodeId = "Levels_Final"
+ToNodeId = "Slope_Steep"
+
+[sub_resource type="Resource" id="Conn_9"]
+script = ExtResource("connection_script")
+FromNodeId = "Levels_Final"
+ToNodeId = "Slope_Flat"
+
+[sub_resource type="Resource" id="Conn_10"]
+script = ExtResource("connection_script")
+FromNodeId = "Levels_Final"
+ToNodeId = "Alt_Filter"
+
+[sub_resource type="Resource" id="Conn_11"]
+script = ExtResource("connection_script")
+FromNodeId = "Levels_Final"
+ToNodeId = "Valley_Filter"
+
+[sub_resource type="Resource" id="Conn_12"]
+script = ExtResource("connection_script")
+FromNodeId = "Slope_Flat"
+ToNodeId = "Snow_Mask_High"
+
+[sub_resource type="Resource" id="Conn_13"]
+script = ExtResource("connection_script")
+FromNodeId = "Alt_Filter"
+ToNodeId = "Snow_Mask_High"
+ToPort = 1
+
+[sub_resource type="Resource" id="Conn_14"]
+script = ExtResource("connection_script")
+FromNodeId = "Slope_Flat"
+ToNodeId = "Snow_Mask_Low"
+
+[sub_resource type="Resource" id="Conn_15"]
+script = ExtResource("connection_script")
+FromNodeId = "Valley_Filter"
+ToNodeId = "Snow_Mask_Low"
+ToPort = 1
+
+[sub_resource type="Resource" id="Conn_16"]
+script = ExtResource("connection_script")
+FromNodeId = "Snow_Mask_High"
+ToNodeId = "Combined_Snow"
+
+[sub_resource type="Resource" id="Conn_17"]
+script = ExtResource("connection_script")
+FromNodeId = "Snow_Mask_Low"
+ToNodeId = "Combined_Snow"
+ToPort = 1
+
+[sub_resource type="Resource" id="Conn_18"]
+script = ExtResource("connection_script")
+FromNodeId = "Slope_Steep"
+ToNodeId = "Splat_Node"
+
+[sub_resource type="Resource" id="Conn_19"]
+script = ExtResource("connection_script")
+FromNodeId = "Combined_Snow"
+ToNodeId = "Splat_Node"
+ToPort = 2
+
+[sub_resource type="Resource" id="Conn_20"]
+script = ExtResource("connection_script")
+FromNodeId = "Splat_Node"
+ToNodeId = "ControlOutput"
+
+[sub_resource type="Resource" id="SubRes_M_Noise"]
+script = ExtResource("perlin_script")
+Seed = 8848
+Frequency = 0.0006
+NodeId = "M_Noise"
+NodeType = "PerlinNoiseNode"
+EditorPosition = Vector2(-1500, -300)
+
+[sub_resource type="Resource" id="SubRes_M_Fractal"]
+script = ExtResource("fractal_script")
+Octaves = 7
+Lacunarity = 2.1
+Frequency = 0.0006
+NodeId = "M_Fractal"
+NodeType = "FractalNode"
+EditorPosition = Vector2(-1200, -300)
+
+[sub_resource type="Curve" id="Curve_M"]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.3, 0.05), 0.3, 0.3, 0, 0, Vector2(0.55, 0.35), 1.5, 1.5, 0, 0, Vector2(0.8, 0.8), 2.5, 2.5, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 5
+
+[sub_resource type="Resource" id="SubRes_M_Curve"]
+script = ExtResource("curve_script")
+CurveToApply = SubResource("Curve_M")
+NodeId = "M_Curve"
+NodeType = "CurveNode"
+EditorPosition = Vector2(-900, -300)
+
+[sub_resource type="Resource" id="SubRes_D_Noise"]
+script = ExtResource("perlin_script")
+Seed = 9999
+Frequency = 0.003
+NodeId = "D_Noise"
+NodeType = "PerlinNoiseNode"
+EditorPosition = Vector2(-1500, 100)
+
+[sub_resource type="Resource" id="SubRes_D_Fractal"]
+script = ExtResource("fractal_script")
+Octaves = 5
+Persistence = 0.48
+Frequency = 0.003
+OutputMax = 0.2
+NodeId = "D_Fractal"
+NodeType = "FractalNode"
+EditorPosition = Vector2(-1200, 100)
+
+[sub_resource type="Resource" id="SubRes_Blend_Detail"]
+script = ExtResource("blend_script")
+BlendMode = 1
+Strength = 0.2
+NodeId = "Blend_Detail"
+NodeType = "BlendNode"
+EditorPosition = Vector2(-600, -100)
+
+[sub_resource type="Resource" id="SubRes_Erosion"]
+script = ExtResource("erosion_script")
+Durability = 0.55
+ErosionStrength = 0.42
+Fluidity = 4
+Iterations = 14
+NodeId = "Erosion"
+NodeType = "ErosionNode"
+EditorPosition = Vector2(-300, -100)
+
+[sub_resource type="Resource" id="SubRes_Levels_Final"]
+script = ExtResource("levels_script")
+NodeId = "Levels_Final"
+NodeType = "LevelsNode"
+EditorPosition = Vector2(0, -100)
+
+[sub_resource type="Resource" id="SubRes_Output"]
+script = ExtResource("height_output_script")
+TerrainNodePath = NodePath("../Terrain3D")
+HeightScale = 850.0
+NodeId = "Output"
+NodeType = "HeightOutputNode"
+EditorPosition = Vector2(300, -250)
+
+[sub_resource type="Resource" id="SubRes_Slope_Steep"]
+script = ExtResource("slope_script")
+MinAngle = 24.0
+SmoothAngle = 6.0
+HeightScale = 850.0
+NodeId = "Slope_Steep"
+NodeType = "SlopeNode"
+EditorPosition = Vector2(300, -50)
+
+[sub_resource type="Resource" id="SubRes_Slope_Flat"]
+script = ExtResource("slope_script")
+MaxAngle = 24.0
+SmoothAngle = 6.0
+HeightScale = 850.0
+NodeId = "Slope_Flat"
+NodeType = "SlopeNode"
+EditorPosition = Vector2(300, 150)
+
+[sub_resource type="Resource" id="SubRes_Alt_Filter"]
+script = ExtResource("levels_script")
+InputMin = 0.35
+InputMax = 0.55
+NodeId = "Alt_Filter"
+NodeType = "LevelsNode"
+EditorPosition = Vector2(300, 350)
+
+[sub_resource type="Resource" id="SubRes_Valley_Filter"]
+script = ExtResource("levels_script")
+InputMax = 0.35
+OutputMin = 1.0
+OutputMax = 0.0
+NodeId = "Valley_Filter"
+NodeType = "LevelsNode"
+EditorPosition = Vector2(300, 550)
+
+[sub_resource type="Resource" id="SubRes_Snow_Mask_High"]
+script = ExtResource("blend_script")
+BlendMode = 3
+NodeId = "Snow_Mask_High"
+NodeType = "BlendNode"
+EditorPosition = Vector2(600, 250)
+
+[sub_resource type="Resource" id="SubRes_Snow_Mask_Low"]
+script = ExtResource("blend_script")
+BlendMode = 3
+NodeId = "Snow_Mask_Low"
+NodeType = "BlendNode"
+EditorPosition = Vector2(600, 450)
+
+[sub_resource type="Resource" id="SubRes_Combined_Snow"]
+script = ExtResource("blend_script")
+BlendMode = 4
+NodeId = "Combined_Snow"
+NodeType = "BlendNode"
+EditorPosition = Vector2(900, 350)
+
+[sub_resource type="Resource" id="SubRes_Splat_Node"]
+script = ExtResource("splat_script")
+TextureIds = Array[int]([2, 7])
+NodeId = "Splat_Node"
+NodeType = "SplatNode"
+EditorPosition = Vector2(1200, 100)
+
+[sub_resource type="Resource" id="SubRes_ControlOutput"]
+script = ExtResource("control_output_script")
+TerrainNodePath = NodePath("../Terrain3D")
+NodeId = "ControlOutput"
+NodeType = "Terrain3DControlOutputNode"
+EditorPosition = Vector2(1500, 100)
+
+[resource]
+script = ExtResource("graph_script")
+Nodes = Array[ExtResource("node_base_script")]([SubResource("SubRes_M_Noise"), SubResource("SubRes_M_Fractal"), SubResource("SubRes_M_Curve"), SubResource("SubRes_D_Noise"), SubResource("SubRes_D_Fractal"), SubResource("SubRes_Blend_Detail"), SubResource("SubRes_Erosion"), SubResource("SubRes_Levels_Final"), SubResource("SubRes_Output"), SubResource("SubRes_Slope_Steep"), SubResource("SubRes_Slope_Flat"), SubResource("SubRes_Alt_Filter"), SubResource("SubRes_Valley_Filter"), SubResource("SubRes_Snow_Mask_High"), SubResource("SubRes_Snow_Mask_Low"), SubResource("SubRes_Combined_Snow"), SubResource("SubRes_Splat_Node"), SubResource("SubRes_ControlOutput")])
+Connections = Array[ExtResource("connection_script")]([SubResource("Conn_0"), SubResource("Conn_1"), SubResource("Conn_2"), SubResource("Conn_3"), SubResource("Conn_4"), SubResource("Conn_5"), SubResource("Conn_6"), SubResource("Conn_7"), SubResource("Conn_8"), SubResource("Conn_9"), SubResource("Conn_10"), SubResource("Conn_11"), SubResource("Conn_12"), SubResource("Conn_13"), SubResource("Conn_14"), SubResource("Conn_15"), SubResource("Conn_16"), SubResource("Conn_17"), SubResource("Conn_18"), SubResource("Conn_19"), SubResource("Conn_20")])

@@ -1,0 +1,478 @@
+[gd_resource type="Resource" script_class="TerrainGraphResource" format=3 uid="uid://b1ad0as1s1123"]
+
+[ext_resource type="Script" uid="uid://pu2qqp2hcaxt" path="res://addons/simplex_terrain/src/Core/Graph/GraphCommentData.cs" id="1_kcu6g"]
+[ext_resource type="Script" uid="uid://bgc2h1felq5au" path="res://addons/simplex_terrain/src/Core/Graph/GraphFrameData.cs" id="3_ccyg4"]
+[ext_resource type="Script" uid="uid://di1f8kvaut13t" path="res://addons/simplex_terrain/src/Core/Nodes/Height/BlendNodeResource.cs" id="blend_script"]
+[ext_resource type="Script" uid="uid://cncctu3yo61ko" path="res://addons/simplex_terrain/src/Core/Graph/ConnectionData.cs" id="connection_script"]
+[ext_resource type="Script" uid="uid://cw84vxkatjbv" path="res://addons/simplex_terrain/src/Core/Nodes/Output/Terrain3DControlOutputNodeResource.cs" id="control_output_script"]
+[ext_resource type="Script" uid="uid://dseagehsifn3s" path="res://addons/simplex_terrain/src/Core/Nodes/Height/ErosionNodeResource.cs" id="erosion_script"]
+[ext_resource type="Script" uid="uid://dm18b63leb4lh" path="res://addons/simplex_terrain/src/Core/Nodes/Height/FractalNodeResource.cs" id="fractal_script"]
+[ext_resource type="Script" uid="uid://coejrr5lrvfbs" path="res://addons/simplex_terrain/src/Core/Graph/TerrainGraphResource.cs" id="graph_script"]
+[ext_resource type="Script" uid="uid://2x2r0ba1x115" path="res://addons/simplex_terrain/src/Core/Nodes/Output/HeightOutputNodeResource.cs" id="height_output_script"]
+[ext_resource type="Script" uid="uid://bjyu2f3ytdt70" path="res://addons/simplex_terrain/src/Core/Nodes/Height/LedgeNodeResource.cs" id="ledge_script"]
+[ext_resource type="Script" uid="uid://bvu2avrv22mej" path="res://addons/simplex_terrain/src/Core/Nodes/Height/LevelsNodeResource.cs" id="levels_script"]
+[ext_resource type="Script" uid="uid://hsm5srk736wi" path="res://addons/simplex_terrain/src/Core/Nodes/Base/TerrainNodeResource.cs" id="node_base_script"]
+[ext_resource type="Script" uid="uid://cs5jxss2ukw" path="res://addons/simplex_terrain/src/Core/Nodes/Height/OceanLevelNodeResource.cs" id="ocean_level_script"]
+[ext_resource type="Script" uid="uid://duwhdbtoh6wuh" path="res://addons/simplex_terrain/src/Core/Nodes/Height/ParallaxDisplacementNodeResource.cs" id="parallax_script"]
+[ext_resource type="Script" uid="uid://cor35ou4iqg8c" path="res://addons/simplex_terrain/src/Core/Nodes/Height/PerlinNoiseNodeResource.cs" id="perlin_script"]
+[ext_resource type="Script" uid="uid://by4bpj4jd2073" path="res://addons/simplex_terrain/src/Core/Nodes/Height/SlopeNodeResource.cs" id="slope_script"]
+[ext_resource type="Script" uid="uid://bihtagh72dwem" path="res://addons/simplex_terrain/src/Core/Nodes/Height/SplatNodeResource.cs" id="splat_script"]
+[ext_resource type="Script" uid="uid://cak1bwc2g683y" path="res://addons/simplex_terrain/src/Core/Nodes/Height/SpotNodeResource.cs" id="spot_script"]
+[ext_resource type="Script" uid="uid://hbucblewouan" path="res://addons/simplex_terrain/src/Core/Nodes/Height/TerraceNodeResource.cs" id="terrace_script"]
+
+[sub_resource type="Resource" id="Conn_0"]
+script = ExtResource("connection_script")
+FromNodeId = "Badlands_Base_Noise"
+ToNodeId = "Badlands_Base_Fractal"
+
+[sub_resource type="Resource" id="Conn_1"]
+script = ExtResource("connection_script")
+FromNodeId = "Badlands_Base_Fractal"
+ToNodeId = "Badlands_Ledges"
+
+[sub_resource type="Resource" id="Conn_2"]
+script = ExtResource("connection_script")
+FromNodeId = "Badlands_Ledges"
+ToNodeId = "Badlands_Pre_Terrace_Levels"
+
+[sub_resource type="Resource" id="Conn_3"]
+script = ExtResource("connection_script")
+FromNodeId = "Badlands_Terraces"
+ToNodeId = "Wind_Warp"
+
+[sub_resource type="Resource" id="Conn_4"]
+script = ExtResource("connection_script")
+FromNodeId = "Wind_Noise"
+ToNodeId = "Wind_Fractal"
+
+[sub_resource type="Resource" id="Conn_5"]
+script = ExtResource("connection_script")
+FromNodeId = "Wind_Fractal"
+ToNodeId = "Wind_Warp"
+ToPort = 1
+
+[sub_resource type="Resource" id="Conn_6"]
+script = ExtResource("connection_script")
+FromNodeId = "Wind_Warp"
+ToNodeId = "Oasis_Combine"
+
+[sub_resource type="Resource" id="Conn_7"]
+script = ExtResource("connection_script")
+FromNodeId = "Oasis_Spot"
+ToNodeId = "Oasis_Combine"
+ToPort = 1
+
+[sub_resource type="Resource" id="Conn_8"]
+script = ExtResource("connection_script")
+FromNodeId = "Oasis_Combine"
+ToNodeId = "Oasis_Water"
+
+[sub_resource type="Resource" id="Conn_9"]
+script = ExtResource("connection_script")
+FromNodeId = "Oasis_Water"
+ToNodeId = "Badlands_Erosion"
+
+[sub_resource type="Resource" id="Conn_10"]
+script = ExtResource("connection_script")
+FromNodeId = "Badlands_Erosion"
+ToNodeId = "Badlands_Levels_Final"
+
+[sub_resource type="Resource" id="Conn_11"]
+script = ExtResource("connection_script")
+FromNodeId = "Badlands_Levels_Final"
+ToNodeId = "Badlands_Height_Output"
+
+[sub_resource type="Resource" id="Conn_12"]
+script = ExtResource("connection_script")
+FromNodeId = "Badlands_Levels_Final"
+ToNodeId = "Slope_Steep"
+
+[sub_resource type="Resource" id="Conn_13"]
+script = ExtResource("connection_script")
+FromNodeId = "Slope_Steep"
+ToNodeId = "Slope_Flat"
+
+[sub_resource type="Resource" id="Conn_14"]
+script = ExtResource("connection_script")
+FromNodeId = "Slope_Flat_No_Water"
+ToNodeId = "Splat_Node"
+ToPort = 4
+
+[sub_resource type="Resource" id="Conn_15"]
+script = ExtResource("connection_script")
+FromNodeId = "Slope_Steep"
+ToNodeId = "Splat_Node"
+ToPort = 6
+
+[sub_resource type="Resource" id="Conn_16"]
+script = ExtResource("connection_script")
+FromNodeId = "Oasis_Water"
+FromPort = 1
+ToNodeId = "Splat_Node"
+ToPort = 2
+
+[sub_resource type="Resource" id="Conn_17"]
+script = ExtResource("connection_script")
+FromNodeId = "Oasis_Water"
+FromPort = 2
+ToNodeId = "Splat_Node"
+
+[sub_resource type="Resource" id="Conn_18"]
+script = ExtResource("connection_script")
+FromNodeId = "Splat_Node"
+ToNodeId = "ControlOutput"
+
+[sub_resource type="Resource" id="Conn_19"]
+script = ExtResource("connection_script")
+FromNodeId = "Badlands_Pre_Terrace_Levels"
+ToNodeId = "Badlands_Terraces"
+
+[sub_resource type="Resource" id="Conn_20"]
+script = ExtResource("connection_script")
+FromNodeId = "Badlands_Levels_Final"
+ToNodeId = "Thresh_1"
+
+[sub_resource type="Resource" id="Conn_21"]
+script = ExtResource("connection_script")
+FromNodeId = "Badlands_Levels_Final"
+ToNodeId = "Thresh_2"
+
+[sub_resource type="Resource" id="Conn_22"]
+script = ExtResource("connection_script")
+FromNodeId = "Badlands_Levels_Final"
+ToNodeId = "Thresh_3"
+
+[sub_resource type="Resource" id="Conn_23"]
+script = ExtResource("connection_script")
+FromNodeId = "Thresh_1"
+ToNodeId = "Band_1"
+
+[sub_resource type="Resource" id="Conn_24"]
+script = ExtResource("connection_script")
+FromNodeId = "Thresh_1"
+ToNodeId = "Band_2"
+
+[sub_resource type="Resource" id="Conn_25"]
+script = ExtResource("connection_script")
+FromNodeId = "Thresh_2"
+ToNodeId = "Band_2"
+ToPort = 1
+
+[sub_resource type="Resource" id="Conn_26"]
+script = ExtResource("connection_script")
+FromNodeId = "Thresh_2"
+ToNodeId = "Band_3"
+
+[sub_resource type="Resource" id="Conn_27"]
+script = ExtResource("connection_script")
+FromNodeId = "Thresh_3"
+ToNodeId = "Band_3"
+ToPort = 1
+
+[sub_resource type="Resource" id="Conn_28"]
+script = ExtResource("connection_script")
+FromNodeId = "Band_1"
+ToNodeId = "Splat_Node"
+ToPort = 5
+
+[sub_resource type="Resource" id="Conn_29"]
+script = ExtResource("connection_script")
+FromNodeId = "Band_1"
+ToNodeId = "Splat_Node"
+ToPort = 7
+
+[sub_resource type="Resource" id="Conn_30"]
+script = ExtResource("connection_script")
+FromNodeId = "Band_2"
+ToNodeId = "Splat_Node"
+ToPort = 9
+
+[sub_resource type="Resource" id="Conn_31"]
+script = ExtResource("connection_script")
+FromNodeId = "Band_2"
+ToNodeId = "Splat_Node"
+ToPort = 11
+
+[sub_resource type="Resource" id="Conn_32"]
+script = ExtResource("connection_script")
+FromNodeId = "Band_3"
+ToNodeId = "Splat_Node"
+ToPort = 13
+
+[sub_resource type="Resource" id="Conn_33"]
+script = ExtResource("connection_script")
+FromNodeId = "Band_3"
+ToNodeId = "Splat_Node"
+ToPort = 15
+
+[sub_resource type="Resource" id="Conn_34"]
+script = ExtResource("connection_script")
+FromNodeId = "Thresh_3"
+ToNodeId = "Splat_Node"
+ToPort = 17
+
+[sub_resource type="Resource" id="Conn_35"]
+script = ExtResource("connection_script")
+FromNodeId = "Thresh_3"
+ToNodeId = "Splat_Node"
+ToPort = 19
+
+[sub_resource type="Resource" id="Conn_36"]
+script = ExtResource("connection_script")
+FromNodeId = "Slope_Flat_No_Water"
+ToNodeId = "Splat_Node"
+ToPort = 8
+
+[sub_resource type="Resource" id="Conn_37"]
+script = ExtResource("connection_script")
+FromNodeId = "Slope_Steep"
+ToNodeId = "Splat_Node"
+ToPort = 10
+
+[sub_resource type="Resource" id="Conn_38"]
+script = ExtResource("connection_script")
+FromNodeId = "Slope_Flat_No_Water"
+ToNodeId = "Splat_Node"
+ToPort = 12
+
+[sub_resource type="Resource" id="Conn_39"]
+script = ExtResource("connection_script")
+FromNodeId = "Slope_Steep"
+ToNodeId = "Splat_Node"
+ToPort = 14
+
+[sub_resource type="Resource" id="Conn_40"]
+script = ExtResource("connection_script")
+FromNodeId = "Slope_Flat_No_Water"
+ToNodeId = "Splat_Node"
+ToPort = 16
+
+[sub_resource type="Resource" id="Conn_41"]
+script = ExtResource("connection_script")
+FromNodeId = "Slope_Steep"
+ToNodeId = "Splat_Node"
+ToPort = 18
+
+[sub_resource type="Resource" id="Conn_42"]
+script = ExtResource("connection_script")
+FromNodeId = "Slope_Flat"
+ToNodeId = "Slope_Flat_No_Water"
+
+[sub_resource type="Resource" id="Conn_43"]
+script = ExtResource("connection_script")
+FromNodeId = "Oasis_Water"
+FromPort = 2
+ToNodeId = "Slope_Flat_No_Water"
+ToPort = 1
+
+[sub_resource type="Resource" id="SubRes_Badlands_Base_Noise"]
+script = ExtResource("perlin_script")
+Seed = 2048
+Frequency = 0.0006
+NodeId = "Badlands_Base_Noise"
+NodeType = "PerlinNoiseNode"
+EditorPosition = Vector2(-1800, -300)
+
+[sub_resource type="Resource" id="SubRes_Badlands_Base_Fractal"]
+script = ExtResource("fractal_script")
+Octaves = 5
+Persistence = 0.52
+Lacunarity = 2.1
+Frequency = 0.0006
+NodeId = "Badlands_Base_Fractal"
+NodeType = "FractalNode"
+EditorPosition = Vector2(-1485, -300)
+
+[sub_resource type="Resource" id="SubRes_Badlands_Ledges"]
+script = ExtResource("ledge_script")
+ContourLevel = 0.45
+TopShoulder = 0.14
+BottomShoulder = 0.08
+CliffHeight = 0.22
+NodeId = "Badlands_Ledges"
+NodeType = "LedgeNode"
+EditorPosition = Vector2(-1185, -300)
+
+[sub_resource type="Resource" id="SubRes_Badlands_Pre_Terrace_Levels"]
+script = ExtResource("levels_script")
+InputMin = 0.28
+InputMax = 0.62
+NodeId = "Badlands_Pre_Terrace_Levels"
+NodeType = "LevelsNode"
+EditorPosition = Vector2(-870, -300)
+
+[sub_resource type="Resource" id="SubRes_Badlands_Terraces"]
+script = ExtResource("terrace_script")
+Steps = 28
+Steepness = 0.98
+Uniformity = 0.95
+NodeId = "Badlands_Terraces"
+NodeType = "TerraceNode"
+EditorPosition = Vector2(-570, -300)
+
+[sub_resource type="Resource" id="SubRes_Wind_Noise"]
+script = ExtResource("perlin_script")
+Seed = 777
+Frequency = 0.008
+NodeId = "Wind_Noise"
+NodeType = "PerlinNoiseNode"
+EditorPosition = Vector2(-1800, -120)
+
+[sub_resource type="Resource" id="SubRes_Wind_Fractal"]
+script = ExtResource("fractal_script")
+Octaves = 4
+Frequency = 0.008
+OutputMax = 0.4
+NodeId = "Wind_Fractal"
+NodeType = "FractalNode"
+EditorPosition = Vector2(-1485, -120)
+
+[sub_resource type="Resource" id="SubRes_Wind_Warp"]
+script = ExtResource("parallax_script")
+DirectionX = 0.85
+DirectionZ = 0.25
+MaxOffset = 45.0
+NodeId = "Wind_Warp"
+NodeType = "ParallaxDisplacementNode"
+EditorPosition = Vector2(-255, -300)
+
+[sub_resource type="Resource" id="SubRes_Oasis_Spot"]
+script = ExtResource("spot_script")
+Radius = 120.0
+Hardness = 0.35
+Height = -0.16
+NodeId = "Oasis_Spot"
+NodeType = "SpotNode"
+EditorPosition = Vector2(-1800, 75)
+
+[sub_resource type="Resource" id="SubRes_Oasis_Combine"]
+script = ExtResource("blend_script")
+BlendMode = 1
+NodeId = "Oasis_Combine"
+NodeType = "BlendNode"
+EditorPosition = Vector2(45, -300)
+
+[sub_resource type="Resource" id="SubRes_Oasis_Water"]
+script = ExtResource("ocean_level_script")
+WaterLevel = 0.45
+ShorelineWidth = 0.04
+OceanDepthScale = 1.4
+NodeId = "Oasis_Water"
+NodeType = "OceanLevelNode"
+EditorPosition = Vector2(360, -300)
+
+[sub_resource type="Resource" id="SubRes_Badlands_Erosion"]
+script = ExtResource("erosion_script")
+Durability = 0.18
+ErosionStrength = 0.75
+Fluidity = 8
+Iterations = 25
+NodeId = "Badlands_Erosion"
+NodeType = "ErosionNode"
+EditorPosition = Vector2(660, -300)
+
+[sub_resource type="Resource" id="SubRes_Badlands_Levels_Final"]
+script = ExtResource("levels_script")
+InputMin = 0.45
+OutputMin = 0.1
+OutputMax = 0.7
+NodeId = "Badlands_Levels_Final"
+NodeType = "LevelsNode"
+EditorPosition = Vector2(975, -300)
+
+[sub_resource type="Resource" id="SubRes_Badlands_Height_Output"]
+script = ExtResource("height_output_script")
+TerrainNodePath = NodePath("../Terrain3D")
+NodeId = "Badlands_Height_Output"
+NodeType = "HeightOutputNode"
+EditorPosition = Vector2(1275, -300)
+
+[sub_resource type="Resource" id="SubRes_Slope_Steep"]
+script = ExtResource("slope_script")
+MinAngle = 20.0
+SmoothAngle = 6.0
+HeightScale = 500.0
+NodeId = "Slope_Steep"
+NodeType = "SlopeNode"
+EditorPosition = Vector2(1275, 105)
+
+[sub_resource type="Resource" id="SubRes_Slope_Flat"]
+script = ExtResource("levels_script")
+OutputMin = 1.0
+OutputMax = 0.0
+NodeId = "Slope_Flat"
+NodeType = "LevelsNode"
+EditorPosition = Vector2(1590, 105)
+
+[sub_resource type="Resource" id="SubRes_Slope_Flat_No_Water"]
+script = ExtResource("blend_script")
+BlendMode = 2
+NodeId = "Slope_Flat_No_Water"
+NodeType = "BlendNode"
+EditorPosition = Vector2(1890, 105)
+
+[sub_resource type="Resource" id="SubRes_Thresh_1"]
+script = ExtResource("levels_script")
+InputMin = 0.24
+InputMax = 0.26
+NodeId = "Thresh_1"
+NodeType = "LevelsNode"
+EditorPosition = Vector2(1275, 285)
+
+[sub_resource type="Resource" id="SubRes_Thresh_2"]
+script = ExtResource("levels_script")
+InputMin = 0.39
+InputMax = 0.41
+NodeId = "Thresh_2"
+NodeType = "LevelsNode"
+EditorPosition = Vector2(1275, 495)
+
+[sub_resource type="Resource" id="SubRes_Thresh_3"]
+script = ExtResource("levels_script")
+InputMin = 0.54
+InputMax = 0.56
+NodeId = "Thresh_3"
+NodeType = "LevelsNode"
+EditorPosition = Vector2(1275, 735)
+
+[sub_resource type="Resource" id="SubRes_Band_1"]
+script = ExtResource("levels_script")
+OutputMin = 1.0
+OutputMax = 0.0
+NodeId = "Band_1"
+NodeType = "LevelsNode"
+EditorPosition = Vector2(1590, 285)
+
+[sub_resource type="Resource" id="SubRes_Band_2"]
+script = ExtResource("blend_script")
+BlendMode = 2
+NodeId = "Band_2"
+NodeType = "BlendNode"
+EditorPosition = Vector2(1590, 465)
+
+[sub_resource type="Resource" id="SubRes_Band_3"]
+script = ExtResource("blend_script")
+BlendMode = 2
+NodeId = "Band_3"
+NodeType = "BlendNode"
+EditorPosition = Vector2(1590, 705)
+
+[sub_resource type="Resource" id="SubRes_Splat_Node"]
+script = ExtResource("splat_script")
+LayerCount = 10
+TextureIds = Array[int]([9, 4, 3, 7, 0, 5, 0, 2, 6, 1])
+NodeId = "Splat_Node"
+NodeType = "SplatNode"
+EditorPosition = Vector2(2205, -300)
+
+[sub_resource type="Resource" id="SubRes_ControlOutput"]
+script = ExtResource("control_output_script")
+TerrainNodePath = NodePath("../Terrain3D")
+NodeId = "ControlOutput"
+NodeType = "Terrain3DControlOutputNode"
+EditorPosition = Vector2(2505, -300)
+
+[resource]
+script = ExtResource("graph_script")
+Nodes = Array[ExtResource("node_base_script")]([SubResource("SubRes_Badlands_Base_Noise"), SubResource("SubRes_Badlands_Base_Fractal"), SubResource("SubRes_Badlands_Ledges"), SubResource("SubRes_Badlands_Pre_Terrace_Levels"), SubResource("SubRes_Badlands_Terraces"), SubResource("SubRes_Wind_Noise"), SubResource("SubRes_Wind_Fractal"), SubResource("SubRes_Wind_Warp"), SubResource("SubRes_Oasis_Spot"), SubResource("SubRes_Oasis_Combine"), SubResource("SubRes_Oasis_Water"), SubResource("SubRes_Badlands_Erosion"), SubResource("SubRes_Badlands_Levels_Final"), SubResource("SubRes_Badlands_Height_Output"), SubResource("SubRes_Slope_Steep"), SubResource("SubRes_Slope_Flat"), SubResource("SubRes_Slope_Flat_No_Water"), SubResource("SubRes_Thresh_1"), SubResource("SubRes_Thresh_2"), SubResource("SubRes_Thresh_3"), SubResource("SubRes_Band_1"), SubResource("SubRes_Band_2"), SubResource("SubRes_Band_3"), SubResource("SubRes_Splat_Node"), SubResource("SubRes_ControlOutput")])
+Connections = Array[ExtResource("connection_script")]([SubResource("Conn_0"), SubResource("Conn_1"), SubResource("Conn_2"), SubResource("Conn_3"), SubResource("Conn_4"), SubResource("Conn_5"), SubResource("Conn_6"), SubResource("Conn_7"), SubResource("Conn_8"), SubResource("Conn_9"), SubResource("Conn_10"), SubResource("Conn_11"), SubResource("Conn_12"), SubResource("Conn_13"), SubResource("Conn_14"), SubResource("Conn_15"), SubResource("Conn_16"), SubResource("Conn_17"), SubResource("Conn_18"), SubResource("Conn_19"), SubResource("Conn_20"), SubResource("Conn_21"), SubResource("Conn_22"), SubResource("Conn_23"), SubResource("Conn_24"), SubResource("Conn_25"), SubResource("Conn_26"), SubResource("Conn_27"), SubResource("Conn_28"), SubResource("Conn_29"), SubResource("Conn_30"), SubResource("Conn_31"), SubResource("Conn_32"), SubResource("Conn_33"), SubResource("Conn_34"), SubResource("Conn_35"), SubResource("Conn_36"), SubResource("Conn_37"), SubResource("Conn_38"), SubResource("Conn_39"), SubResource("Conn_40"), SubResource("Conn_41"), SubResource("Conn_42"), SubResource("Conn_43")])

@@ -19,7 +19,7 @@ var seed_value: int = 7
 @export var herb_count: int = 30
 @export var mushroom_clusters: int = 34
 @export var shell_count: int = 50
-@export var grass_spots: int = 2600
+@export var grass_spots: int = 900
 @export var gull_count: int = 9
 @export var songbird_count: int = 22
 @export var crab_count: int = 22
@@ -39,12 +39,17 @@ func _ready() -> void:
 	_spawn_food()
 	_spawn_mushrooms()
 	_spawn_shells()
+	_spawn_materials()
 	_spawn_grass()
 	_spawn_wildlife()
+	_spawn_kit_ground()
+	_spawn_heart_tree()
+	_spawn_stelas()
 	call_deferred("_link_player")
 
 func _process(delta: float) -> void:
 	_time += delta
+	_update_heart(delta)
 	for f: Dictionary in _fish:
 		var node: Node3D = f["node"]
 		f["angle"] = float(f["angle"]) + float(f["speed"]) * delta
@@ -313,6 +318,32 @@ func _spawn_mushrooms() -> void:
 				_mesh(it, _cyl(0.03 * s, 0.04 * s, 0.12 * s, 5), Color(0.9, 0.85, 0.72), Vector3(0, 0.06 * s, 0))
 				_mesh(it, _sph(0.09 * s, 7, 3), Color(0.55, 0.38, 0.22), Vector3(0, 0.13 * s, 0), Vector3.ZERO, Vector3(1, 0.5, 1))
 
+## Hojas grandes caídas bajo las palmeras y matas de paja seca (yesca para el fuego).
+func _spawn_materials() -> void:
+	var made: int = 0
+	var palms: Array[Vector3] = terrain.palm_positions
+	for pp: Vector3 in palms:
+		if made >= 26:
+			break
+		if _rng.randf() > 0.55:
+			continue
+		var a: float = _rng.randf() * TAU
+		var d: float = _rng.randf_range(1.2, 3.0)
+		var x: float = pp.x + cos(a) * d
+		var z: float = pp.z + sin(a) * d
+		var y: float = terrain.height_at(x, z)
+		if y < 0.8:
+			continue
+		var it: WorldItem = _item("hoja_grande", "Hoja grande", 1, Vector3(x, y, z), _rng.randf() * TAU)
+		it.add_child(ItemDB.make_visual("hoja_grande"))
+		made += 1
+	for i in 46:
+		var p: Vector3 = _spot(1.0, 4.5)
+		if not _valid(p):
+			continue
+		var s: WorldItem = _item("paja", "Paja seca", _rng.randi_range(1, 2), p, _rng.randf() * TAU)
+		s.add_child(ItemDB.make_visual("paja"))
+
 func _spawn_shells() -> void:
 	for i in shell_count:
 		var p: Vector3 = _spot(0.5, 0.95)
@@ -349,6 +380,186 @@ func _spawn_grass() -> void:
 	mmi.multimesh = mm
 	mmi.name = "Grass"
 	add_child(mmi)
+
+## Piedras talladas: pistas de otros náufragos (cambian cada 5 vidas) y las tumbas de tus vidas pasadas.
+func _spawn_stelas() -> void:
+	var root := Node3D.new()
+	root.name = "Stelas"
+	add_child(root)
+	var block: int = StelaTexts.bloque()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = block * 7919 + 11
+	var msgs: Array = StelaTexts.mensajes(block).duplicate()
+	for i in range(msgs.size() - 1, 0, -1):          # barajar con la semilla del bloque
+		var j: int = rng.randi_range(0, i)
+		var tmp: Variant = msgs[i]
+		msgs[i] = msgs[j]
+		msgs[j] = tmp
+	var placed: Array[Vector3] = []
+	var count: int = mini(8, msgs.size())
+	for k in count:
+		var spot: Vector3 = Vector3(0, -100, 0)
+		for attempt in 80:
+			var p: Vector3 = terrain.find_spot(rng, 1.3 if k == 0 else 2.0, 2.3 if k == 0 else 7.0)
+			if not _valid(p):
+				continue
+			var ok: bool = true
+			for q: Vector3 in placed:
+				if Vector2(p.x - q.x, p.z - q.z).length() < 16.0:
+					ok = false
+					break
+			if heart_tree_pos.y > -90.0 and Vector2(p.x - heart_tree_pos.x, p.z - heart_tree_pos.z).length() < 7.0:
+				ok = false
+			if ok:
+				spot = p
+				break
+		if spot.y < -90.0:
+			continue
+		placed.append(spot)
+		_place_stela(root, str(msgs[k]), false, spot, rng.randi())
+	for t in Isla.tumbas:
+		var tp: Vector3 = Vector3(float(t["x"]), 0.0, float(t["z"]))
+		tp.y = terrain.height_at(tp.x, tp.z)
+		_place_stela(root, str(t["texto"]), true, tp, hash(str(t["texto"])))
+
+func _place_stela(root: Node3D, msg: String, tomb: bool, pos: Vector3, sd: int) -> void:
+	var s: Stela = Stela.create(msg, tomb, sd)
+	var out: Vector2 = Vector2(pos.x, pos.z)
+	out = out.normalized() if out.length() > 0.1 else Vector2(0, 1)
+	s.position = pos - Vector3(0, 0.08, 0)
+	s.rotation.y = atan2(out.x, out.y) + float(absi(sd) % 100) / 100.0 - 0.5
+	root.add_child(s)
+
+var _heart_light: OmniLight3D
+var _heart_mats: Array[StandardMaterial3D] = []
+var heart_tree_pos: Vector3 = Vector3(0, -100, 0)
+
+## Misterio: un árbol retorcido enorme ("árbol corazón") con un círculo de hongos y piedras que brilla de noche.
+func _spawn_heart_tree() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 313 + 7
+	var c: Vector3 = Vector3(0, -100, 0)
+	for k in 60:
+		var p: Vector3 = terrain.find_spot(rng, 3.4, 6.0)
+		if _valid(p) and Vector2(p.x, p.z).distance_to(Vector2.ZERO) > 8.0 and Vector2(p.x, p.z).distance_to(IslandTerrain.CAVE_CENTER) > 24.0:
+			c = p
+			break
+	if c.y < -90.0 or not NatureKit.exists("TwistedTree_2"):
+		return
+	heart_tree_pos = c
+	var root := Node3D.new()
+	root.name = "HeartTree"
+	root.position = c
+	add_child(root)
+	var tree: Node3D = NatureKit.make("TwistedTree_2", Color(0.9, 1.05, 0.9), 260.0)
+	tree.scale = Vector3.ONE * 0.55
+	tree.rotation.y = rng.randf() * TAU
+	root.add_child(tree)
+	var body := StaticBody3D.new()
+	var cs := CollisionShape3D.new()
+	var cyl := CylinderShape3D.new()
+	cyl.radius = 1.1
+	cyl.height = 4.0
+	cs.shape = cyl
+	cs.position.y = 2.0
+	body.add_child(cs)
+	root.add_child(body)
+	# círculo de hongos y piedritas alrededor
+	var shroom_mat := StandardMaterial3D.new()
+	shroom_mat.albedo_color = Color(0.4, 0.9, 0.85)
+	shroom_mat.emission_enabled = true
+	shroom_mat.emission = Color(0.3, 0.95, 0.85)
+	shroom_mat.emission_energy_multiplier = 0.2
+	_heart_mats.append(shroom_mat)
+	for i in 14:
+		var a: float = TAU * float(i) / 14.0 + rng.randf_range(-0.12, 0.12)
+		var r: float = rng.randf_range(4.6, 5.4)
+		var x: float = c.x + cos(a) * r
+		var z: float = c.z + sin(a) * r
+		var y: float = terrain.height_at(x, z)
+		var model: String = "Mushroom_Laetiporus" if i % 3 == 0 else "Mushroom_Common"
+		if not NatureKit.exists(model):
+			continue
+		var m: Node3D = NatureKit.make(model, Color.WHITE, 90.0)
+		m.position = Vector3(x, y - 0.02, z) - c
+		m.scale = Vector3.ONE * rng.randf_range(1.2, 1.9)
+		m.rotation.y = rng.randf() * TAU
+		root.add_child(m)
+		# un puntito luminoso sobre cada hongo (brilla de noche)
+		var glow := MeshInstance3D.new()
+		var sp := SphereMesh.new()
+		sp.radius = 0.07
+		sp.height = 0.14
+		sp.radial_segments = 6
+		sp.rings = 3
+		sp.material = shroom_mat
+		glow.mesh = sp
+		glow.position = m.position + Vector3(0, 0.55 * m.scale.x, 0)
+		root.add_child(glow)
+	for i in 9:
+		var a2: float = rng.randf() * TAU
+		var r2: float = rng.randf_range(2.6, 4.2)
+		var x2: float = c.x + cos(a2) * r2
+		var z2: float = c.z + sin(a2) * r2
+		var pb: Node3D = NatureKit.make("Pebble_Round_%d" % rng.randi_range(1, 5), Color.WHITE, 80.0)
+		pb.position = Vector3(x2, terrain.height_at(x2, z2), z2) - c
+		pb.scale = Vector3.ONE * rng.randf_range(1.0, 2.2)
+		root.add_child(pb)
+	_heart_light = OmniLight3D.new()
+	_heart_light.light_color = Color(0.35, 0.95, 0.85)
+	_heart_light.omni_range = 11.0
+	_heart_light.light_energy = 0.0
+	_heart_light.shadow_enabled = false
+	_heart_light.position = Vector3(0, 1.2, 0)
+	root.add_child(_heart_light)
+
+func _update_heart(delta: float) -> void:
+	if _heart_light == null:
+		return
+	var dn: Node = get_tree().get_first_node_in_group("daynight")
+	var night: float = float(dn.get("night_amount")) if dn != null else 0.0
+	var pulse: float = 0.75 + 0.25 * sin(_time * 1.3)
+	_heart_light.light_energy = lerpf(_heart_light.light_energy, night * 1.6 * pulse, minf(delta * 2.0, 1.0))
+	for m: StandardMaterial3D in _heart_mats:
+		m.emission_energy_multiplier = 0.15 + night * 3.0 * pulse
+
+## Cobertura del suelo con el pack de naturaleza (instancias múltiples: miles de plantas baratas).
+## [modelo, cantidad, altura mín, altura máx, escala mín, escala máx]
+const GROUND_KIT: Array = [
+	["Fern_1", 420, 1.6, 8.0, 0.32, 0.6],
+	["Grass_Common_Tall", 700, 1.4, 7.0, 0.35, 0.65],
+	["Grass_Common_Short", 700, 1.2, 7.0, 0.5, 0.9],
+	["Grass_Wispy_Short", 500, 0.9, 3.0, 0.5, 0.9],
+	["Flower_3_Group", 130, 1.6, 6.0, 0.22, 0.38],
+	["Flower_4_Group", 130, 1.6, 6.0, 0.22, 0.38],
+	["Clover_1", 260, 1.5, 6.0, 0.6, 1.0],
+	["Plant_1_Big", 70, 2.0, 7.0, 0.28, 0.5],
+	["Plant_7_Big", 70, 2.0, 7.0, 0.28, 0.5],
+	["Pebble_Round_1", 90, 0.9, 3.0, 0.8, 1.6],
+	["Pebble_Square_2", 90, 0.9, 3.5, 0.8, 1.6],
+]
+
+func _spawn_kit_ground() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 977 + 13
+	var root := Node3D.new()
+	root.name = "KitGround"
+	add_child(root)
+	for entry: Array in GROUND_KIT:
+		var model: String = entry[0]
+		if not NatureKit.exists(model):
+			continue
+		var xf: Array[Transform3D] = []
+		for i in int(entry[1]):
+			var p: Vector3 = terrain.find_spot(rng, float(entry[2]), float(entry[3]))
+			if not _valid(p):
+				continue
+			var s: float = rng.randf_range(float(entry[4]), float(entry[5]))
+			var b := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * s)
+			xf.append(Transform3D(b, p - Vector3(0, 0.03, 0)))
+		var m: MultiMeshInstance3D = NatureKit.multi(model, xf, 70.0 if xf.size() > 300 else 110.0)
+		if m != null:
+			root.add_child(m)
 
 # ------------------------------------------------------------------ fauna
 

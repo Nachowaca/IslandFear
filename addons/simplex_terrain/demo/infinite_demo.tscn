@@ -1,0 +1,121 @@
+[gd_scene format=3 uid="uid://dg0q0x47fw6b2"]
+
+[ext_resource type="Script" uid="uid://013st6btl00h" path="res://addons/simplex_terrain/demo/FlyCamera.cs" id="1_flycam"]
+[ext_resource type="Script" uid="uid://wwo5xap3y8cw" path="res://addons/simplex_terrain/src/Integration/Terrain3D/TerrainManager.cs" id="2_manager"]
+[ext_resource type="Resource" uid="uid://cgbaa88fbbadd" path="res://addons/simplex_terrain/demo/biomes/terraced_hills.tres" id="3_ee6br"]
+[ext_resource type="Terrain3DAssets" uid="uid://cb5n2g8w3f1h" path="res://addons/simplex_terrain/demo/terrain_assets.tres" id="4_assets"]
+
+[sub_resource type="Gradient" id="Gradient_otits"]
+offsets = PackedFloat32Array(0.2, 1)
+colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_ee6br"]
+noise_type = 2
+frequency = 0.03
+cellular_jitter = 3.0
+cellular_return_type = 0
+domain_warp_enabled = true
+domain_warp_type = 1
+domain_warp_amplitude = 50.0
+domain_warp_fractal_type = 2
+domain_warp_fractal_lacunarity = 1.5
+domain_warp_fractal_gain = 1.0
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_wmvjp"]
+noise = SubResource("FastNoiseLite_ee6br")
+color_ramp = SubResource("Gradient_otits")
+seamless = true
+
+[sub_resource type="Terrain3DMaterial" id="Terrain3DMaterial_igf3u"]
+_shader_parameters = {
+&"bias_distance": null,
+&"blend_sharpness": 0.15,
+&"depth_blur": 0.1,
+&"enable_macro_variation": null,
+&"enable_projection": null,
+&"flat_terrain_normals": null,
+&"macro_variation1": null,
+&"macro_variation2": null,
+&"macro_variation_slope": null,
+&"mipmap_bias": null,
+&"noise1_angle": null,
+&"noise1_offset": null,
+&"noise1_scale": null,
+&"noise2_scale": null,
+&"noise_texture": SubResource("NoiseTexture2D_wmvjp"),
+&"projection_threshold": null
+}
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_x8y4p"]
+sky_top_color = Color(0.184314, 0.384314, 0.678431, 1)
+sky_horizon_color = Color(0.572549, 0.678431, 0.803922, 1)
+ground_bottom_color = Color(0.121569, 0.121569, 0.160784, 1)
+ground_horizon_color = Color(0.572549, 0.678431, 0.803922, 1)
+
+[sub_resource type="Sky" id="Sky_gq3f2"]
+sky_material = SubResource("ProceduralSkyMaterial_x8y4p")
+
+[sub_resource type="Environment" id="Environment_ee6br"]
+background_mode = 2
+sky = SubResource("Sky_gq3f2")
+ambient_light_source = 2
+ambient_light_color = Color(0.5, 0.55, 0.6, 1)
+ambient_light_sky_contribution = 0.5
+tonemap_mode = 3
+tonemap_exposure = 1.05
+ssr_enabled = true
+ssao_enabled = true
+ssil_enabled = true
+glow_enabled = true
+glow_intensity = 0.6
+glow_bloom = 0.1
+glow_blend_mode = 0
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.0005
+volumetric_fog_albedo = Color(0.784314, 0.862745, 0.941176, 1)
+volumetric_fog_sky_affect = 0.8
+
+[sub_resource type="Curve3D" id="Curve3D_river"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 300, 0, -100, -800, 75, -800, -200, 0, -200, 200, 0, 200, -100, 65, -600, -300, 0, -100, 300, 0, 100, -500, 55, -100, -200, 0, -300, 200, 0, 300, 500, 45, 100, -100, 0, -200, 100, 0, 200, -200, 35, 500, -300, 0, -100, 0, 0, 0, 800, 25, 800),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0)
+}
+point_count = 6
+
+[node name="InfiniteTerrainDemo" type="Node3D" unique_id=568432074]
+
+[node name="Terrain3D" type="Terrain3D" parent="." unique_id=1635102368]
+material = SubResource("Terrain3DMaterial_igf3u")
+assets = ExtResource("4_assets")
+collision_mode = 0
+top_level = true
+metadata/_edit_lock_ = true
+
+[node name="TerrainManager" type="Node3D" parent="." unique_id=1355088447]
+transform = Transform3D(1, 0, 0, 0, 0.909715, 0.41523317, 0, -0.41523317, 0.909715, 55171.773, 0, 868.8855)
+script = ExtResource("2_manager")
+Graph = ExtResource("3_ee6br")
+Terrain3DNodePath = NodePath("../Terrain3D")
+CameraNodePath = NodePath("../Camera3D")
+LoadShape = 2
+LoadRadius = 4
+UnloadRadius = 6
+ViewDistance = 4
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=1011895607]
+transform = Transform3D(1, 0, 0, 0, 0.766044, 0.642788, 0, -0.642788, 0.766044, 256, 500, 600)
+script = ExtResource("1_flycam")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=212836705]
+environment = SubResource("Environment_ee6br")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=164132357]
+transform = Transform3D(0.7660441, -0.32139412, 0.5566708, 0, 0.8660253, 0.5000002, -0.64278805, -0.38302216, 0.6634136, 273.02466, 3580.9512, 0)
+light_color = Color(1, 0.960784, 0.882353, 1)
+light_energy = 1.3
+shadow_enabled = true
+shadow_bias = 0.05
+directional_shadow_max_distance = 800.0
+
+[node name="RiverPath" type="Path3D" parent="." unique_id=98765432]
+curve = SubResource("Curve3D_river")

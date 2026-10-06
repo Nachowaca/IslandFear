@@ -18,6 +18,10 @@ static func set_gust(k: float) -> void:
 			vivos.append(w)
 	_registro = vivos
 
+## Registra un material con shader de viento ya creado (para que las rachas lo afecten).
+static func register(m: ShaderMaterial) -> void:
+	_registro.append(weakref(m))
+
 static func make(color: Color, base_y: float, height_ref: float, sway: float, flutter: float = 0.0, speed: float = 1.2) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	_registro.append(weakref(m))

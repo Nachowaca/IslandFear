@@ -28,7 +28,6 @@ const GRASS := Color(0.34, 0.58, 0.22)
 const GRASS_DARK := Color(0.24, 0.46, 0.18)
 const ROCK := Color(0.5, 0.48, 0.45)
 const CAVE_FLOOR := Color(0.3, 0.28, 0.27)
-const PalmScene := preload("res://scenes/palm.tscn")
 
 ## Laguna de agua dulce tierra adentro
 const POND_CENTER := Vector2(-16.0, 14.0)
@@ -48,6 +47,8 @@ var cave_floor_y: float = 3.0
 var tree_positions: Array[Vector3] = []
 var tree_scales: Array[float] = []
 var palm_positions: Array[Vector3] = []
+var tree_nodes: Array[Node3D] = []     ## árboles y palmeras como nodos (para talarlos de a uno)
+var palm_nodes: Array[Node3D] = []
 
 func _ready() -> void:
 	_build()
@@ -134,7 +135,14 @@ func _build() -> void:
 				var c: Vector3 = p[tri[2]]
 				var n: Vector3 = (b - a).cross(c - a).normalized()
 				var cen: Vector3 = (a + b + c) / 3.0
-				st.set_color(_color(cen.y, 1.0 - absf(n.y), Vector2(cen.x, cen.z)))
+				var base_col: Color = _color(cen.y, 1.0 - absf(n.y), Vector2(cen.x, cen.z))
+				# variación suave de tono (manchas de tierra, pasto más seco o más vivo) para romper lo plano
+				var jit: float = _noise.get_noise_2d(cen.x * 4.3 + 91.0, cen.z * 4.3 - 40.0)
+				var jit2: float = _noise.get_noise_2d(cen.x * 0.9 - 300.0, cen.z * 0.9 + 120.0)
+				base_col = base_col.lightened(jit * 0.16) if jit > 0.0 else base_col.darkened(-jit * 0.2)
+				base_col.r += jit2 * 0.05
+				base_col.g -= jit2 * 0.02
+				st.set_color(base_col)
 				st.add_vertex(a)
 				st.add_vertex(b)
 				st.add_vertex(c)
@@ -144,6 +152,23 @@ func _build() -> void:
 	mat.vertex_color_use_as_albedo = true
 	mat.vertex_color_is_srgb = true
 	mat.roughness = 1.0
+	# grano de detalle (ruido gris) en proyección triplanar: la superficie deja de verse lisa
+	var gn := FastNoiseLite.new()
+	gn.noise_type = FastNoiseLite.TYPE_CELLULAR
+	gn.frequency = 0.02
+	gn.fractal_type = FastNoiseLite.FRACTAL_FBM
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(0.62, 0.62, 0.62))
+	ramp.set_color(1, Color(1.0, 1.0, 1.0))
+	var tex := NoiseTexture2D.new()
+	tex.width = 512
+	tex.height = 512
+	tex.seamless = true
+	tex.noise = gn
+	tex.color_ramp = ramp
+	mat.albedo_texture = tex
+	mat.uv1_triplanar = true
+	mat.uv1_scale = Vector3(0.18, 0.18, 0.18)
 	material_override = mat
 	_scatter_flora()
 	if not Engine.is_editor_hint():
@@ -182,6 +207,35 @@ func _spawn_life() -> void:
 	life.terrain = self
 	life.seed_value = noise_seed
 	add_child(life)
+
+## Tala un árbol o palmera: lo saca del registro, quita su colisión y lo hace caer. Devuelve su posición.
+func fell_tree(tree: Node3D, dir: Vector3) -> Vector3:
+	var pos: Vector3 = tree.global_position
+	var idx: int = tree_nodes.find(tree)
+	if idx >= 0:
+		tree_nodes.remove_at(idx)
+		if idx < tree_positions.size():
+			tree_positions.remove_at(idx)
+		if idx < tree_scales.size():
+			tree_scales.remove_at(idx)
+	var pidx: int = palm_nodes.find(tree)
+	if pidx >= 0:
+		palm_nodes.remove_at(pidx)
+		if pidx < palm_positions.size():
+			palm_positions.remove_at(pidx)
+	for c: Node in tree.get_children():
+		if c is StaticBody3D:
+			c.queue_free()
+	var axis: Vector3 = Vector3.UP.cross(dir.normalized())
+	if axis.length() < 0.01:
+		axis = Vector3.RIGHT
+	axis = axis.normalized()
+	var start: Basis = tree.basis
+	var tw: Tween = tree.create_tween()
+	tw.tween_method(func(a: float) -> void: tree.basis = Basis(axis, a) * start, 0.0, PI * 0.5, 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_interval(0.4)
+	tw.tween_callback(tree.queue_free)
+	return pos
 
 ## Busca un punto con altura entre min_h y max_h (fuera de la laguna y la meseta); y=-100 si falla.
 func find_spot(rng: RandomNumberGenerator, min_h: float, max_h: float) -> Vector3:
@@ -236,6 +290,14 @@ func _scatter_flora() -> void:
 	tree_positions.clear()
 	tree_scales.clear()
 	palm_positions.clear()
+	tree_nodes.clear()
+	palm_nodes.clear()
+	var vine := CylinderMesh.new()
+	vine.top_radius = 0.03
+	vine.bottom_radius = 0.02
+	vine.height = 2.3
+	vine.radial_segments = 4
+	vine.material = _mat(Color(0.22, 0.42, 0.16))
 
 	var trunk := CylinderMesh.new()
 	trunk.top_radius = 0.2
@@ -243,10 +305,6 @@ func _scatter_flora() -> void:
 	trunk.height = 2.4
 	trunk.radial_segments = 6
 	trunk.material = _mat(Color(0.4, 0.27, 0.15))
-	var crown := _make_mesh_sphere(1.6, 2.8, 7, 4, Wind.make(Color(0.15, 0.42, 0.17), -1.4, 2.8, 0.2, 0.025))
-	var bush := _make_mesh_sphere(0.7, 0.9, 6, 3, Wind.make(Color(0.25, 0.52, 0.2), -0.45, 0.9, 0.06, 0.02, 1.5))
-	var rock := _make_mesh_sphere(0.8, 1.0, 5, 3, _mat(Color(0.45, 0.44, 0.42)))
-	var flower := _make_mesh_sphere(0.12, 0.24, 5, 3, _mat(Color(0.95, 0.8, 0.25)))
 
 	var trunk_shape := CylinderShape3D.new()
 	trunk_shape.radius = 0.35
@@ -259,12 +317,18 @@ func _scatter_flora() -> void:
 		var pos: Vector3 = _random_spot(rng, 0.9, 2.2)
 		if pos.y < -90.0:
 			continue
-		var palm: Node3D = PalmScene.instantiate()
+		# árbol costero (mantiene la mecánica de "palmera": cocos, hojas grandes y cuerda); el pack no trae palmeras
+		var palm := Node3D.new()
 		palm.position = pos
 		palm.rotation.y = rng.randf() * TAU
-		palm.scale = Vector3.ONE * rng.randf_range(0.9, 1.4)
+		palm.scale = Vector3.ONE * rng.randf_range(0.5, 0.75)
+		var coast_visual: Node3D = NatureKit.make("CommonTree_%d" % rng.randi_range(1, 5), Color(rng.randf_range(0.95, 1.1), rng.randf_range(1.0, 1.12), rng.randf_range(0.8, 0.95)), 160.0)
+		coast_visual.rotation.x = rng.randf_range(0.04, 0.14)   # el viento del mar los inclina
+		palm.add_child(coast_visual)
 		_flora.add_child(palm)
 		_add_solid(palm, trunk_shape_palm, Vector3(0.1, 1.5, 0))
+		palm.set_meta("hojas", 4)
+		palm_nodes.append(palm)
 		palm_positions.append(pos)
 	for i in tree_count:
 		var pos2: Vector3 = _random_spot(rng, 1.8, 7.0)
@@ -272,53 +336,56 @@ func _scatter_flora() -> void:
 			continue
 		var tree := Node3D.new()
 		tree.position = pos2
-		tree.scale = Vector3.ONE * rng.randf_range(0.8, 1.4)
-		var t := MeshInstance3D.new()
-		t.mesh = trunk
-		t.position.y = 1.2
-		tree.add_child(t)
-		var cr := MeshInstance3D.new()
-		cr.mesh = crown
-		cr.position.y = 3.4
-		tree.add_child(cr)
+		tree.scale = Vector3.ONE * rng.randf_range(0.62, 1.0)
+		tree.rotation.y = rng.randf() * TAU
+		var kit_name: String = "CommonTree_%d" % rng.randi_range(1, 5)
+		if pos2.y > 4.6 and rng.randf() < 0.6:
+			kit_name = "Pine_%d" % rng.randi_range(1, 5)
+		var visual: Node3D = NatureKit.make(kit_name, Color(rng.randf_range(0.85, 1.05), rng.randf_range(0.9, 1.05), rng.randf_range(0.8, 0.95)), 160.0)
+		tree.add_child(visual)
 		_flora.add_child(tree)
 		_add_solid(tree, trunk_shape, Vector3(0, 1.5, 0))
+		# lianas colgando (generador propio: no altera la generación del resto de la isla)
+		var lr := RandomNumberGenerator.new()
+		lr.seed = hash(pos2)
+		var nl: int = 0 if lr.randf() > 0.5 else lr.randi_range(1, 2)
+		tree.set_meta("lianas", nl)
+		for k in nl:
+			var v := MeshInstance3D.new()
+			v.name = "Liana%d" % k
+			v.mesh = vine
+			var va: float = lr.randf() * TAU
+			v.position = Vector3(cos(va) * 0.95, 2.2, sin(va) * 0.95)
+			tree.add_child(v)
+		tree_nodes.append(tree)
 		tree_positions.append(pos2)
 		tree_scales.append(tree.scale.x)
 	for i in bush_count:
 		var pos3: Vector3 = _random_spot(rng, 1.2, 9.0)
 		if pos3.y < -90.0:
 			continue
-		var b := MeshInstance3D.new()
-		b.mesh = bush
-		b.position = pos3 + Vector3(0, 0.25, 0)
-		b.scale = Vector3.ONE * rng.randf_range(0.7, 1.5)
+		var has_flowers: bool = rng.randf() < 0.4
+		var b: Node3D = NatureKit.make("Bush_Common_Flowers" if has_flowers else "Bush_Common", Color(rng.randf_range(0.85, 1.05), rng.randf_range(0.9, 1.1), rng.randf_range(0.8, 1.0)), 110.0)
+		b.position = pos3 - Vector3(0, 0.1, 0)
+		b.rotation.y = rng.randf() * TAU
+		b.scale = Vector3.ONE * rng.randf_range(0.55, 1.1)
 		_flora.add_child(b)
-		if rng.randf() < 0.4:
-			for k in 3:
-				var f := MeshInstance3D.new()
-				f.mesh = flower
-				var fx: float = pos3.x + rng.randf_range(-1.2, 1.2)
-				var fz: float = pos3.z + rng.randf_range(-1.2, 1.2)
-				f.position = Vector3(fx, _height(fx, fz) + 0.15, fz)
-				_flora.add_child(f)
 	for i in rock_count:
 		var pos4: Vector3 = _random_spot(rng, 0.9, 11.0)
 		if pos4.y < -90.0:
 			continue
-		var r := MeshInstance3D.new()
-		r.mesh = rock
-		r.position = pos4 + Vector3(0, 0.1, 0)
-		r.rotation = Vector3(rng.randf(), rng.randf() * TAU, rng.randf())
-		r.scale = Vector3(1, 0.7, 1) * rng.randf_range(0.6, 1.6)
+		var r: Node3D = NatureKit.make("Rock_Medium_%d" % rng.randi_range(1, 3), Color.WHITE, 140.0)
+		r.position = pos4 - Vector3(0, 0.15, 0)
+		r.rotation.y = rng.randf() * TAU
+		r.scale = Vector3.ONE * rng.randf_range(0.25, 0.6)
 		_flora.add_child(r)
 		# colisión esférica propia (sin escala no uniforme, que Jolt no soporta)
 		var rock_body := StaticBody3D.new()
 		var rock_cs := CollisionShape3D.new()
 		var rs := SphereShape3D.new()
-		rs.radius = 0.6 * r.scale.x
+		rs.radius = 1.1 * r.scale.x
 		rock_cs.shape = rs
-		rock_body.position = r.position
+		rock_body.position = r.position + Vector3(0, 0.5 * r.scale.x, 0)
 		rock_body.add_child(rock_cs)
 		_flora.add_child(rock_body)
 

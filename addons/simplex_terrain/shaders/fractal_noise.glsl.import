@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://cy8id3o5ka2tf"
+path="res://.godot/imported/fractal_noise.glsl-7c113bed1f4216c93e7277e401e62e7a.res"
+
+[deps]
+
+source_file="res://addons/simplex_terrain/shaders/fractal_noise.glsl"
+dest_files=["res://.godot/imported/fractal_noise.glsl-7c113bed1f4216c93e7277e401e62e7a.res"]
+
+[params]
+

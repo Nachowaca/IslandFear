@@ -28,6 +28,15 @@ var _hud: Hud
 
 func _on_player_died() -> void:
 	_brain.notify_death()
+	Inventario.vaciar()                                # lo que llevabas se pierde con la vida
+	var tomb_pos: Vector3 = _castaway.global_position   # su tumba: en tierra firme, lo más cerca de donde cayó
+	var toward: Vector3 = Vector3(-tomb_pos.x, 0.0, -tomb_pos.z).normalized()
+	for i in 200:
+		if _island.height_at(tomb_pos.x, tomb_pos.z) > 1.0:
+			break
+		tomb_pos += toward * 0.5
+	tomb_pos.y = _island.height_at(tomb_pos.x, tomb_pos.z)
+	Isla.registrar_tumba(tomb_pos, _castaway.death_cause)
 	var res: Dictionary = Isla.cerrar_vida()          # la personalidad de la isla se desplaza según cómo jugó
 	_hud.refresh_lives()
 	if bool(res["fin"]):
@@ -44,6 +53,8 @@ func _on_player_died() -> void:
 	get_tree().reload_current_scene()
 
 func _ready() -> void:
+	UiTheme.apply_default_font()
+	add_child(HelpUi.new())
 	_water.position.y = WATER_Y - 0.0
 	_castaway.terrain = _island
 	add_child(AmbientFx.new())
@@ -77,6 +88,16 @@ func _ready() -> void:
 	_hud.player = _castaway
 	_hud.brain = brain
 	add_child(_hud)
+	var inv_ui := InventoryUi.new()
+	inv_ui.name = "InventoryUi"
+	add_child(inv_ui)
+	var inter := Interaccion.new()
+	inter.name = "Interaccion"
+	inter.player = _castaway
+	inter.terrain = _island
+	inter.features = features
+	inter.ui = inv_ui
+	add_child(inter)
 	_castaway.died.connect(_on_player_died)
 	var daynight := DayNight.new()
 	daynight.setup($Water3D/Sun as DirectionalLight3D, $Water3D/WorldEnvironment as WorldEnvironment)
@@ -108,9 +129,10 @@ func _make_hint() -> void:
 	add_child(layer)
 	_hint = Label.new()
 	_hint.position = Vector2(24, 20)
-	_hint.add_theme_font_size_override("font_size", 20)
+	_hint.add_theme_font_override("font", UiTheme.BOLD)
+	_hint.add_theme_font_size_override("font_size", 26)
 	_hint.add_theme_color_override("font_outline_color", Color.BLACK)
-	_hint.add_theme_constant_override("outline_size", 6)
+	_hint.add_theme_constant_override("outline_size", 8)
 	layer.add_child(_hint)
 
 var _f11_was_down: bool = false
@@ -124,7 +146,7 @@ func _process(delta: float) -> void:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fs else DisplayServer.WINDOW_MODE_FULLSCREEN)
 	_f11_was_down = f11
 	_update_boat(delta)
-	var toggle_down: bool = Input.is_physical_key_pressed(KEY_TAB) or Input.is_physical_key_pressed(KEY_M)
+	var toggle_down: bool = Input.is_physical_key_pressed(KEY_M)
 	if toggle_down and not _toggle_was_down:
 		if _overview_cam.current:
 			_castaway.get_camera().make_current()
@@ -165,9 +187,10 @@ func _arrive() -> void:
 	await get_tree().create_timer(0.8).timeout
 	await _boat.deploy_gangway(_island)       # baja la plancha de desembarco
 	_castaway.controllable = true
-	_hint.text = "W/A/S/D (X: retroceder): moverte   Shift: correr   Espacio: saltar   Mouse: mirar\nTab/M: vista aérea   I: mente de la isla   Esc: soltar mouse"
-	await get_tree().create_timer(12.0).timeout
-	_hint.text = ""
+	_hint.text = "Pulsá  H  para ver los controles"
+	await get_tree().create_timer(14.0).timeout
+	_hint.text = "H  Ayuda"
+	_hint.modulate.a = 0.6
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not _overview_cam.current:

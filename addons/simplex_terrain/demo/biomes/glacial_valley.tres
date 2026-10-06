@@ -1,0 +1,141 @@
+[gd_resource type="Resource" script_class="TerrainGraphResource" format=3 uid="uid://c5uhf74nht5m7"]
+
+[ext_resource type="Script" uid="uid://pu2qqp2hcaxt" path="res://addons/simplex_terrain/src/Core/Graph/GraphCommentData.cs" id="1_ek6h4"]
+[ext_resource type="Script" uid="uid://bgc2h1felq5au" path="res://addons/simplex_terrain/src/Core/Graph/GraphFrameData.cs" id="3_sj2qv"]
+[ext_resource type="Script" uid="uid://cncctu3yo61ko" path="res://addons/simplex_terrain/src/Core/Graph/ConnectionData.cs" id="connection_script"]
+[ext_resource type="Script" uid="uid://cw84vxkatjbv" path="res://addons/simplex_terrain/src/Core/Nodes/Output/Terrain3DControlOutputNodeResource.cs" id="control_output_script"]
+[ext_resource type="Script" uid="uid://dseagehsifn3s" path="res://addons/simplex_terrain/src/Core/Nodes/Height/ErosionNodeResource.cs" id="erosion_script"]
+[ext_resource type="Script" uid="uid://dm18b63leb4lh" path="res://addons/simplex_terrain/src/Core/Nodes/Height/FractalNodeResource.cs" id="fractal_script"]
+[ext_resource type="Script" uid="uid://coejrr5lrvfbs" path="res://addons/simplex_terrain/src/Core/Graph/TerrainGraphResource.cs" id="graph_script"]
+[ext_resource type="Script" uid="uid://2x2r0ba1x115" path="res://addons/simplex_terrain/src/Core/Nodes/Output/HeightOutputNodeResource.cs" id="height_output_script"]
+[ext_resource type="Script" uid="uid://bvu2avrv22mej" path="res://addons/simplex_terrain/src/Core/Nodes/Height/LevelsNodeResource.cs" id="levels_script"]
+[ext_resource type="Script" uid="uid://hsm5srk736wi" path="res://addons/simplex_terrain/src/Core/Nodes/Base/TerrainNodeResource.cs" id="node_base_script"]
+[ext_resource type="Script" uid="uid://cor35ou4iqg8c" path="res://addons/simplex_terrain/src/Core/Nodes/Height/PerlinNoiseNodeResource.cs" id="perlin_script"]
+[ext_resource type="Script" uid="uid://by4bpj4jd2073" path="res://addons/simplex_terrain/src/Core/Nodes/Height/SlopeNodeResource.cs" id="slope_script"]
+[ext_resource type="Script" uid="uid://bihtagh72dwem" path="res://addons/simplex_terrain/src/Core/Nodes/Height/SplatNodeResource.cs" id="splat_script"]
+
+[sub_resource type="Resource" id="Conn_0"]
+script = ExtResource("connection_script")
+FromNodeId = "Valley_Base_Noise"
+ToNodeId = "Valley_Base_Fractal"
+
+[sub_resource type="Resource" id="Conn_1"]
+script = ExtResource("connection_script")
+FromNodeId = "Valley_Base_Fractal"
+ToNodeId = "Valley_Erosion"
+
+[sub_resource type="Resource" id="Conn_2"]
+script = ExtResource("connection_script")
+FromNodeId = "Valley_Erosion"
+ToNodeId = "Valley_Levels_Final"
+
+[sub_resource type="Resource" id="Conn_3"]
+script = ExtResource("connection_script")
+FromNodeId = "Valley_Levels_Final"
+ToNodeId = "Valley_Height_Output"
+
+[sub_resource type="Resource" id="Conn_4"]
+script = ExtResource("connection_script")
+FromNodeId = "Valley_Levels_Final"
+ToNodeId = "Slope_Flat"
+
+[sub_resource type="Resource" id="Conn_5"]
+script = ExtResource("connection_script")
+FromNodeId = "Valley_Levels_Final"
+ToNodeId = "Slope_Steep"
+
+[sub_resource type="Resource" id="Conn_6"]
+script = ExtResource("connection_script")
+FromNodeId = "Slope_Flat"
+ToNodeId = "Splat_Node"
+
+[sub_resource type="Resource" id="Conn_7"]
+script = ExtResource("connection_script")
+FromNodeId = "Slope_Steep"
+ToNodeId = "Splat_Node"
+ToPort = 2
+
+[sub_resource type="Resource" id="Conn_8"]
+script = ExtResource("connection_script")
+FromNodeId = "Splat_Node"
+ToNodeId = "ControlOutput"
+
+[sub_resource type="Resource" id="SubRes_ControlOutput"]
+script = ExtResource("control_output_script")
+TerrainNodePath = NodePath("../Terrain3D")
+NodeId = "ControlOutput"
+NodeType = "Terrain3DControlOutputNode"
+EditorPosition = Vector2(1500, 0)
+
+[sub_resource type="Resource" id="SubRes_Slope_Flat"]
+script = ExtResource("slope_script")
+MaxAngle = 22.0
+SmoothAngle = 6.0
+HeightScale = 850.0
+NodeId = "Slope_Flat"
+NodeType = "SlopeNode"
+EditorPosition = Vector2(900, -150)
+
+[sub_resource type="Resource" id="SubRes_Slope_Steep"]
+script = ExtResource("slope_script")
+MinAngle = 22.0
+SmoothAngle = 6.0
+HeightScale = 850.0
+NodeId = "Slope_Steep"
+NodeType = "SlopeNode"
+EditorPosition = Vector2(900, 50)
+
+[sub_resource type="Resource" id="SubRes_Splat_Node"]
+script = ExtResource("splat_script")
+LayerCount = 4
+TextureIds = Array[int]([6, 2, 3, 9])
+TextureNames = Array[String](["Grass003", "Cliff", "SandCrack", "Ice"])
+NodeId = "Splat_Node"
+NodeType = "SplatNode"
+EditorPosition = Vector2(1200, 0)
+
+[sub_resource type="Resource" id="SubRes_Valley_Base_Fractal"]
+script = ExtResource("fractal_script")
+Octaves = 6
+Frequency = 0.0004
+OutputMax = 0.95
+NodeId = "Valley_Base_Fractal"
+NodeType = "FractalNode"
+EditorPosition = Vector2(-1500, -300)
+
+[sub_resource type="Resource" id="SubRes_Valley_Base_Noise"]
+script = ExtResource("perlin_script")
+Seed = 1024
+Frequency = 0.0004
+NodeId = "Valley_Base_Noise"
+NodeType = "PerlinNoiseNode"
+EditorPosition = Vector2(-1800, -300)
+
+[sub_resource type="Resource" id="SubRes_Valley_Erosion"]
+script = ExtResource("erosion_script")
+ErosionStrength = 0.6
+Fluidity = 4
+Iterations = 15
+NodeId = "Valley_Erosion"
+NodeType = "ErosionNode"
+EditorPosition = Vector2(-1200, -300)
+
+[sub_resource type="Resource" id="SubRes_Valley_Height_Output"]
+script = ExtResource("height_output_script")
+TerrainNodePath = NodePath("../Terrain3D")
+HeightScale = 850.0
+NodeId = "Valley_Height_Output"
+NodeType = "HeightOutputNode"
+EditorPosition = Vector2(900, -350)
+
+[sub_resource type="Resource" id="SubRes_Valley_Levels_Final"]
+script = ExtResource("levels_script")
+OutputMax = 0.8
+NodeId = "Valley_Levels_Final"
+NodeType = "LevelsNode"
+EditorPosition = Vector2(600, -200)
+
+[resource]
+script = ExtResource("graph_script")
+Nodes = Array[ExtResource("node_base_script")]([SubResource("SubRes_ControlOutput"), SubResource("SubRes_Slope_Flat"), SubResource("SubRes_Slope_Steep"), SubResource("SubRes_Splat_Node"), SubResource("SubRes_Valley_Base_Fractal"), SubResource("SubRes_Valley_Base_Noise"), SubResource("SubRes_Valley_Erosion"), SubResource("SubRes_Valley_Height_Output"), SubResource("SubRes_Valley_Levels_Final")])
+Connections = Array[ExtResource("connection_script")]([SubResource("Conn_0"), SubResource("Conn_1"), SubResource("Conn_2"), SubResource("Conn_3"), SubResource("Conn_4"), SubResource("Conn_5"), SubResource("Conn_6"), SubResource("Conn_7"), SubResource("Conn_8")])

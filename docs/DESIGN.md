@@ -16,6 +16,14 @@ La isla es un NPC más: tiene carácter, memoria y voz. **Primero es misterio; n
 - Sin LLM, solo variables.
 - Decisión implementada (enfoque A): catálogo de `AccionIsla` (.tres), puntaje = base + emociones×pesos + contexto×pesos, azar ponderado, "nada" compite, hueco de silencio de cola larga tras cada acción. Si no gusta cómo se siente, anotar acá el enfoque B y comparar.
 
+## Reglas de la isla (definidas por el usuario, mandan sobre todo lo demás)
+- La isla **evoluciona y cambia; no ataca porque sí**. El juego trata de **convivir, no de lastimarse**: la isla aprende del jugador y el jugador de la isla.
+- El jugador **no ve** la relación (sin barra ni ícono): la isla **advierte con el escenario** (cueva que se calienta o se enfría, pájaros o silencio hostil, niebla, frases).
+- Los ataques **hieren o intentan herir, no matan** (`Castaway.island_floor`: el golpe de la isla deja ≥ 8 de salud) y **pasan días** entre uno y otro (`_attack_rest` = 1–3 días de juego, menos si está muy enojada). Antes siempre hay presagio y aviso.
+- Los agravios del cerebro (`offense`) siguen **en paralelo** con las emociones de `Isla` (decisión del usuario).
+- **Vínculo** (`Isla.vinculo`, −100…+100, guardado en disco, a la mitad al morir, a 0 en cada ciclo nuevo): etapas Hostil < −40 < Desconfiada < −10 < Extraña < 15 < Tolerante < 45 < Aceptante < 75 < Aliada. Sube: ofrenda +7, cuidado +1, explorar +0.2, y paz (90 s sin ofensas: +0.02/s hasta tope 40; sana heridas viejas). Baja: talar −8, cazar −12, fuego −3, molestar animales −0.6, tomar fruta −0.15, lugar sagrado −0.5/s. Efectos: Aceptante/Aliada **nunca atacan**; Tolerante solo reacciona a ofensas graves (agravios ≥ 35); tono de frases según etapa; cueva dorada con confianza; más pájaros con confianza y silencio hostil sin ella; frases al cambiar de etapa.
+- Hoja de ruta de convivencia (pendiente): regalos reales cuando confía y el jugador sufre, silencios con significado, noche/tormenta/criaturas en escalera (presagio → aviso → golpe, con tregua por ofrenda), y que la convivencia alimente el final.
+
 ## Preferencias del usuario
 - Habla español rioplatense (Montevideo, Uruguay). Quiere respuestas CORTAS, sin explicaciones largas.
 - Trabaja paso a paso ("vamos por partes"): primero diseño, después jugabilidad.
@@ -74,6 +82,13 @@ La isla es un NPC más: tiene carácter, memoria y voz. **Primero es misterio; n
 - No sobrescribir con `create_file` escenas abiertas en el editor (conflictos, scripts embebidos). Usar `edit_file`.
 - Escena principal: `res://scenes/game.tscn`. `main.tscn` y `world.tscn` son copias rotas que el editor recrea con pestañas de script viejas abiertas; borrarlas.
 - El nodo `Boat` en game.tscn NO debe tener `script = null` (anula `boat.gd`).
+
+## Fase 2: supervivencia y acciones (en curso)
+- Pilares pedidos por el usuario: inventario; guardar, investigar (info de lo que se ve), cortar (con piedra filosa u objeto cortante), dejar, probar (fruta, vegetal, animal crudo) y unir objetos (fuego, herramientas). Los objetos nuevos que interactúan con el jugador deben ser conocidos por la isla (`Isla.registrar_evento`).
+- Controles: E recoger/beber/echar leña, G dejar, F investigar, R probar/comer, Q cortar, C combinar, 1-0/rueda elegir; vista aérea en M.
+- Cadena de herramientas: piedra+piedra → cuchilla (lianas, hojas) → cuchilla+rama → hacha (talar) · lianas u hojas → cuerda → lanza. Fuego: 2 piedras + paja/leña. Comida con valores realistas (fracción de la barra de hambre/sed).
+- La isla reacciona: ofrenda en lugar sagrado = confianza; investigar = curiosidad; talar/fuego/cazar = enojo/miedo (cuando existan).
+- Usuario autorizó usar assets gratis (pack Stylized Nature MEGAKIT en `res://glTF`) para mejorar flora, objetos, misterios, cuevas y animales pequeños.
 
 ## Planeado (no hecho)
 1. Sistema de interacción (E), inventario, comer/beber, medidores de hambre, sed y temperatura.
