@@ -8,22 +8,22 @@ extends Node3D
 var terrain: IslandTerrain
 var seed_value: int = 7
 
-@export var log_count: int = 36
-@export var branch_count: int = 90
-@export var driftwood_count: int = 28
-@export var stone_count: int = 100
-@export var clay_count: int = 16
-@export var coconut_count: int = 50
-@export var berry_bush_count: int = 48
-@export var root_count: int = 40
-@export var herb_count: int = 30
-@export var mushroom_clusters: int = 34
-@export var shell_count: int = 50
-@export var grass_spots: int = 900
-@export var gull_count: int = 9
-@export var songbird_count: int = 22
-@export var crab_count: int = 22
-@export var fish_count: int = 10
+@export var log_count: int = 80
+@export var branch_count: int = 200
+@export var driftwood_count: int = 70
+@export var stone_count: int = 230
+@export var clay_count: int = 30
+@export var coconut_count: int = 110
+@export var berry_bush_count: int = 100
+@export var root_count: int = 80
+@export var herb_count: int = 60
+@export var mushroom_clusters: int = 70
+@export var shell_count: int = 120
+@export var grass_spots: int = 1500
+@export var gull_count: int = 12
+@export var songbird_count: int = 40
+@export var crab_count: int = 40
+@export var fish_count: int = 14
 
 var _rng := RandomNumberGenerator.new()
 var _materials: Dictionary = {}
@@ -444,15 +444,15 @@ func _spawn_heart_tree() -> void:
 		if _valid(p) and Vector2(p.x, p.z).distance_to(Vector2.ZERO) > 8.0 and Vector2(p.x, p.z).distance_to(IslandTerrain.CAVE_CENTER) > 24.0:
 			c = p
 			break
-	if c.y < -90.0 or not NatureKit.exists("TwistedTree_2"):
+	if c.y < -90.0:
 		return
 	heart_tree_pos = c
 	var root := Node3D.new()
 	root.name = "HeartTree"
 	root.position = c
 	add_child(root)
-	var tree: Node3D = NatureKit.make("TwistedTree_2", Color(0.9, 1.05, 0.9), 260.0)
-	tree.scale = Vector3.ONE * 0.55
+	var tree: Node3D = NatureKit.make_uq("MapleTree_4", Color(0.8, 1.05, 0.9), 260.0)
+	tree.scale = Vector3.ONE * 1.5
 	tree.rotation.y = rng.randf() * TAU
 	root.add_child(tree)
 	var body := StaticBody3D.new()
@@ -525,16 +525,73 @@ func _update_heart(delta: float) -> void:
 
 ## Cobertura del suelo con el pack de naturaleza (instancias múltiples: miles de plantas baratas).
 ## [modelo, cantidad, altura mín, altura máx, escala mín, escala máx]
+const GROUND_MULT: float = 2.0
+## Dónde crece cada cosa (ecología): pradera abierta, sotobosque húmedo, bosque.
+const GROUND_RULES: Dictionary = {
+	"Fern_1": "understory",
+	"UQ:Petals_1": "meadow",
+	"UQ:Petals_2": "meadow",
+	"UQ:Petals_3": "meadow",
+	"Flower_3_Group": "meadow",
+	"Flower_4_Group": "meadow",
+	"UQ:Flower_1_Clump": "meadow",
+	"UQ:Flower_2_Clump": "meadow",
+	"UQ:Flower_3_Clump": "meadow",
+	"UQ:Flower_4_Clump": "meadow",
+	"UQ:Flower_5_Clump": "meadow",
+	"UQ:Flower_1": "meadow",
+	"UQ:Flower_2": "meadow",
+	"Clover_1": "meadow",
+	"UQ:Plant_1": "understory",
+	"UQ:Plant_2": "understory",
+	"UQ:Plant_Flowers": "understory",
+	"Grass_Wispy_Short": "dune",
+	"Pebble_Round_1": "shore",
+	"Pebble_Square_2": "shore",
+}
+
+func _ground_ok(rule: String, p: Vector3, rng: RandomNumberGenerator) -> bool:
+	if rule == "":
+		return true
+	var fv: float = terrain.forest_value(p.x, p.z)
+	var wet: float = terrain.moisture_at(p.x, p.z)
+	var bw: PackedFloat32Array = terrain.eco.get_bioma_pesos(p)   # [costa, roquedal, selva, bosque, matorral, árido]
+	match rule:
+		"meadow":
+			# pasto y flores: sobre todo en el matorral y claros del bosque; casi nada en arena, roca o selva cerrada
+			var pm: float = bw[4] * 0.95 + bw[3] * 0.5 + bw[2] * 0.3 + bw[5] * 0.15 + bw[1] * 0.08 + bw[0] * 0.05
+			pm = maxf(pm, terrain.eco.get_misterio(p) * 0.95)     # los claros misteriosos se llenan de flores
+			return rng.randf() < pm * clampf(0.9 - fv * 0.8, 0.3, 1.0)
+		"understory":
+			# helechos y plantas grandes: sotobosque húmedo (selva y bosque)
+			var pu: float = bw[2] * 1.0 + bw[3] * 0.55 + bw[4] * 0.08 + wet * 0.5
+			return rng.randf() < clampf(pu, 0.0, 1.0) and p.y > 1.8
+		"dune":
+			# pasto de duna: matas ralas detrás de la línea de marea y en suelo árido
+			return p.y > 1.15 and rng.randf() < bw[0] * 0.7 + bw[5] * 0.35
+		"shore":
+			return p.y < 3.5 or rng.randf() < 0.1
+	return true
+
 const GROUND_KIT: Array = [
 	["Fern_1", 420, 1.6, 8.0, 0.32, 0.6],
-	["Grass_Common_Tall", 700, 1.4, 7.0, 0.35, 0.65],
-	["Grass_Common_Short", 700, 1.2, 7.0, 0.5, 0.9],
+	["UQ:Petals_1", 120, 1.6, 7.0, 0.5, 0.9],
+	["UQ:Petals_2", 120, 1.6, 7.0, 0.5, 0.9],
+	["UQ:Petals_3", 120, 1.6, 7.0, 0.5, 0.9],
 	["Grass_Wispy_Short", 500, 0.9, 3.0, 0.5, 0.9],
-	["Flower_3_Group", 130, 1.6, 6.0, 0.22, 0.38],
-	["Flower_4_Group", 130, 1.6, 6.0, 0.22, 0.38],
+	["Flower_3_Group", 40, 1.6, 6.0, 0.22, 0.38],
+	["Flower_4_Group", 40, 1.6, 6.0, 0.22, 0.38],
+	["UQ:Flower_1_Clump", 96, 1.6, 7.0, 0.7, 1.1],
+	["UQ:Flower_2_Clump", 96, 1.6, 7.0, 0.7, 1.1],
+	["UQ:Flower_3_Clump", 96, 1.6, 7.0, 0.7, 1.1],
+	["UQ:Flower_4_Clump", 80, 1.6, 7.0, 0.7, 1.1],
+	["UQ:Flower_5_Clump", 80, 1.6, 7.0, 0.7, 1.1],
+	["UQ:Flower_1", 96, 1.4, 6.0, 0.8, 1.2],
+	["UQ:Flower_2", 96, 1.4, 6.0, 0.8, 1.2],
 	["Clover_1", 260, 1.5, 6.0, 0.6, 1.0],
-	["Plant_1_Big", 70, 2.0, 7.0, 0.28, 0.5],
-	["Plant_7_Big", 70, 2.0, 7.0, 0.28, 0.5],
+	["UQ:Plant_1", 90, 2.0, 7.0, 0.55, 0.95],
+	["UQ:Plant_2", 90, 2.0, 7.0, 0.55, 0.95],
+	["UQ:Plant_Flowers", 70, 2.0, 7.0, 0.5, 0.85],
 	["Pebble_Round_1", 90, 0.9, 3.0, 0.8, 1.6],
 	["Pebble_Square_2", 90, 0.9, 3.5, 0.8, 1.6],
 ]
@@ -550,14 +607,21 @@ func _spawn_kit_ground() -> void:
 		if not NatureKit.exists(model):
 			continue
 		var xf: Array[Transform3D] = []
-		for i in int(entry[1]):
+		var rule: String = GROUND_RULES.get(model, "")
+		var target: int = int(float(entry[1]) * GROUND_MULT)
+		var attempts: int = target * (3 if rule != "" else 1)
+		for i in attempts:
+			if xf.size() >= target:
+				break
 			var p: Vector3 = terrain.find_spot(rng, float(entry[2]), float(entry[3]))
 			if not _valid(p):
+				continue
+			if not _ground_ok(rule, p, rng):
 				continue
 			var s: float = rng.randf_range(float(entry[4]), float(entry[5]))
 			var b := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * s)
 			xf.append(Transform3D(b, p - Vector3(0, 0.03, 0)))
-		var m: MultiMeshInstance3D = NatureKit.multi(model, xf, 70.0 if xf.size() > 300 else 110.0)
+		var m: MultiMeshInstance3D = NatureKit.multi(model, xf, 75.0 if xf.size() > 300 else 120.0)
 		if m != null:
 			root.add_child(m)
 
@@ -570,8 +634,8 @@ func _spawn_wildlife() -> void:
 		gull.size = 2.4
 		gull.body_color = Color(0.9, 0.9, 0.92)
 		gull.belly_color = Color.WHITE
-		gull.orbit_radius = _rng.randf_range(40.0, 95.0)
-		gull.orbit_height = _rng.randf_range(14.0, 30.0)
+		gull.orbit_radius = _rng.randf_range(80.0, 190.0)
+		gull.orbit_height = _rng.randf_range(22.0, 42.0)
 		gull.orbit_speed = _rng.randf_range(0.12, 0.25) * (1.0 if i % 2 == 0 else -1.0)
 		gull.name = "Gull%d" % i
 		gull.add_to_group("day_only")

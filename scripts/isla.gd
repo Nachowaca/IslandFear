@@ -95,6 +95,9 @@ var total: Dictionary = {}              ## acumulado de todas las vidas
 var vida_actual: Dictionary = {}        ## solo la vida en curso
 var calor_paso: Dictionary = {}         ## Vector2i -> segundos que pasó ahí
 var calor_dano: Dictionary = {}         ## Vector2i -> daño que causó ahí
+var eco: EcoMap                          ## mapa ecológico (lo asigna main.gd)
+var bioma_tiempo: Dictionary = {}       ## nombre de bioma -> segundos que pasó el jugador ahí
+var bioma_eventos: Dictionary = {}      ## nombre de bioma -> {tipo de evento: cantidad}
 
 var _emitido: Dictionary = {}
 var _guardar_t: float = 30.0
@@ -160,11 +163,39 @@ func registrar_evento(tipo: String, zona: Variant = Vector2i.ZERO, intensidad: f
 	if VINCULO_FX.has(tipo):
 		_ajustar_vinculo(float(VINCULO_FX[tipo]) * intensidad)
 	var pos3: Vector3 = zona if zona is Vector3 else Vector3(float(cell.x) * CELDA, 0.0, float(cell.y) * CELDA)
+	if eco != null and is_instance_valid(eco):
+		var bn: String = eco.get_bioma_nombre(pos3)
+		var ev_b: Dictionary = bioma_eventos.get(bn, {})
+		ev_b[tipo] = float(ev_b.get(tipo, 0.0)) + intensidad
+		bioma_eventos[bn] = ev_b
 	evento_registrado.emit(tipo, pos3, intensidad)
 
 ## Para contadores que son tiempo (tiempo_corriendo, tiempo_explorando...).
 func sumar_tiempo(contador: String, segundos: float) -> void:
 	_sumar(contador, segundos)
+
+## Suma tiempo del jugador en un bioma (lo llama el cerebro cada frame).
+func sumar_bioma(nombre: String, segundos: float) -> void:
+	bioma_tiempo[nombre] = float(bioma_tiempo.get(nombre, 0.0)) + segundos
+
+## Bioma donde más tiempo pasó ("" si todavía no hay datos suficientes) y qué fracción del tiempo total fue.
+func bioma_favorito(min_segundos: float = 60.0) -> Dictionary:
+	var tot: float = 0.0
+	var best: String = ""
+	var bt: float = 0.0
+	for b: String in bioma_tiempo.keys():
+		var v: float = float(bioma_tiempo[b])
+		tot += v
+		if v > bt:
+			bt = v
+			best = b
+	if tot < min_segundos:
+		return {"nombre": "", "fraccion": 0.0}
+	return {"nombre": best, "fraccion": bt / tot}
+
+## Cuánto de un tipo de evento ocurrió en un bioma (tala, fuego, fruto tomado...).
+func eventos_en_bioma(nombre: String, tipo: String) -> float:
+	return float((bioma_eventos.get(nombre, {}) as Dictionary).get(tipo, 0.0))
 
 func sumar_paso(pos: Vector3, segundos: float) -> void:
 	var cell: Vector2i = celda_de(pos)
@@ -262,6 +293,8 @@ func reiniciar_memoria() -> void:
 		vida_actual[c] = 0.0
 	calor_paso.clear()
 	calor_dano.clear()
+	bioma_tiempo.clear()
+	bioma_eventos.clear()
 	base = {"confianza": 0.45, "enojo": 0.15, "miedo": 0.1, "curiosidad": 0.5}
 	_personalidad_inicial()
 	guardar()
@@ -306,6 +339,7 @@ func guardar() -> void:
 		"vida": vida, "ciclo": ciclo, "ultimo_final": ultimo_final, "vinculo": vinculo, "tumbas": tumbas, "base": base, "valor": valor, "sensibilidad": sensibilidad,
 		"total": total, "vida_actual": vida_actual,
 		"calor_paso": _claves(calor_paso), "calor_dano": _claves(calor_dano),
+		"bioma_tiempo": bioma_tiempo, "bioma_eventos": bioma_eventos,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f != null:
@@ -334,4 +368,7 @@ func cargar() -> bool:
 		vida_actual[c] = float((d.get("vida_actual", {}) as Dictionary).get(c, 0.0))
 	calor_paso = _celdas(d.get("calor_paso", {}))
 	calor_dano = _celdas(d.get("calor_dano", {}))
+	bioma_tiempo = d.get("bioma_tiempo", {}) as Dictionary
+	bioma_eventos = d.get("bioma_eventos", {}) as Dictionary
 	return true
+

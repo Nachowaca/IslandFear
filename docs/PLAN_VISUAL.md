@@ -1,37 +1,35 @@
-# Plan visual y de misterios de la isla
+# Plan de diseño visual (v2, enfoque memoria baja)
 
-## Hecho
-- Palmeras poligonales eliminadas: los "árboles de la costa" (mecánica de cocos/hojas/cuerda intacta) usan CommonTree del MegaKit, inclinados por el viento.
-- Bosque, arbustos, rocas, suelo y árbol corazón con el MegaKit (ver PROGRESS.md).
+## Dirección de arte
+Low-poly estilizado, paleta cálida de día y turquesa/violeta de noche. Pocas texturas grandes, formas claras, mucho color por vértice. Lo misterioso se cuenta con luz (cueva, árbol corazón, piedras), no con detalle pesado.
 
-## Assets a descargar (todos gratuitos; verificar la licencia al bajarlos)
-Prioridad alta:
-1. **Quaternius – Ultimate Stylized Nature** (CC0): trae **palmeras**, cocoteros, rocas, plantas tropicales y troncos. Mismo estilo que el MegaKit.
-2. **Kenney – Graveyard Kit** (CC0): lápidas, cruces, velas, vallas rotas. Base de las piedras de los náufragos.
-3. **Kenney – Pirate Kit** (CC0): cofres, restos de barco, barriles, calaveras, bote roto, cañones. Para naufragios y misterios.
-4. **ambientCG** (CC0, texturas PBR): "Sand", "Ground", "Rock", "Moss", "Mud". Mejoran el terreno por altura y pendiente.
-Prioridad media:
-5. **Poly Haven** (CC0): un HDRI de cielo crepuscular para reflejos y 2–3 modelos de rocas/troncos realistas.
-6. **Quaternius – Ultimate Fantasy/Ruins** (CC0): arcos, columnas rotas, ruinas para un templo antiguo.
-7. **Kenney – Nature Kit** (CC0): más rocas, troncos, setas, puentes, nubes.
-Opcional: Quaternius animales (cangrejos, aves, lagartijas) y sonidos CC0 de freesound/Kenney Audio.
+## Presupuesto de memoria (objetivo)
+- Texturas: máx. ~150 MB en VRAM. Nada de 4K; 1K para terreno, 512 para props, 256 para detalles.
+- Modelos: reutilizar con MultiMesh. Un árbol ~6k tris es el techo; props pequeños <1k.
+- Sin HDRI grande (usar el cielo procedural actual). Sin audio pesado (todo sintetizado).
+- Importar texturas con compresión VRAM (BPTC/ASTC), mipmaps ON.
+- Nunca cargar packs enteros: copiar solo los modelos usados a `res://assets/<pack>/`.
 
-Cómo bajarlos: descomprimir en `res://assets/<nombre_del_pack>/` (formato glTF/GLB si hay opción). Después me avisás la carpeta y los integro.
+## Assets a bajar (en orden de prioridad, todos CC0)
+1. **Quaternius – Ultimate Stylized Nature** (palmeras, rocas, plantas). Reemplaza los "árboles de costa". Formato glTF. Liviano (~20 MB).
+2. **Kenney – Pirate Kit** (restos de barco, cofres, barriles, muelle). Muy liviano (~5 MB).
+3. **Kenney – Graveyard Kit** (cruces, lápidas, velas) para tumbas y misterio. ~5 MB.
+4. **ambientCG – 3 texturas 1K**: Ground (tierra/pasto), Rock (roca), Sand. Solo Color + NormalGL, JPG.
+5. **Quaternius – Ruins/Fantasy props** (arcos, columnas rotas) para el misterio. Solo 5–8 piezas.
+6. Opcional: **Kenney Nature Kit** (troncos, hongos, piedras de camino).
+Descargá, descomprimí y dejá en `res://assets/<nombre_pack>/`. No hace falta limpiar; yo copio lo que sirva.
 
-## Misterios y detalles (orden de trabajo)
-1. **Piedras de los que vinieron antes**: estelas/lápidas rústicas con mensajes.
-   - Mensajes de **tus propias vidas pasadas**: tras cada muerte aparece una piedra donde caíste, con un epitafio generado de lo que hiciste (días vividos, causa, si talaste o cuidaste). Se lee con F.
-   - Mensajes de **otros náufragos** (escritos por mí, un texto por piedra, repartidos por la isla): consejos, advertencias y confesiones ("No cortes el árbol del centro", "Ofrecele algo en la cueva y te deja en paz", "Yo la odié. Ella me escuchó igual").
-   - La isla reacciona: si las tocás con mala intención se enoja, si dejás una ofrenda se calma. Con confianza alta aparecen flores sobre ellas.
-   - Mensajes del vínculo: algunas piedras solo se vuelven legibles cuando la relación sube (musgo que se retira).
-2. **Camino de piedras** (RockPath del MegaKit) desde la playa hasta el árbol corazón o la cueva.
-3. **Naufragios** en la costa (Pirate Kit): restos de un bote con cosas útiles y una nota.
-4. **Flores nocturnas** que brillan (Flower_3/4 con emisión) y **luciérnagas** (partículas) cerca del árbol corazón.
-5. **Fauna chica**: mariposas de día, luciérnagas de noche, lagartijas en las rocas, cangrejos ya existentes. Reaccionan al vínculo (se acercan si la isla confía, huyen si no).
-6. **Agua**: espuma en la orilla, ondas alrededor de piedras, reflejos; sin efectos que cuelguen Godot.
-7. **Realismo del terreno**: texturas PBR por altura/pendiente, huellas en la arena, hojas caídas, charcos tras la lluvia.
-8. **Viento** en toda la vegetación nueva (shader de balanceo suave).
+## Qué ya tenemos y se puede borrar para ahorrar memoria
+`res://OBJ` y `res://FBX` del Stylized Nature MegaKit (duplican los glTF). Confirmame y los borro.
 
-## Decisiones abiertas para el usuario
-- ¿Epitafios en primera persona del náufrago muerto, o escritos por la isla?
-- ¿Las piedras de otros náufragos son fijas o cambian en cada ciclo (nuevo ciclo = otros mensajes)?
+## Fases de trabajo
+1. **Terreno**: texturas PBR por pendiente/altura (arena, pasto, roca), 1K triplanar. Playa más suave, colinas más claras.
+2. **Costa**: palmeras reales, espuma en la orilla, restos de naufragio, troncos varados.
+3. **Misterio**: camino de piedras al árbol corazón, ruinas pequeñas, tumbas con velas, círculo de hongos que brilla de noche.
+4. **Vida**: mariposas de día, luciérnagas y flores luminosas de noche, lagartijas y pájaros.
+5. **Atmósfera**: niebla baja por zonas, rayos de luz entre árboles (sin volumétrico), colores según el vínculo.
+6. **Optimización**: LOD/visibility ranges, MultiMesh en todo lo repetido, medir FPS y memoria.
+7. **Personaje y UI**: rediseño del castaway, barras y pantallas de muerte/final con el estilo isla.
+
+## Cómo medimos
+Monitor de memoria de Godot (VRAM, objetos, draw calls) en una partida de 5 min. Meta: 60 fps estables en tu M1, <1.5 GB de RAM.

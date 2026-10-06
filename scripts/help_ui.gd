@@ -8,6 +8,7 @@ const SECTIONS: Array[Dictionary] = [
 		["W A S D", "Caminar. X para retroceder."],
 		["Shift", "Correr: llegás antes, pero gastás más hambre y sed."],
 		["Espacio", "Saltar."],
+		["Ctrl", "Agacharte: vas más lento y en silencio."],
 		["Mouse", "Mirar alrededor."],
 		["M", "Vista aérea de la isla."]]},
 	{"title": "Actuar", "rows": [

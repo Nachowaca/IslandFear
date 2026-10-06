@@ -205,6 +205,7 @@ func _recoger() -> void:
 			ui.message("No tenés sed.")
 			return
 		player.add_need("sed", 35.0)
+		player.play_action("drink")
 		ui.message("Bebés agua fresca del estanque.")
 		_sonido("drip", player.global_position)
 		Isla.registrar_evento("cuidado", player.global_position, 0.2)
@@ -214,6 +215,7 @@ func _recoger() -> void:
 		ui.message("Inventario lleno.")
 		return
 	var tomadas: int = it.amount - resto
+	player.play_action("pickup")
 	_sonido("step_grass", it.global_position)
 	if resto > 0:
 		it.amount = resto
@@ -311,6 +313,7 @@ func _probar() -> void:
 		player.heal(float(d["heal"]))
 		partes.append("salud +%d" % int(float(d["heal"])))
 	_sonido("step_grass", player.global_position)
+	player.play_action("eat")
 	if d.has("poison"):
 		player.take_damage(float(d["poison"]), "hongo venenoso")
 		player.add_need("hambre", -12.0)
@@ -336,6 +339,7 @@ func _cortar() -> void:
 		ui.message("Necesitás algo afilado: una cuchilla de piedra o un hacha.")
 		return
 	_cut_cd = 0.55
+	player.play_action("cut")
 	var planta: Node3D = _plant
 	var es_palma: bool = terrain.palm_nodes.has(planta)
 	var pos: Vector3 = planta.global_position

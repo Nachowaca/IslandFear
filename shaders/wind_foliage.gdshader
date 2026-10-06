@@ -1,5 +1,6 @@
 shader_type spatial;
 render_mode cull_disabled, specular_schlick_ggx;
+#include "res://shaders/foliage_push.gdshaderinc"
 
 uniform vec4 albedo : source_color = vec4(0.2, 0.5, 0.2, 1.0);
 uniform float sway = 0.15;        // metros de balanceo en la punta
@@ -9,6 +10,7 @@ uniform float speed = 1.2;
 uniform float flutter = 0.0;      // temblor rápido de hojas
 uniform vec2 wind_dir = vec2(1.0, 0.4);
 uniform float gust_strength = 1.0;
+uniform float push = 1.0;
 
 void vertex() {
 	vec3 wp = MODEL_MATRIX[3].xyz;
@@ -19,6 +21,7 @@ void vertex() {
 	float g = sin(TIME * speed + phase) + 0.5 * sin(TIME * speed * 2.3 + phase * 1.7);
 	vec3 off = vec3(wind_dir.x, 0.0, wind_dir.y) * g * sway * h * gust * gust_strength;
 	off += vec3(sin(TIME * 6.0 + wp.x * 3.0 + VERTEX.x * 4.0), 0.3 * sin(TIME * 5.0 + wp.z * 3.0), cos(TIME * 7.0 + wp.z * 3.0 + VERTEX.z * 4.0)) * flutter * h;
+	off += foliage_push(wp, sqrt(clamp((VERTEX.y - base_y) / height_ref, 0.0, 1.0)), push);
 	VERTEX += inverse(mat3(MODEL_MATRIX)) * off;
 }
 

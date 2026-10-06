@@ -19,6 +19,7 @@ var terrain: IslandTerrain
 var features: IslandFeatures
 var player: Castaway
 var brain: IslandBrain
+var weather: Weather
 
 var _bank: Dictionary = {}               # id -> Array[AudioStreamWAV]
 var _thread: Thread
@@ -92,6 +93,7 @@ func _generate() -> void:
 	_emit("crickets", SoundBank.crickets())
 	_emit("drone", SoundBank.drone())
 	_emit("cave_hum", SoundBank.cave_hum())
+	_emit("rain", SoundBank.rain())
 	for v in 3:
 		_emit("owl", SoundBank.owl(v))
 		_emit("frog", SoundBank.frog(v))
@@ -112,7 +114,7 @@ func _on_asset(id: String, stream: AudioStreamWAV) -> void:
 		_bank[id] = []
 	(_bank[id] as Array).append(stream)
 	match id:
-		"waves", "wind", "wind_night", "rustle", "crickets", "drone", "cave_hum":
+		"waves", "wind", "wind_night", "rustle", "crickets", "drone", "cave_hum", "rain":
 			var p := AudioStreamPlayer.new()
 			p.bus = BUS_AMB
 			p.stream = stream
@@ -233,6 +235,8 @@ func _process(delta: float) -> void:
 	_set_bed("drone", (0.04 + _night * 0.3 + hostile * 0.3) * (0.25 + 0.75 * close), delta)
 	_close = close
 	_set_bed("cave_hum", _cave * 0.5, delta)
+	if weather != null:
+		_set_bed("rain", weather.intensity * (0.55 - 0.3 * _cave), delta)   # bajo techo se oye, pero lejos
 
 	# la cueva apaga lo de afuera y añade eco
 	_lowpass.cutoff_hz = lerpf(20500.0, 2200.0, _cave)

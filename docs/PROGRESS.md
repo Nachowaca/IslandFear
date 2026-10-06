@@ -110,3 +110,54 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Piedra procedural gris (ruido celular triplanar). Las texturas atlas del MegaKit no sirven para esto.
 - `wind_leaf.gdshader` + `NatureKit._fixed`: árboles, arbustos y pastos del MegaKit se mecen con el viento y reaccionan a las rachas (`Wind.register`).
 - Pendiente: mariposas de día, restos de naufragio, camino de piedras al árbol corazón, espuma del agua, terreno PBR por pendiente. Nada de esto está subido a GitHub.
+
+
+## Fase 1 visual: terreno y forma de la isla (hecha)
+- Isla 4 veces más grande (radio 60 → 120 m). Laguna (-32,28) y cueva (48,-40) movidas; conteos de árboles/recursos x2-2.5; barca arranca en (236,0,88); gaviotas y cámara aérea escaladas.
+- `terrain_island.gdshader`: 4 capas PBR (arena, pasto, suelo de bosque, roca; ambientCG CC0, 1K, VRAM comprimido con mipmaps, en `assets/terrain/`), mezcladas por altura, pendiente y ruido; roca triplanar; arena mojada en la orilla; el pasto se seca o se avive según `Isla.vinculo` (sin mostrarlo).
+- Forma: playa ancha (17% del radio), acantilados al oeste (meseta de ~9 m con pared casi vertical y terrazas), colinas más altas, malla 240x240 con diagonales alternadas. El `.tscn` ya no guarda la malla (se genera al cargar; `@tool` quitado).
+- `bridge.gd`: puente de madera de la costa norte al faro, ROTO a mitad (5.5 m sin tablones, tablones colgando, sogas sueltas, tocones). Sin forma de cruzar aún: reparación pendiente de diseñar (recoger tablas y soga).
+- `floating_rock.gd`: roca flotante misteriosa sobre un círculo de piedras con runas; gira, flota, fragmentos orbitan, brilla de noche. Lugar sagrado "Roca flotante".
+- El faro ahora se calcula según la costa (islote a 46 m de la orilla).
+- Rendimiento medido: ~45-60 fps en M1 Max con la isla grande.
+- Pendiente: espuma de olas, naufragio, camino de piedras, mariposas, ideas para reparar el puente, revisar noche en la isla nueva.
+
+
+## Contacto y ecología (hecho)
+- `foot_fx.gd` (FootFx): el jugador deja huellas en la arena (decals, se borran en ~2 min, más marcadas en arena mojada) y levanta arena/hojas al pisar.
+- `foliage_push.gdshaderinc` + globales `foot_0..3`: pasto, helechos y arbustos se doblan, se aplastan y vuelven con retraso (inercia) al pasar; los árboles no.
+- Ecología en `island_terrain.gd`: arena casi sin árboles (solo troncos secos DeadTree), costa con árboles inclinados, bosque por manchas (`forest_value`), humedad junto a la laguna (`moisture_at`, árboles retorcidos), pinos en altura, matorral costero, derrumbe de rocas al pie del acantilado. `island_life.gd` `GROUND_RULES`: pradera, sotobosque, duna y orilla.
+- Pendiente: huellas de animales, olas/espuma, ver la noche.
+
+## Pack Ultimate Stylized Nature (Quaternius, CC0)
+- En `assets/ultimate_nature/` (`glTF/` solo tiene 36 modelos: abedul, arce, muertos, arbustos, flores, pasto; palmeras/pinos/árbol normal/rocas están SOLO en `FBX/`, que extraje de esas categorías). Texturas grandes limitadas a 1K en el import.
+- `NatureKit.make_uq(model)` carga FBX del pack (escala 100 en el nodo; palmera ~5 m), asigna texturas y viento. Las palmeras de costa ahora son `PalmTree_1..5` reales (472 tris).
+- Pendiente: abedul/arce en el bosque, arbustos y flores del pack, rocas.
+
+### Pack Quaternius integrado (2.ª parte)
+- Bosque: 22% abedules y 18% arces (arce teñido de verde con la textura BW; la original es roja de otoño), troncos secos `DeadTree_1..10` del pack en la arena, 45% de arbustos y 55% de rocas del pack (`make_uq`).
+- `main.gd` `skip_voyage = true`: la barca arranca a 6 m de la orilla para probar rápido. Poner `false` para recuperar el viaje completo desde el horizonte.
+- Cuidado: `NatureKit.make_uq` usa caché con prefijo `uq:` (los nombres DeadTree_* chocan con los del MegaKit).
+- Pendiente: flores/pasto del pack, pinos y árboles normales del pack (FBX), probar rendimiento largo.
+- Flores del pack (`Flower_1..5_Clump`, `Flower_1`, `Flower_2`) en `GROUND_KIT` con prefijo `UQ:` (MultiMesh, vis 75-120 m); las flores MegaKit bajadas de 130 a 40. El pasto del pack NO se usa (decisión: ahorrar memoria).
+
+## EcoMap capas 2-5 + memoria de bioma (hecho)
+- `eco_map.gd`: agua (`get_dist_agua`), humedad (`get_humedad`), suelo (`get_suelo`, enum Suelo), bioma (`get_bioma`, `get_bioma_pesos`, enum Bioma). Overlay F6/F7 con 7 capas. Parámetros nuevos en `eco_params.gd` (`base_humidity`, `humidity_reach`, `sea_humidity`, `valley_radius`, `sand_width`, `sand_max_height`, `fertile_humidity`).
+- `Isla` guarda `bioma_tiempo` y `bioma_eventos` (persisten en isla.json), `bioma_favorito()`, `eventos_en_bioma()`. El cerebro suma tiempo por bioma y a veces comenta el bioma favorito (`obs_bioma_*` en island_voice). Todavía NO cambia ataques ni regalos.
+- Pendiente: capa 6 (vegetación; decidir reemplazar vs convivir) y 7 (zonas misteriosas).
+
+## EcoMap capa 6 (vegetación por bioma, primera versión)
+- Decisión: el EcoMap REEMPLAZA las reglas viejas de plantado. `IslandTerrain.eco` lo crea la isla antes de plantar; `main.gd` lo reutiliza.
+- `_scatter_flora`: densidad de árboles, mezcla abedul/arce, arbustos y afloramientos de roca salen de `eco.get_bioma_pesos()`. Palmeras, árboles secos y talud de acantilados siguen con sus reglas.
+- Pendiente: flores/MultiMesh por bioma (`island_life.gd` GROUND_RULES todavía usa las reglas viejas), separación mínima tipo Poisson, capa 7 zonas misteriosas.
+
+## EcoMap completo (capas 6 y 7)
+- Flores, pasto y helechos (`island_life.gd` `_ground_ok`) siguen los pesos de bioma. Separación mínima de 2,6 m entre árboles (`_too_close`).
+- Capa 7: `get_misterio(pos)`; 6 claros (~6 % de la tierra), semilla propia `mystery_seed`, distancia mínima 40 m. Dentro: casi sin árboles, más rocas y flores. Overlay F7 capa 7. Visualmente falta ver un claro de cerca.
+
+## Sesión: cueva pozo, pack nuevo, personaje nuevo
+- Cueva = pozo de 8 m con paredes/techo de rocas del pack nuevo y rampa; luces flotantes.
+- Vegetación solo del pack Quaternius (árboles, arbustos, rocas, plantas, pétalos). Árbol ancestral y árbol corazón = MapleTree. Pasto del pack nuevo NO usado (memoria).
+- Clima/lluvia (weather.gd, SoundBank.rain) escrito pero DESACTIVADO en main.gd (memoria).
+- Personaje nuevo: castaway_model.gd + castaway_pose.gd (glb Quaternius). Ctrl = agacharse; gestos recoger/comer/beber/cortar. castaway_rig.gd borrado. Escena de prueba: scenes/test_character.tscn.
+- Pendiente: probar el personaje caminando, medir fps/memoria, vestimenta, memoria de biomas -> acciones de la isla, convivencia pasos 2-5.

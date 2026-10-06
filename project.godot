@@ -92,3 +92,22 @@ toggle_map={
 [rendering]
 
 rendering_device/driver.windows="d3d12"
+
+[shader_globals]
+
+foot_0={
+"type": "vec4",
+"value": Plane(100000, 100000, 100000, 0)
+}
+foot_1={
+"type": "vec4",
+"value": Plane(100000, 100000, 100000, 0)
+}
+foot_2={
+"type": "vec4",
+"value": Plane(100000, 100000, 100000, 0)
+}
+foot_3={
+"type": "vec4",
+"value": Plane(100000, 100000, 100000, 0)
+}

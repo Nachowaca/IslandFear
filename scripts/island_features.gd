@@ -22,6 +22,7 @@ var _rng := RandomNumberGenerator.new()
 var _mats: Dictionary = {}
 var _crystal_mats: Array[StandardMaterial3D] = []
 var _cave_light: OmniLight3D
+var _cave_orbs: Array[Dictionary] = []   ## luces flotantes del pozo
 var _ominous: float = 0.0
 var _warm: float = 0.0            ## 0 = fría, 1 = cálida (la isla confía en el jugador)
 
@@ -122,56 +123,50 @@ func _spot(min_h: float, max_h: float, min_origin: float = 0.0, max_origin: floa
 # ------------------------------------------------------------------ cueva
 
 func _build_cave() -> void:
+	# La cueva es un POZO excavado en el terreno (ver IslandTerrain._pit_carve) con luces misteriosas adentro.
 	var c2: Vector2 = IslandTerrain.CAVE_CENTER
-	var fy: float = terrain.cave_floor_y
-	cave_center = Vector3(c2.x, fy, c2.y)
-	var to_origin: Vector2 = (-c2).normalized()
-	cave_dir = Vector3(to_origin.x, 0.0, to_origin.y)
-	cave_entrance = cave_center + cave_dir * CAVE_RING_R
-	var a_e: float = atan2(cave_dir.z, cave_dir.x)
-	var rock: StandardMaterial3D = _mat(Color(0.4, 0.38, 0.37))
+	var floor_y: float = terrain.cave_floor_y - IslandTerrain.PIT_DEPTH
+	cave_center = Vector3(c2.x, floor_y, c2.y)
+	var d2: Vector2 = IslandTerrain.cave_dir2()
+	cave_dir = Vector3(d2.x, 0.0, d2.y)
+	var ep: Vector2 = c2 + d2 * (IslandTerrain.PIT_R + 3.5)       # donde la isla puede sellar la rampa
+	cave_entrance = Vector3(ep.x, terrain.height_at(ep.x, ep.y), ep.y)
 	var dark: StandardMaterial3D = _mat(Color(0.28, 0.27, 0.28))
-	var mossy: StandardMaterial3D = _mat(Color(0.3, 0.38, 0.27))
 
-	# anillo de muros (deja un hueco en la entrada)
-	var n: int = 12
-	for i in range(2, n - 1):
-		var a: float = a_e + TAU * float(i) / float(n)
-		var r: float = _rng.randf_range(2.0, 2.4)
-		var pos: Vector3 = cave_center + Vector3(cos(a) * CAVE_RING_R, 0.9, sin(a) * CAVE_RING_R)
-		_boulder(pos, r, rock if i % 2 == 0 else dark)
-	# peñascos que enmarcan la entrada (hueco de ~3 m de ancho)
-	for s: float in [-1.0, 1.0]:
-		var af: float = a_e + 0.62 * s
-		_boulder(cave_center + Vector3(cos(af) * CAVE_RING_R, 0.9, sin(af) * CAVE_RING_R), 1.7, dark)
-	# capa exterior (montículo), con el corredor de entrada despejado
-	for i in 14:
-		var a2: float = a_e + TAU * (float(i) + 0.5) / 14.0
-		if absf(angle_difference(a2, a_e)) < 0.75:
+	# paredes de roca (pack Quaternius): anillo en el borde y en las paredes, techo que sobresale al fondo
+	var a_e: float = atan2(cave_dir.z, cave_dir.x)
+	for i in 34:
+		var ang: float = TAU * (float(i) + _rng.randf()) / 34.0
+		if absf(angle_difference(ang, a_e)) < 0.5:
+			continue                                         # deja libre la entrada de la rampa
+		var rr2: float = IslandTerrain.PIT_R + _rng.randf_range(-1.6, 1.4)
+		var rp: Vector3 = Vector3(c2.x + cos(ang) * rr2, 0.0, c2.y + sin(ang) * rr2)
+		rp.y = terrain.height_at(rp.x, rp.z) - 0.4
+		_wall_rock(rp, _rng.randf_range(1.5, 2.5))
+	for i in 16:
+		var ang2: float = TAU * (float(i) + _rng.randf()) / 16.0
+		if absf(angle_difference(ang2, a_e)) < 0.7:
 			continue
-		var r2: float = _rng.randf_range(2.4, 3.2)
-		var d2: float = _rng.randf_range(7.4, 9.0)
-		_boulder(cave_center + Vector3(cos(a2) * d2, 0.9, sin(a2) * d2), r2, mossy if i % 3 == 0 else rock)
-	# techo abovedado
-	_boulder(cave_center + Vector3(0, 5.7, 0), 2.7, dark, 0.8)
-	for i in 8:
-		var a3: float = TAU * float(i) / 8.0 + 0.3
-		if absf(angle_difference(a3, a_e)) < 0.5:
-			continue
-		_boulder(cave_center + Vector3(cos(a3) * 4.1, 4.5, sin(a3) * 4.1), 2.3, rock, 0.8)
-	for i in 6:
-		var a4: float = a_e + TAU * (float(i) + 0.5) / 6.0
-		if absf(angle_difference(a4, a_e)) < 1.0:
-			continue   # no bajar el techo sobre la entrada
-		_boulder(cave_center + Vector3(cos(a4) * 6.0, 3.6, sin(a4) * 6.0), 2.6, mossy if i % 2 == 0 else rock, 0.8)
-	# dintel alto sobre la entrada
-	_boulder(cave_center + cave_dir * (CAVE_RING_R + 0.2) + Vector3(0, 4.3, 0), 1.5, dark, 0.8)
+		var r3: float = IslandTerrain.PIT_R - _rng.randf_range(0.6, 2.2)
+		var rp2: Vector3 = Vector3(c2.x + cos(ang2) * r3, 0.0, c2.y + sin(ang2) * r3)
+		rp2.y = terrain.height_at(rp2.x, rp2.z) - 0.3
+		_wall_rock(rp2, _rng.randf_range(1.2, 1.9))
+	for i in 7:                                              # techo: rocas sobre el borde del fondo, hacia adentro
+		var ang3: float = a_e + PI + _rng.randf_range(-1.15, 1.15)
+		var rp3: Vector3 = Vector3(c2.x + cos(ang3) * (IslandTerrain.PIT_R - 0.9), 0.0, c2.y + sin(ang3) * (IslandTerrain.PIT_R - 0.9))
+		rp3.y = terrain.height_at(c2.x + cos(ang3) * (IslandTerrain.PIT_R + 1.0), c2.y + sin(ang3) * (IslandTerrain.PIT_R + 1.0)) + 0.1
+		_wall_rock(rp3, _rng.randf_range(2.4, 3.2))
+	for s: float in [-1.0, 1.0]:                             # peñascos que enmarcan la rampa
+		for k in 3:
+			var along: float = IslandTerrain.PIT_R + 2.0 + float(k) * 4.5
+			var side: Vector2 = Vector2(-d2.y, d2.x) * s * (IslandTerrain.RAMP_HALF_W + 1.6)
+			var fp: Vector2 = c2 + d2 * along + side
+			_wall_rock(Vector3(fp.x, terrain.height_at(fp.x, fp.y) - 0.3, fp.y), _rng.randf_range(1.3, 1.8))
 
-	# cristales misteriosos al fondo
-	var back: Vector3 = -cave_dir
-	for i in 6:
-		var a5: float = atan2(back.z, back.x) + _rng.randf_range(-1.1, 1.1)
-		var rr: float = _rng.randf_range(2.2, 2.9)
+	# cristales y luces flotantes dentro del pozo
+	for i in 7:
+		var a5: float = _rng.randf() * TAU
+		var rr: float = _rng.randf_range(1.6, 4.2)
 		var m := StandardMaterial3D.new()
 		m.albedo_color = Color(0.3, 0.8, 0.85)
 		m.emission_enabled = true
@@ -180,16 +175,48 @@ func _build_cave() -> void:
 		m.roughness = 0.2
 		_crystal_mats.append(m)
 		var cr := _cyl(0.0, _rng.randf_range(0.18, 0.3), _rng.randf_range(0.7, 1.4), 5)
-		_mi(self, cr, m, cave_center + Vector3(cos(a5) * rr, cr.height * 0.5, sin(a5) * rr), Vector3(_rng.randf_range(-0.3, 0.3), 0, _rng.randf_range(-0.3, 0.3)))
+		var cp: Vector3 = cave_center + Vector3(cos(a5) * rr, 0.0, sin(a5) * rr)
+		cp.y = terrain.height_at(cp.x, cp.z) + cr.height * 0.5 - 0.1
+		_mi(self, cr, m, cp, Vector3(_rng.randf_range(-0.3, 0.3), 0, _rng.randf_range(-0.3, 0.3)))
+	for i in 9:
+		var om := StandardMaterial3D.new()
+		om.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		om.albedo_color = Color(0.5, 1.0, 1.0)
+		om.emission_enabled = true
+		om.emission = Color(0.3, 0.9, 0.9)
+		om.emission_energy_multiplier = 3.0
+		_crystal_mats.append(om)
+		var orb := _mi(self, _sph(_rng.randf_range(0.09, 0.18), 8, 4), om, cave_center, Vector3.ZERO)
+		var base: Vector3 = cave_center + Vector3(_rng.randf_range(-3.6, 3.6), _rng.randf_range(0.8, 6.0), _rng.randf_range(-3.6, 3.6))
+		_cave_orbs.append({"node": orb, "base": base, "ph": _rng.randf() * TAU, "sp": _rng.randf_range(0.4, 1.0), "amp": _rng.randf_range(0.25, 0.7)})
+		orb.position = base
+	var motes := CPUParticles3D.new()
+	var mm := _sph(0.03, 4, 2)
+	var mmat := StandardMaterial3D.new()
+	mmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mmat.albedo_color = Color(0.6, 1.0, 1.0)
+	mm.material = mmat
+	motes.mesh = mm
+	motes.amount = 40
+	motes.lifetime = 5.0
+	motes.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	motes.emission_sphere_radius = 3.5
+	motes.direction = Vector3.UP
+	motes.spread = 25.0
+	motes.gravity = Vector3.ZERO
+	motes.initial_velocity_min = 0.1
+	motes.initial_velocity_max = 0.4
+	motes.position = cave_center + Vector3(0, 1.5, 0)
+	add_child(motes)
 	_cave_light = OmniLight3D.new()
-	_cave_light.position = cave_center + Vector3(0, 1.8, 0)
-	_cave_light.omni_range = 10.0
+	_cave_light.position = cave_center + Vector3(0, 2.0, 0)
+	_cave_light.omni_range = 11.0
 	_cave_light.light_energy = 0.8
 	_cave_light.light_color = Color(0.4, 0.9, 0.9)
 	_cave_light.shadow_enabled = false
 	add_child(_cave_light)
 
-	# roca que sella la entrada (la usa la isla de noche)
+	# roca que sella la rampa (la usa la isla de noche)
 	_seal_body = StaticBody3D.new()
 	_seal_body.position = cave_entrance + Vector3(0, 1.2, 0)
 	_seal_shape = CollisionShape3D.new()
@@ -202,8 +229,16 @@ func _build_cave() -> void:
 
 	sacred_spots.append({"name": "Cueva", "pos": cave_center, "radius": 6.0, "kind": "refuge"})
 
+## Roca grande del pack nuevo, con colisión simple; no se puede atravesar pero queda en las paredes.
+func _wall_rock(pos: Vector3, sc: float) -> void:
+	var r: Node3D = NatureKit.make_uq("Rock_%d" % _rng.randi_range(1, 5), Color(0.8, 0.8, 0.85), 220.0)
+	r.position = pos
+	r.rotation = Vector3(_rng.randf_range(-0.2, 0.2), _rng.randf() * TAU, _rng.randf_range(-0.2, 0.2))
+	r.scale = Vector3.ONE * sc
+	add_child(r)
+
 func is_inside_cave(p: Vector3) -> bool:
-	return Vector2(p.x - cave_center.x, p.z - cave_center.z).length() < CAVE_INNER_R and p.y < cave_center.y + 3.2
+	return Vector2(p.x - cave_center.x, p.z - cave_center.z).length() < IslandTerrain.PIT_R - 0.3 and p.y < cave_center.y + IslandTerrain.PIT_DEPTH - 1.0
 
 func is_cave_sealed() -> bool:
 	return _sealed
@@ -310,25 +345,17 @@ func _build_giant_tree() -> void:
 		var p2: Vector3 = _spot(2.0, 5.5, 14.0, 44.0, heart_pos, 24.0)
 		if p2.y > -90.0:
 			p = p2
-	var bark: StandardMaterial3D = _mat(Color(0.33, 0.22, 0.14))
 	var holder := Node3D.new()
 	holder.position = p
 	add_child(holder)
-	_mi(holder, _cyl(0.9, 1.7, 10.0, 8), bark, Vector3(0, 5.0, 0))
-	for i in 7:
-		var a: float = TAU * float(i) / 7.0 + _rng.randf() * 0.3
-		var root := _cyl(0.0, 0.7, 3.2, 5)
-		_mi(holder, root, bark, Vector3(cos(a) * 1.9, 0.5, sin(a) * 1.9), Vector3(sin(a) * 1.1, 0, -cos(a) * 1.1))
+	var big: Node3D = NatureKit.make_uq("MapleTree_2", Color(0.85, 1.0, 0.8), 0.0)   # árbol del pack nuevo, enorme
+	big.scale = Vector3.ONE * 2.4
+	big.rotation.y = _rng.randf() * TAU
+	holder.add_child(big)
 	var cs := CylinderShape3D.new()
-	cs.radius = 1.7
+	cs.radius = 1.2
 	cs.height = 9.0
 	_solid(cs, p + Vector3(0, 4.5, 0))
-	# copa enorme que se mece
-	var leaf: ShaderMaterial = Wind.make(Color(0.12, 0.36, 0.15), -3.0, 6.0, 0.35, 0.03, 0.9)
-	var offsets: Array[Vector3] = [Vector3(0, 11.0, 0), Vector3(3.2, 10.0, 1.0), Vector3(-3.0, 10.2, -1.2), Vector3(0.6, 10.3, 3.4), Vector3(-0.8, 10.0, -3.3), Vector3(0, 13.0, 0)]
-	for o: Vector3 in offsets:
-		var sm := _sph(3.4, 8, 5)
-		_mi(holder, sm, leaf, o, Vector3.ZERO, Vector3(1.0, 0.8, 1.0))
 	sacred_spots.append({"name": "Árbol ancestral", "pos": p, "radius": 7.0, "kind": "heart"})
 
 # ------------------------------------------------------------------ naufragio
@@ -441,6 +468,9 @@ func _process(delta: float) -> void:
 		m.emission = col
 		m.albedo_color = col.darkened(0.4)
 		m.emission_energy_multiplier = energy
+	for o: Dictionary in _cave_orbs:
+		var ph: float = float(o["ph"]) + _time * float(o["sp"])
+		(o["node"] as Node3D).position = (o["base"] as Vector3) + Vector3(sin(ph) * float(o["amp"]), sin(ph * 1.7) * float(o["amp"]) * 0.8, cos(ph * 0.8) * float(o["amp"]))
 	if _cave_light != null:
 		_cave_light.light_color = col
 		_cave_light.light_energy = lerpf(0.5, 3.0, _ominous * (0.5 + 0.5 * pulse)) * lerpf(0.8, 1.3, _night)

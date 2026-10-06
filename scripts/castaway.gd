@@ -1,7 +1,7 @@
 class_name Castaway
 extends CharacterBody3D
 
-## Náufrago: movimiento en tercera persona + animación procedural low-poly (sin esqueleto).
+## Náufrago: movimiento en tercera persona + modelo animado (CastawayModel).
 ## Hasta que `controllable` sea true (viaja en la barca) solo se mueve la cámara y respira en reposo.
 
 @export_group("Movimiento")
@@ -127,13 +127,18 @@ var terrain: IslandTerrain
 @onready var _camera: Camera3D = $CameraPivot/Camera3D
 @onready var _model: Node3D = $Model
 
-var _rig: CastawayRig
-var _prev_hspeed: float = 0.0
+var _rig: CastawayModel
+var _crouch: float = 0.0
+var _crouching: bool = false
 
-## Cambia la expresión de la cara un rato (neutral, fear, pain, tired, smile, curious, determined, surprise, suspicious).
-func express(expr_name: String, seconds: float = 1.5) -> void:
-	if _rig != null:
-		_rig.express(expr_name, seconds)
+## El modelo nuevo no tiene cara animada: se mantiene la función para que el resto del juego no cambie.
+func express(_expr_name: String, _seconds: float = 1.5) -> void:
+	pass
+
+## Gesto puntual: "pickup" (agacharse a recoger), "eat", "drink" o "cut" (tajo).
+func play_action(action: String) -> void:
+	if _rig != null and not dead:
+		_rig.play_action(action)
 
 var _yaw: float = 0.0
 var _pitch: float = -0.05
@@ -141,9 +146,7 @@ var _cam_default: Transform3D
 var _grounded: bool = true
 var _prev_grounded: bool = true
 var _prev_vy: float = 0.0
-var _phase: float = 0.0
 var _time: float = 0.0
-var _land_squash: float = 0.0
 var _yaw_rate: float = 0.0
 
 var _step_fx: CPUParticles3D
@@ -205,7 +208,7 @@ func _ready() -> void:
 	for old: Node in _model.get_children():
 		_model.remove_child(old)
 		old.queue_free()
-	_rig = CastawayRig.new()
+	_rig = CastawayModel.new()
 	_rig.name = "Rig"
 	_model.add_child(_rig)
 	_rig.build()
@@ -272,7 +275,10 @@ func _move(delta: float) -> void:
 	var dir: Vector3 = Vector3.ZERO
 	if input != Vector2.ZERO:
 		dir = (Basis(Vector3.UP, _yaw) * Vector3(input.x, 0.0, input.y)).normalized()
+	_crouching = _key(KEY_CTRL) and _grounded
 	var speed: float = run_speed if _key(KEY_SHIFT) else walk_speed
+	if _crouching:
+		speed = walk_speed * 0.45   # agachado: lento y silencioso
 	if terrain != null and terrain.height_at(global_position.x, global_position.z) < 0.3:
 		speed *= water_slowdown # vadeando
 	if _slow_timer > 0.0:
@@ -297,7 +303,7 @@ func _move(delta: float) -> void:
 	velocity.z = horizontal.z
 
 	# Salto y gravedad
-	if _grounded and _key(KEY_SPACE):
+	if _grounded and _key(KEY_SPACE) and not _crouching:
 		velocity.y = jump_velocity
 		_grounded = false
 	elif _grounded:
@@ -332,30 +338,25 @@ func _move(delta: float) -> void:
 
 func _animate(delta: float) -> void:
 	var h_speed: float = Vector2(velocity.x, velocity.z).length()
-	var blend: float = clampf(h_speed / walk_speed, 0.0, 1.0)
-	var run_amt: float = clampf((h_speed - walk_speed) / maxf(run_speed - walk_speed, 0.1), 0.0, 1.0)
-	_phase += h_speed * delta * _rig.stride_per_meter(blend, run_amt) * (stride_rate / 1.7)
 	var air: bool = not _grounded and controllable
+	if not controllable:
+		_crouching = false
+	_crouch = lerpf(_crouch, 1.0 if _crouching else 0.0, 1.0 - exp(-9.0 * delta))
 
-	# Pisadas: el pie apoya cuando la pierna llega al máximo hacia adelante
-	var step_idx: int = int(floor((_phase - PI * 0.5) / PI))
-	if step_idx != _last_step:
-		_last_step = step_idx
-		if _grounded and controllable and h_speed > 1.0:
-			_emit_step(h_speed)
+	# Pisadas: dos por ciclo de la animación de caminar/correr
+	var ph: float = _rig.loco_phase()
+	if ph >= 0.0:
+		var step_idx: int = int(floor(ph * 2.0))
+		if step_idx != _last_step:
+			_last_step = step_idx
+			if _grounded and controllable and h_speed > 1.0 and not _crouching:
+				_emit_step(h_speed)
 
-	# Aterrizaje: flexiona las rodillas
+	# Aterrizaje
 	if _grounded and not _prev_grounded and controllable:
-		_land_squash = clampf(-_prev_vy * 0.025, 0.0, 0.3)
 		_emit_step(10.0)
-		if _land_squash > 0.15:
-			express("surprise", 0.5)
 	_prev_grounded = _grounded
-	_land_squash = lerpf(_land_squash, 0.0, 1.0 - exp(-9.0 * delta))
-
-	var accel: float = (h_speed - _prev_hspeed) / maxf(delta, 0.0001)
-	_prev_hspeed = h_speed
-	_rig.pose(delta, _phase, h_speed, walk_speed, run_speed, air, _grounded, velocity.y, _yaw_rate, accel, _land_squash * 2.5, health / max_health, _time)
+	_rig.update(delta, h_speed, air, dead, 1.0 if _crouching else 0.0)
 
 func _update_pivot(delta: float) -> void:
 	_pivot.global_position = global_position + Vector3(0, 1.5, 0)

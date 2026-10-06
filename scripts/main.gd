@@ -13,13 +13,15 @@ const WATER_Y: float = 0.35
 
 var _overview_cam: Camera3D
 var _focus: Vector3 = Vector3(0, 0, 0)
-var _distance: float = 230.0
+var _distance: float = 480.0
 var _yaw: float = 0.6
 var _pitch: float = -0.9
 var _dragging: bool = false
 var _toggle_was_down: bool = false
 
 var _boat_target: Vector3
+## Para probar rápido: la barca empieza a 6 m de la orilla en vez de navegar desde el horizonte. Poné false para el viaje completo.
+@export var skip_voyage: bool = true
 var _arrived: bool = false
 var _time: float = 0.0
 var _hint: Label
@@ -60,15 +62,23 @@ func _ready() -> void:
 	add_child(AmbientFx.new())
 	var lighthouse := Lighthouse.new()
 	lighthouse.name = "Lighthouse"
-	lighthouse.position = Vector3(-20, 0, -105)   # fuera de la isla
-	lighthouse.beam_length = 190.0
+	var shore_dir: Vector2 = Vector2(-0.19, -1.0).normalized()
+	var shore_r: float = _island.radius * 1.7
+	while shore_r > 10.0 and _island.height_at(shore_dir.x * shore_r, shore_dir.y * shore_r) < 0.95:
+		shore_r -= 0.5
+	var shore: Vector2 = shore_dir * shore_r
+	var light_r: float = shore_r + 46.0     # el faro está en un islote a unos 46 m de la costa
+	lighthouse.position = Vector3(shore_dir.x * light_r, 0, shore_dir.y * light_r)
+	lighthouse.beam_length = 260.0
 	lighthouse.water_level = $Water3D.position.y
 	add_child(lighthouse)
+	_build_bridge(shore, shore_dir, light_r)
 	# puntos de interés, mente de la isla e interfaz
 	var features := IslandFeatures.new()
 	features.name = "Features"
 	features.terrain = _island
 	add_child(features)
+	_build_landmarks(features)
 	var brain := IslandBrain.new()
 	brain.name = "IslandBrain"
 	brain.terrain = _island
@@ -76,8 +86,14 @@ func _ready() -> void:
 	brain.player = _castaway
 	add_child(brain)
 	_brain = brain
+	var weather := Weather.new()
+	weather.name = "Weather"
+	weather.player = _castaway
+	weather.features = features
+	# add_child(weather)   # DESACTIVADO: el clima queda para más adelante (memoria)
 	var audio := AudioManager.new()
 	audio.name = "Audio"
+	audio.weather = weather
 	audio.terrain = _island
 	audio.features = features
 	audio.player = _castaway
@@ -98,6 +114,18 @@ func _ready() -> void:
 	inter.features = features
 	inter.ui = inv_ui
 	add_child(inter)
+	var eco: EcoMap = _island.eco      # lo crea la isla antes de plantar
+	Isla.eco = eco
+	brain.eco = eco
+	var eco_dbg := EcoDebug.new()
+	eco_dbg.name = "EcoDebug"
+	eco_dbg.eco = eco
+	add_child(eco_dbg)
+	var feet := FootFx.new()
+	feet.name = "FootFx"
+	feet.player = _castaway
+	feet.terrain = _island
+	add_child(feet)
 	_castaway.died.connect(_on_player_died)
 	var daynight := DayNight.new()
 	daynight.setup($Water3D/Sun as DirectionalLight3D, $Water3D/WorldEnvironment as WorldEnvironment)
@@ -107,9 +135,62 @@ func _ready() -> void:
 	add_child(_overview_cam)
 	_update_overview()
 	_boat_target = _find_landing_point()
+	if skip_voyage:
+		var back: Vector3 = _boat.global_position - _boat_target
+		back.y = 0.0
+		_boat.global_position = _boat_target + back.normalized() * 6.0   # arranca casi en la orilla
 	_make_hint()
 	_hint.text = "La corriente arrastra la barca hacia una isla..."
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+## Puente (roto) desde la costa hasta el faro.
+func _build_bridge(shore: Vector2, dir: Vector2, light_r: float) -> void:
+	var br := Bridge.new()
+	br.name = "Bridge"
+	var total: float = light_r - shore.length() - 3.2
+	br.length = total
+	br.y_start = _island.height_at(shore.x, shore.y) + 0.2
+	br.y_end = 1.95
+	br.gap_start = total * 0.52
+	br.gap_len = 5.5
+	br.water_y = WATER_Y
+	_island.clear_area(shore, 6.5)
+	br.position = Vector3(shore.x, 0.0, shore.y)
+	br.rotation.y = atan2(-dir.x, -dir.y)
+	add_child(br)
+	br.build()
+
+## Roca flotante misteriosa tierra adentro (en un claro llano, lejos de la cueva y la laguna).
+func _build_landmarks(features: IslandFeatures) -> void:
+	var best: Vector3 = Vector3(0, -100, 0)
+	for ring: float in [0.55, 0.45, 0.65, 0.35]:
+		for k in 24:
+			var ang: float = 0.2 + TAU * k / 24.0
+			var x: float = cos(ang) * _island.radius * ring
+			var z: float = sin(ang) * _island.radius * ring
+			var h: float = _island.height_at(x, z)
+			if h < 2.0 or h > 6.0:
+				continue
+			if Vector2(x, z).distance_to(IslandTerrain.CAVE_CENTER) < 35.0 or Vector2(x, z).distance_to(IslandTerrain.POND_CENTER) < 30.0:
+				continue
+			var flat: bool = true
+			for o: Vector2 in [Vector2(5, 0), Vector2(-5, 0), Vector2(0, 5), Vector2(0, -5)]:
+				if absf(_island.height_at(x + o.x, z + o.y) - h) > 1.0:
+					flat = false
+			if flat:
+				best = Vector3(x, h, z)
+				break
+		if best.y > -50.0:
+			break
+	if best.y < -50.0:
+		return
+	_island.clear_area(Vector2(best.x, best.z), 8.0)
+	var fr := FloatingRock.new()
+	fr.name = "FloatingRock"
+	fr.position = best
+	add_child(fr)
+	features.sacred_spots.append({"name": "Roca flotante", "pos": best, "radius": 9.0, "kind": "heart"})
 
 ## Camina desde la barca hacia el centro de la isla hasta encontrar la orilla.
 func _find_landing_point() -> Vector3:
@@ -118,7 +199,7 @@ func _find_landing_point() -> Vector3:
 	dir.y = 0.0
 	dir = dir.normalized()
 	var p: Vector3 = start
-	for i in 400:
+	for i in 900:
 		p += dir * 0.5
 		if _island.height_at(p.x, p.z) > -0.1:
 			break
@@ -171,7 +252,7 @@ func _update_boat(delta: float) -> void:
 	if dist < 0.25:
 		_arrive()
 		return
-	var speed: float = clampf(dist * 0.3, 0.5, 6.0)  # frena al acercarse
+	var speed: float = clampf(dist * 0.3, 0.5, 10.0)  # frena al acercarse
 	_boat.global_position += to_target.normalized() * minf(speed * delta, dist)
 	_boat.global_position.y = WATER_Y + 0.02 + sin(_time * 1.2) * 0.05
 	_boat.rotation.z = sin(_time * 0.9) * 0.025
@@ -200,7 +281,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if mb.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_distance = maxf(15.0, _distance * 0.9)
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_distance = minf(500.0, _distance * 1.1)
+			_distance = minf(1000.0, _distance * 1.1)
 		elif mb.button_index == MOUSE_BUTTON_LEFT:
 			_dragging = mb.pressed
 		_update_overview()

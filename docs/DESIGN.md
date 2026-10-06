@@ -96,3 +96,41 @@ La isla es un NPC más: tiene carácter, memoria y voz. **Primero es misterio; n
 3. Clima controlado por el cerebro de la isla.
 4. Sacar el reloj temporal.
 5. Ajustar a oído: pasos fantasma, luz lejana, volumen general del audio.
+
+
+## EcoMap: la isla como ecosistema por capas (biomas)
+
+**Idea:** vegetación, rocas y suelo se reparten por reglas naturales (coherencia geológica), con ~5-10 % de zonas misteriosas. Todo determinista a partir de una semilla; parámetros en el Resource `EcoParams`.
+
+**Capas (cada una se calcula una vez sobre una grilla de 2 m y se consulta rápido):**
+1. Altura, pendiente y distancia a la costa: `get_altura`, `get_pendiente`, `get_dist_costa`, `is_tierra`.
+2. Agua: distancia al agua más cercana (mar o laguna): `get_dist_agua`. Sin arroyos por ahora.
+3. Humedad 0..1: cerca del agua, valles, poca altura y poca pendiente, más ruido: `get_humedad`.
+4. Suelo: arena, roca, tierra fértil, tierra seca: `get_suelo`.
+5. Bioma: costa, roquedal, selva, bosque, matorral, zona árida: `get_bioma` (dominante) y `get_bioma_pesos` (transición gradual, suman 1).
+6. Vegetación: los pesos de bioma deciden densidad de árboles, mezcla abedul/arce, tamaño (selva más grande), arbustos, rocas sueltas (roquedal), y flores/pasto/helechos (matorral, claros del bosque, sotobosque de selva). Separación mínima de 2,6 m entre árboles. Palmeras, troncos secos de playa y derrumbe de acantilados mantienen sus reglas. El EcoMap REEMPLAZA las reglas viejas de plantado; lo crea `IslandTerrain.eco`.
+7. Zonas misteriosas: 6 claros (~6 % de la tierra), semilla propia, mínimo 40 m entre centros: `get_misterio`. Dentro: casi sin árboles, más rocas y flores.
+
+**Depuración:** F6 muestra/oculta el overlay, F7 cambia de capa (7 capas).
+
+**Isla viva:** gancho `set_mood(humedad_delta, cierre, niebla)` preparado, todavía sin efecto.
+
+**La isla aprende del bioma:** `Isla` guarda tiempo y eventos por bioma (`bioma_tiempo`, `bioma_eventos`, persisten), `bioma_favorito()` y `eventos_en_bioma()`. El cerebro suma tiempo cada frame y a veces comenta el bioma donde más vivís (frases `obs_bioma_*`).
+
+**Próximo (sin implementar):** que esa memoria cambie lo que la isla hace y dice: avisos con el paisaje del bioma, acciones en lugares ecológicamente coherentes, regalos de convivencia. Los claros misteriosos podrían tener luz o niebla propia. Reglas: la isla sigue sin atacar salvo daño del jugador y el vínculo sigue oculto.
+
+## Cueva = pozo con luces (rediseño)
+La cueva de rocas se quitó. Ahora es un POZO excavado en el terreno (`IslandTerrain._pit_carve`: radio 5,5 m, 5 m de profundidad) con una rampa en trinchera hacia el centro de la isla. Adentro: cristales y 14 luces flotantes que se mueven, motas de luz y una luz ambiente; el color sigue siendo el del vínculo (turquesa, dorado si confía, rojo si es trampa). Refugio de día; de noche la isla sella la rampa con una roca (`seal_cave`). El resto de la lógica (cerebro, audio, trampa) no cambió.
+
+## Vegetación: solo pack Quaternius
+Árboles (NormalTree, PineTree, Birch, Maple, DeadTree, Palm), arbustos y rocas salen solo del pack nuevo. Quedan del MegaKit: pasto, helechos, tréboles y plantas del suelo.
+
+## Cueva más profunda, lluvia y plantas nuevas
+Pozo de 8 m con paredes y techo de rocas del pack Quaternius. `Weather` (weather.gd): lluvia ocasional (ciclo de 2-5 min sin lluvia, 1-2 min con lluvia) con gotas y sonido sintetizado; dentro de la cueva (`is_inside_cave`) no cae y el sonido baja. Pasto, pétalos y plantas del suelo ahora son `UQ:` del pack nuevo (ya no queda MegaKit en la vegetación).
+
+**Pospuesto por memoria (decisión del usuario):** pasto del pack nuevo, luces extra de la cueva y clima/lluvia. `weather.gd` y `SoundBank.rain` quedan escritos pero `Weather` no se agrega en main.gd.
+
+## Personaje nuevo (Quaternius CC0)
+Modelo `res://assets/character/quaternius_cc0-male-character-1352.glb` (7.9k tris, 42 huesos, 6 materiales: piel, ojos, pelo, remera, pantalón, medias → fácil de cambiar la ropa). `castaway_model.gd` (CastawayModel) maneja las animaciones del archivo: Idle, Walk, Run, Jump, RunningJump, Death y SwordSlash (tajo al cortar, tecla Q). `castaway_pose.gd` (SkeletonModifier3D) suma poses por código: agacharse (Ctrl, 45% de velocidad, sin saltar), recoger, comer y beber (`Castaway.play_action`). Reemplaza al rig procedural viejo (castaway_rig.gd, borrado). No hay cara animada (`express()` queda vacío) ni nadar (no se puede entrar al mar profundo). Escena de prueba: `res://scenes/test_character.tscn`.
+
+Árbol ancestral (island_features) y árbol corazón (island_life) ahora son MapleTree del pack nuevo (escala 2.4 y 1.5). Se eliminó la copa de esferas y el TwistedTree: ya no quedan árboles del MegaKit.

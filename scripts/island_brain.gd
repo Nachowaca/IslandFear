@@ -50,6 +50,7 @@ var _heading: Vector3 = Vector3.ZERO
 var _firsts: Dictionary = {}
 
 var terrain: IslandTerrain
+var eco: EcoMap                                 ## mapa ecológico: le dice en qué bioma estás
 var features: IslandFeatures
 var player: Castaway
 
@@ -204,6 +205,8 @@ func _obs_add(key: String, v: float) -> void:
 
 func _observe(delta: float, speed: float, ppos: Vector3) -> void:
 	_obs_add("dist", speed * delta)
+	if eco != null:
+		Isla.sumar_bioma(eco.get_bioma_nombre(ppos), delta)
 	if speed < 0.5:
 		_obs_add("still", delta)
 	elif speed > player.walk_speed * 1.15:
@@ -384,6 +387,11 @@ func _speak_about_player() -> String:
 	var roll: float = _rng.randf()
 	if roll < 0.2:
 		return voice.riddle(ctx)
+	var fav: Dictionary = Isla.bioma_favorito()
+	if str(fav["nombre"]) != "" and float(fav["fraccion"]) > 0.35 and roll > 0.88:
+		var topic_b: String = "obs_bioma_" + str(fav["nombre"]).replace("zona árida", "arido")
+		if IslandVoice.POOLS.has(topic_b):
+			return voice.line(topic_b, ctx, tone)
 	if roll < 0.3 and turns > 6.0:
 		return voice.line("obs_turns", ctx, tone)
 	if roll < 0.38 and revisit > 1.5:
@@ -1075,6 +1083,11 @@ func status_lines() -> Array[String]:
 	lines.append("Te vio: %d m, quieto %d s, corrió %d s, animales %d s, tomó %d" % [int(float(_tot.get("dist", 0.0))), int(float(_tot.get("still", 0.0))), int(float(_tot.get("run", 0.0))), int(float(_tot.get("animals", 0.0))), int(float(_tot.get("taken", 0.0)))])
 	lines.append("Te ve en: %s" % ("la cueva" if _in_cave else "descubierto"))
 	lines.append("Zona que más visitás: %s" % hottest_zone())
+	var fav_s: Dictionary = Isla.bioma_favorito(10.0)
+	if str(fav_s["nombre"]) != "":
+		lines.append("Bioma donde vivís: %s (%d%% de tu tiempo)" % [fav_s["nombre"], int(float(fav_s["fraccion"]) * 100.0)])
+	if eco != null and player != null:
+		lines.append("Estás en: %s, suelo %s, humedad %d%%" % [eco.get_bioma_nombre(player.global_position), eco.get_suelo_nombre(player.global_position), int(eco.get_humedad(player.global_position) * 100.0)])
 	var parts: Array[String] = []
 	for id: String in ["rockfall", "thorns", "crab_rush", "cave_trap"]:
 		var t: int = int(s_tries.get(id, 0))

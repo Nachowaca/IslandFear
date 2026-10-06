@@ -12,15 +12,17 @@ const LEAF_TEX: Dictionary = {
 
 const LEAF_SHADER: Shader = preload("res://shaders/wind_leaf.gdshader")
 const WIND_PARAMS: Dictionary = {
-	"tree": {"sway": 0.16, "base_y": 2.2, "height_ref": 5.5, "flutter": 0.025, "speed": 1.1},
-	"bush": {"sway": 0.05, "base_y": 0.1, "height_ref": 1.5, "flutter": 0.02, "speed": 1.5},
-	"grass": {"sway": 0.07, "base_y": 0.05, "height_ref": 1.5, "flutter": 0.012, "speed": 1.8},
+	"tree": {"sway": 0.16, "base_y": 2.2, "height_ref": 5.5, "flutter": 0.025, "speed": 1.1, "push": 0.0},
+	"bush": {"sway": 0.05, "base_y": 0.1, "height_ref": 1.5, "flutter": 0.02, "speed": 1.5, "push": 0.8},
+	"grass": {"sway": 0.07, "base_y": 0.05, "height_ref": 1.5, "flutter": 0.012, "speed": 1.8, "push": 1.0},
 }
 
 static var _scenes: Dictionary = {}
 static var _mats: Dictionary = {}
 
 static func exists(model: String) -> bool:
+	if model.begins_with("UQ:"):
+		return ResourceLoader.exists(UQ_DIR + "glTF/" + model.substr(3) + ".gltf")
 	return ResourceLoader.exists(DIR + model + ".gltf")
 
 ## Instancia un modelo del pack. `tint` multiplica el color de las hojas; `vis_end` > 0 oculta a esa distancia.
@@ -35,7 +37,7 @@ static func make(model: String, tint: Color = Color.WHITE, vis_end: float = 0.0)
 
 ## Un único MultiMeshInstance3D con muchas copias de un modelo (para pasto, helechos, flores, piedritas…).
 static func multi(model: String, xforms: Array[Transform3D], vis_end: float = 90.0, tint: Color = Color.WHITE, shadows: bool = false) -> MultiMeshInstance3D:
-	var src: Node3D = make(model, tint)
+	var src: Node3D = make_uq(model.substr(3), tint) if model.begins_with("UQ:") else make(model, tint)
 	var mi: MeshInstance3D = _first_mesh(src)
 	if mi == null:
 		src.free()
@@ -127,3 +129,92 @@ static func _kind(model: String) -> String:
 	if model.begins_with("Grass") or model.begins_with("Fern") or model.begins_with("Plant") or model.begins_with("Clover"):
 		return "grass"
 	return ""
+
+
+# ---------------------------------------------------------------- Ultimate Stylized Nature (Quaternius)
+const UQ_DIR := "res://assets/ultimate_nature/"
+static var _uq_mats: Dictionary = {}
+
+## Instancia un modelo del pack Ultimate Stylized Nature. Los de `FBX/` (palmeras, rocas…) están en centímetros
+## (el nodo ya trae escala 100); los de `glTF/` (abedul, arce, arbustos, flores…) en metros.
+## Texturas y viento se asignan acá porque el FBX no las enlaza.
+static func make_uq(model: String, tint: Color = Color.WHITE, vis_end: float = 0.0) -> Node3D:
+	var ps: PackedScene = _scenes.get("uq:" + model)
+	var fbx: bool = ResourceLoader.exists(UQ_DIR + "FBX/" + model + ".fbx")
+	if ps == null:
+		ps = load(UQ_DIR + ("FBX/" + model + ".fbx" if fbx else "glTF/" + model + ".gltf")) as PackedScene
+		_scenes["uq:" + model] = ps
+	var n: Node3D = ps.instantiate() as Node3D
+	_uq_fix(n, tint, vis_end, fbx, _kind(model))
+	return n
+
+static func _uq_fix(n: Node, tint: Color, vis_end: float, fbx: bool, kind: String) -> void:
+	if n is MeshInstance3D:
+		var mi: MeshInstance3D = n as MeshInstance3D
+		if mi.mesh != null:
+			for i in mi.mesh.get_surface_count():
+				var m: Material = mi.mesh.surface_get_material(i)
+				var nm: String = m.resource_name if m != null else ""
+				if nm == "" and fbx:
+					nm = "Grass"               # Grass_Large del FBX viene sin nombre de material
+				mi.set_surface_override_material(i, _uq_mat(nm, tint, fbx, kind))
+		if vis_end > 0.0:
+			mi.visibility_range_end = vis_end
+			mi.visibility_range_end_margin = vis_end * 0.1
+			mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+	for c in n.get_children():
+		_uq_fix(c, tint, vis_end, fbx, kind)
+
+static func _uq_mat(nm: String, tint: Color, fbx: bool, kind: String) -> Material:
+	var key: String = "%s|%s|%s|%s" % [nm, tint.to_html(), fbx, kind]
+	if _uq_mats.has(key):
+		return _uq_mats[key]
+	var out: Material
+	var g: String = UQ_DIR + "glTF/"
+	var u: float = 0.01 if fbx else 1.0                # unidad local -> metros
+	if nm.ends_with("_Leaves") or nm == "Grass":
+		var sh := ShaderMaterial.new()
+		sh.shader = LEAF_SHADER
+		if nm == "MapleTree_Leaves":   # la textura original es roja (otoño): usamos la versión en gris teñida de verde
+			sh.set_shader_parameter("albedo_tex", load(g + "MapleTree_Leaves_BW.png"))
+			sh.set_shader_parameter("tint", Color(0.42, 0.7, 0.26) * tint)
+		else:
+			sh.set_shader_parameter("albedo_tex", load(g + nm + ".png"))
+			sh.set_shader_parameter("tint", Color(0.9, 1.0, 0.8) * tint if nm == "BirchTree_Leaves" else tint)
+		var pr: Dictionary = WIND_PARAMS.get(kind if kind != "" else "tree")
+		sh.set_shader_parameter("sway", float(pr["sway"]) * (1.8 if nm.begins_with("Palm") else 1.0))
+		sh.set_shader_parameter("base_y", float(pr["base_y"]) * (1.0 if nm.begins_with("Palm") else 1.0) * (1.4 if nm.begins_with("Palm") else 1.0) * u)
+		sh.set_shader_parameter("height_ref", float(pr["height_ref"]) * 0.6 * u if nm.begins_with("Palm") else float(pr["height_ref"]) * u)
+		sh.set_shader_parameter("flutter", pr["flutter"])
+		sh.set_shader_parameter("speed", pr["speed"])
+		sh.set_shader_parameter("push", pr["push"])
+		Wind.register(sh)
+		out = sh
+	elif nm == "Flowers":
+		var sf := StandardMaterial3D.new()
+		sf.albedo_texture = load(g + "Flowers.png") as Texture2D
+		sf.cull_mode = BaseMaterial3D.CULL_DISABLED
+		sf.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+		sf.roughness = 1.0
+		out = sf
+	elif nm == "Rock":
+		var sr := StandardMaterial3D.new()
+		sr.albedo_texture = load(g + "Rocks.jpg") as Texture2D
+		sr.roughness = 1.0
+		sr.albedo_color = Color(0.82, 0.8, 0.78)
+		out = sr
+	elif nm.ends_with("_Trunk") or nm.ends_with("_Bark"):
+		var sm := StandardMaterial3D.new()
+		sm.albedo_texture = load(g + nm + ".jpg") as Texture2D
+		var nrm: String = g + nm + "_Normal.png"
+		if ResourceLoader.exists(nrm):
+			sm.normal_enabled = true
+			sm.normal_texture = load(nrm) as Texture2D
+		sm.roughness = 1.0
+		out = sm
+	else:
+		var sm2 := StandardMaterial3D.new()
+		sm2.albedo_color = Color(0.5, 0.5, 0.5)
+		out = sm2
+	_uq_mats[key] = out
+	return out

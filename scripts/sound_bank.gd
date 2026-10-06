@@ -189,6 +189,26 @@ static func drone() -> AudioStreamWAV:
 			+ 0.3 * sin(TAU * 27.5 * t) + y * 1.2
 	return _wav(raw, sr, true, 0.7)
 
+## Lluvia: ruido filtrado con goteo suave.
+static func rain() -> AudioStreamWAV:
+	var sr: int = SR_LO
+	var L: float = 10.0
+	var n: int = int(L * float(sr))
+	var raw := PackedFloat32Array()
+	raw.resize(n)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 83
+	var lo: float = 0.0
+	var a: float = _alpha(5200.0, sr)
+	var a2: float = _alpha(700.0, sr)
+	var lo2: float = 0.0
+	for i in n:
+		var x: float = rng.randf() * 2.0 - 1.0
+		lo += a * (x - lo)
+		lo2 += a2 * (lo - lo2)
+		raw[i] = (lo - lo2) * 1.6
+	return _wav(raw, sr, true, 0.5)
+
 static func cave_hum() -> AudioStreamWAV:
 	var sr: int = SR_LO
 	var L: float = 12.0
