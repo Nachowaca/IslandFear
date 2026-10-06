@@ -1,0 +1,9 @@
+# Godot 4+
+.godot/
+/android/
+
+# Plugins del editor (no son parte del juego)
+addons/ziva_agent/
+addons/godot_ai/
+.ziva/
+.DS_Store
