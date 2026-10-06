@@ -49,6 +49,7 @@ func take_damage(amount: float, source: String = "") -> void:
 	_since_damage = 0.0
 	_shake = maxf(_shake, 0.4 + amount * 0.015)
 	damaged.emit(amount, source)
+	express("pain", 0.8)
 	if health <= 0.0:
 		dead = true
 		controllable = false
@@ -67,15 +68,15 @@ var terrain: IslandTerrain
 
 @onready var _pivot: Node3D = $CameraPivot
 @onready var _camera: Camera3D = $CameraPivot/Camera3D
-@onready var _body: Node3D = $Model/Body
-@onready var _foot_l: Node3D = $Model/Body/FootL
-@onready var _foot_r: Node3D = $Model/Body/FootR
-@onready var _torso: Node3D = $Model/Body/Torso
-@onready var _robe: Node3D = $Model/Body/Torso/Robe
-@onready var _arm_l: Node3D = $Model/Body/Torso/ArmL
-@onready var _arm_r: Node3D = $Model/Body/Torso/ArmR
-@onready var _head: Node3D = $Model/Body/Torso/Head
-@onready var _hair: Node3D = $Model/Body/Torso/Head/HairPivot
+@onready var _model: Node3D = $Model
+
+var _rig: CastawayRig
+var _prev_hspeed: float = 0.0
+
+## Cambia la expresión de la cara un rato (neutral, fear, pain, tired, smile, curious, determined, surprise, suspicious).
+func express(expr_name: String, seconds: float = 1.5) -> void:
+	if _rig != null:
+		_rig.express(expr_name, seconds)
 
 var _yaw: float = 0.0
 var _pitch: float = -0.05
@@ -144,6 +145,13 @@ func _emit_step(power: float) -> void:
 
 func _ready() -> void:
 	add_to_group("player")
+	for old: Node in _model.get_children():
+		_model.remove_child(old)
+		old.queue_free()
+	_rig = CastawayRig.new()
+	_rig.name = "Rig"
+	_model.add_child(_rig)
+	_rig.build()
 	_make_step_fx()
 	_pivot.top_level = true
 	_yaw = global_rotation.y
@@ -268,78 +276,28 @@ func _animate(delta: float) -> void:
 	var h_speed: float = Vector2(velocity.x, velocity.z).length()
 	var blend: float = clampf(h_speed / walk_speed, 0.0, 1.0)
 	var run_amt: float = clampf((h_speed - walk_speed) / maxf(run_speed - walk_speed, 0.1), 0.0, 1.0)
-	_phase += h_speed * delta * stride_rate
-	var s: float = sin(_phase)
-	var c: float = cos(_phase)
+	_phase += h_speed * delta * _rig.stride_per_meter(blend, run_amt) * (stride_rate / 1.7)
 	var air: bool = not _grounded and controllable
 
-	# Pisadas: una por cada medio ciclo de paso
-	var step_idx: int = int(floor(_phase / PI))
+	# Pisadas: el pie apoya cuando la pierna llega al máximo hacia adelante
+	var step_idx: int = int(floor((_phase - PI * 0.5) / PI))
 	if step_idx != _last_step:
 		_last_step = step_idx
 		if _grounded and controllable and h_speed > 1.0:
 			_emit_step(h_speed)
 
-	# Aterrizaje: aplastar al caer
+	# Aterrizaje: flexiona las rodillas
 	if _grounded and not _prev_grounded and controllable:
 		_land_squash = clampf(-_prev_vy * 0.025, 0.0, 0.3)
 		_emit_step(10.0)
+		if _land_squash > 0.15:
+			express("surprise", 0.5)
 	_prev_grounded = _grounded
-	_land_squash = lerpf(_land_squash, 0.0, 1.0 - exp(-10.0 * delta))
+	_land_squash = lerpf(_land_squash, 0.0, 1.0 - exp(-9.0 * delta))
 
-	# Pies: pasos con levantamiento
-	var stride: float = lerpf(0.22, 0.4, run_amt) * blend
-	var lift: float = lerpf(0.12, 0.2, run_amt) * blend
-	var fl: Vector3 = Vector3(0.14, 0.05 + maxf(0.0, c) * lift, -0.1 - s * stride)
-	var fr: Vector3 = Vector3(-0.14, 0.05 + maxf(0.0, -c) * lift, -0.1 + s * stride)
-	if air:
-		fl = Vector3(0.14, 0.2, -0.2)
-		fr = Vector3(-0.14, 0.17, 0.0)
-	var k: float = 1.0 - exp(-25.0 * delta)
-	_foot_l.position = _foot_l.position.lerp(fl, k)
-	_foot_r.position = _foot_r.position.lerp(fr, k)
-
-	# Brazos: balanceo opuesto a las piernas (+ abiertos en el aire)
-	var arm_amp: float = lerpf(0.6, 1.2, run_amt) * blend
-	var idle_sway: float = sin(_time * 1.5) * 0.04
-	var al: Vector3 = Vector3(-s * arm_amp + idle_sway, 0.0, 0.12 + run_amt * 0.1)
-	var ar: Vector3 = Vector3(s * arm_amp - idle_sway, 0.0, -0.12 - run_amt * 0.1)
-	if air:
-		al = Vector3(-0.3, 0.0, 0.9)
-		ar = Vector3(-0.3, 0.0, -0.9)
-	_arm_l.rotation = _arm_l.rotation.lerp(al, k)
-	_arm_r.rotation = _arm_r.rotation.lerp(ar, k)
-
-	# Cuerpo: rebote, estirar/aplastar
-	var bounce: float = (1.0 - cos(2.0 * _phase)) * 0.5 * lerpf(0.05, 0.1, run_amt) * blend
-	_body.position.y = bounce
-	var sy: float = 1.0 - _land_squash
-	if air:
-		sy += clampf(velocity.y * 0.012, -0.05, 0.1)
-	sy += sin(2.0 * _phase) * 0.02 * blend
-	var sxz: float = 1.0 / sqrt(maxf(sy, 0.5))
-	_body.scale = Vector3(sxz, sy, sxz)
-
-	# Torso: inclinación al avanzar, giro y vaivén de caderas, respiración
-	var lean: float = blend * 0.06 + run_amt * 0.16
-	var torso_rot: Vector3 = Vector3(-lean, -s * 0.18 * blend, s * 0.05 * blend)
-	_torso.rotation = _torso.rotation.lerp(torso_rot, k)
-	_torso.scale.y = 1.0 + sin(_time * 1.9) * 0.012 * (1.0 - blend)
-	var swish: float = 1.0 + absf(s) * 0.05 * blend
-	_robe.scale = Vector3(swish, 1.0, swish)
-
-	# Cabeza: mira al frente compensando la inclinación + cabeceo
-	var look_y: float = sin(_time * 0.7) * 0.1 * (1.0 - blend)
-	_head.rotation = Vector3(lean * 0.7 + c * 0.03 * blend, look_y, 0.0)
-
-	# Pelo: se arrastra hacia atrás con la velocidad y se mueve al girar
-	var hair_x: float = -(0.12 + h_speed / run_speed * 0.9) + sin(_time * 3.0) * 0.04
-	if air:
-		hair_x += clampf(-velocity.y * 0.03, -0.3, 0.6)
-	var hair_z: float = clampf(_yaw_rate * 0.04, -0.6, 0.6)
-	var hk: float = 1.0 - exp(-6.0 * delta)
-	_hair.rotation.x = lerpf(_hair.rotation.x, hair_x, hk)
-	_hair.rotation.z = lerpf(_hair.rotation.z, hair_z, hk)
+	var accel: float = (h_speed - _prev_hspeed) / maxf(delta, 0.0001)
+	_prev_hspeed = h_speed
+	_rig.pose(delta, _phase, h_speed, walk_speed, run_speed, air, _grounded, velocity.y, _yaw_rate, accel, _land_squash * 2.5, health / max_health, _time)
 
 func _update_pivot(delta: float) -> void:
 	_pivot.global_position = global_position + Vector3(0, 1.5, 0)

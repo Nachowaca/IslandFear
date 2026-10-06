@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="AccionIsla" format=3]
+
+[ext_resource type="Script" path="res://scripts/accion_isla.gd" id="1_kf3xt"]
+
+[resource]
+script = ExtResource("1_kf3xt")
+id = "echo"
+nombre = "Eco de tus pasos"
+cooldown = 85.0
+peso_emocion = {
+"confianza": 0.1,
+"curiosidad": 0.5
+}
+peso_contexto = {
+"moviendo": 0.1
+}

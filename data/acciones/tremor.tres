@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="AccionIsla" format=3]
+
+[ext_resource type="Script" path="res://scripts/accion_isla.gd" id="1_pnydi"]
+
+[resource]
+script = ExtResource("1_pnydi")
+id = "tremor"
+nombre = "Temblor"
+cooldown = 45.0
+costo = 5.0
+peso_emocion = {
+"enojo": 0.4,
+"miedo": 0.2
+}
+peso_contexto = {
+"dia": 0.1,
+"sagrado": 0.35
+}

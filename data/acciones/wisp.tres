@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="AccionIsla" format=3]
+
+[ext_resource type="Script" path="res://scripts/accion_isla.gd" id="1_t1x87"]
+
+[resource]
+script = ExtResource("1_t1x87")
+id = "wisp"
+nombre = "Luz lejana"
+cooldown = 75.0
+base = 0.25
+peso_emocion = {
+"confianza": 0.3,
+"curiosidad": 0.35
+}
+peso_contexto = {
+"noche": 0.5
+}

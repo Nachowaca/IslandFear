@@ -6,6 +6,16 @@
 Juego 3D low-poly de supervivencia (Godot 4.7, Forward+, Mac M1/Metal). Un náufrago (pelo largo, barba, túnica blanca rota) llega en una barca arrastrada por la corriente a una isla **viva**, con un "cerebro" que piensa, lo estudia y no lo quiere ahí.
 La isla es un NPC más: tiene carácter, memoria y voz. **Primero es misterio; nunca ataca porque sí, solo si el jugador le hace mal.**
 
+## Historia y final (definido por el usuario)
+- El jugador tiene **7 vidas**. Cada muerte es una vida; la isla recuerda y cambia su personalidad según cómo jugó esa vida (destructivo → desconfiada, cuidadoso → abierta).
+- **Final:** tras la vida 7, la isla calcula un final según el acumulado (convivir o no) y **el jugador se convierte en la isla**. Después el ciclo se reinicia, distinto en cada juego.
+- Hoja de ruta de la IA (3 prompts del usuario, cada uno: proponer enfoque y esperar OK antes de escribir código):
+  1. Memoria + emociones: contadores (árboles cortados, fuegos, animales cazados, ofrendas, tiempo corriendo/explorando), mapa de calor de zonas (dónde pasa / dónde rompe), emociones 0..1 (confianza, enojo, miedo, curiosidad) con valor base y decaimiento, `registrar_evento(tipo, zona)`, señal `emocion_cambiada`.
+  2. Decisión: catálogo de acciones como Resources (niebla, tormenta, sonidos, mover_vegetacion, criatura, regalo, nada) con cooldown; puntúa cada 1–2 s según emociones + contexto; azar ponderado; "nada" también puntúa; por ahora solo imprime puntajes.
+  3. Acciones reales + 7 vidas: niebla (WorldEnvironment), sonido 3D ambiente, mover vegetación; guardar personalidad al morir (Resource/JSON) y cargarla en la vida siguiente; final en la vida 7.
+- Sin LLM, solo variables.
+- Decisión implementada (enfoque A): catálogo de `AccionIsla` (.tres), puntaje = base + emociones×pesos + contexto×pesos, azar ponderado, "nada" compite, hueco de silencio de cola larga tras cada acción. Si no gusta cómo se siente, anotar acá el enfoque B y comparar.
+
 ## Preferencias del usuario
 - Habla español rioplatense (Montevideo, Uruguay). Quiere respuestas CORTAS, sin explicaciones largas.
 - Trabaja paso a paso ("vamos por partes"): primero diseño, después jugabilidad.

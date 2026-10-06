@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AccionIsla" format=3]
+
+[ext_resource type="Script" path="res://scripts/accion_isla.gd" id="1_uwvqj"]
+
+[resource]
+script = ExtResource("1_uwvqj")
+id = "tormenta"
+nombre = "Tormenta"
+cooldown = 240.0
+costo = 12.0
+implementada = false
+base = 0.12
+peso_emocion = {
+"confianza": -0.3,
+"enojo": 0.6,
+"miedo": 0.2
+}
+peso_contexto = {
+"noche": 0.2
+}

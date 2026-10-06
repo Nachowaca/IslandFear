@@ -92,24 +92,23 @@ var _last_mood: Mood = Mood.CALM
 var _first_words: bool = false
 var _rng := RandomNumberGenerator.new()
 
-var _actions: Array[Dictionary] = [
-	{"id": "whisper", "label": "Susurro", "cost": 1.0, "cd": 22.0, "min_h": 5.0, "damaging": false},
-	{"id": "tremor", "label": "Temblor", "cost": 5.0, "cd": 45.0, "min_h": 12.0, "damaging": false},
-	{"id": "scare_birds", "label": "Espantar aves", "cost": 3.0, "cd": 55.0, "min_h": 10.0, "damaging": false},
-	{"id": "eyes", "label": "Ojos en la oscuridad", "cost": 4.0, "cd": 50.0, "min_h": 18.0, "damaging": false},
-	{"id": "rockfall", "label": "Caída de rocas", "cost": 18.0, "cd": 20.0, "min_h": 30.0, "damaging": true},
-	{"id": "thorns", "label": "Raíces espinosas", "cost": 22.0, "cd": 28.0, "min_h": 38.0, "damaging": true},
-	{"id": "crab_rush", "label": "Plaga de cangrejos", "cost": 20.0, "cd": 70.0, "min_h": 40.0, "damaging": true},
-	{"id": "echo", "label": "Eco de tus pasos", "cost": 3.0, "cd": 85.0, "min_h": 0.0, "damaging": false},
-	{"id": "footsteps", "label": "Pasos detrás tuyo", "cost": 2.0, "cd": 60.0, "min_h": 0.0, "damaging": false},
-	{"id": "wisp", "label": "Luz lejana", "cost": 3.0, "cd": 75.0, "min_h": 0.0, "damaging": false},
-	{"id": "cave_trap", "label": "Trampa de la cueva", "cost": 35.0, "cd": 120.0, "min_h": 22.0, "damaging": true},
-]
+var _fog_tween: Tween
+var _gust_tween: Tween
+var _catalogo: Array[AccionIsla] = []
+var _t_ultima_accion: float = 0.0
+var _hueco: float = 6.0                          ## silencio mínimo antes de la próxima acción (cola larga)
+var decision_log: Array[String] = []
+const LOG_PATH: String = "user://isla_decisiones.log"
 
 func _ready() -> void:
 	_rng.randomize()
 	_world = get_parent() as Node3D
 	voice.rng.randomize()
+	s_deaths = maxi(s_deaths, Isla.vida - 1)       # las vidas gastadas sobreviven al cerrar el juego
+	_cargar_catalogo()
+	var lf: FileAccess = FileAccess.open(LOG_PATH, FileAccess.WRITE)     # un registro nuevo por partida
+	if lf != null:
+		lf.close()
 	hostility = 0.0
 	_forgive = _rng.randf_range(0.6, 1.6)
 	_sens = _rng.randf_range(0.7, 1.4)
@@ -160,8 +159,9 @@ func _process(delta: float) -> void:
 	# mapa de calor: dónde pasa el tiempo
 	var cell := Vector2i(int(floor(ppos.x / 8.0)), int(floor(ppos.z / 8.0)))
 	if not s_heat.has(cell):
-		_curiosity = minf(_curiosity + 0.18, 1.0)      # pisó un lugar nuevo: la isla se interesa
+		Isla.registrar_evento("explorar", ppos)        # pisó un lugar nuevo: la isla se interesa
 	s_heat[cell] = float(s_heat.get(cell, 0.0)) + delta
+	Isla.sumar_paso(ppos, delta)
 
 	_observe(delta, speed, ppos)
 	_study_movement(delta, speed, ppos)
@@ -184,13 +184,11 @@ func _process(delta: float) -> void:
 		_first_words = true
 		_say(voice.line("greet"), "whisper")
 
+	_t_ultima_accion += delta
 	_think_timer -= delta
 	if _think_timer <= 0.0:
+		_think_timer = _rng.randf_range(1.0, 2.0)      # decide cada 1-2 s
 		_think()
-		# tiempos de cola larga: a veces habla seguido, a veces calla un buen rato
-		var eff: float = _effective_hostility()
-		var mean: float = lerpf(16.0, 5.0, clampf(eff / 100.0, 0.0, 1.0)) * lerpf(1.4, 0.7, _noise)
-		_think_timer = clampf(exp(_rng.randfn(log(mean), 0.65)), 2.5, 75.0)
 
 ## Mide cómo se comporta el jugador: distancia, quietud, dónde está, si corre, si molesta animales o toma cosas.
 func _obs_add(key: String, v: float) -> void:
@@ -203,6 +201,9 @@ func _observe(delta: float, speed: float, ppos: Vector3) -> void:
 		_obs_add("still", delta)
 	elif speed > player.walk_speed * 1.15:
 		_obs_add("run", delta)
+		Isla.sumar_tiempo("tiempo_corriendo", delta)
+	if speed > 0.5 and speed <= player.walk_speed * 1.15:
+		Isla.sumar_tiempo("tiempo_explorando", delta)
 	if _in_cave:
 		_obs_add("cave", delta)
 	elif terrain != null:
@@ -231,12 +232,14 @@ func _observe(delta: float, speed: float, ppos: Vector3) -> void:
 		var amount: float = 0.5 * (2.0 if speed > player.walk_speed * 1.15 else 1.0)
 		_obs_add("animals", amount)
 		_add_offense(amount * 1.1, "animals")
+		Isla.registrar_evento("animal_molestado", ppos, amount)
 		if not _study_done:
 			_study_bonus += 1.0                     # molestar a sus criaturas acorta su paciencia
 	var count: int = get_tree().get_nodes_in_group("pickup").size()
 	if _pickup_count >= 0 and count < _pickup_count:
 		_obs_add("taken", float(_pickup_count - count))
 		_add_offense(0.5 * float(_pickup_count - count), "taken")   # tomar frutos molesta apenas
+		Isla.registrar_evento("fruto_tomado", ppos, float(_pickup_count - count))
 	_pickup_count = count
 
 ## Estudia cada movimiento: ruta, giros, dudas, regresos y primeras veces.
@@ -399,10 +402,11 @@ func _update_sacred(ppos: Vector3, delta: float) -> void:
 func _update_emotions(delta: float) -> void:
 	# humor errático: caminata aleatoria que vuelve lento hacia el centro
 	_noise = clampf(_noise + _rng.randfn(0.0, 0.12) * sqrt(delta) - (_noise - 0.5) * 0.04 * delta, 0.0, 1.0)
-	_curiosity = maxf(_curiosity - delta * 0.015, 0.05)
+	_curiosity = Isla.get_emocion("curiosidad")      # la curiosidad ahora vive en el autoload Isla
 	# lingerar en un lugar sagrado SÍ es una ofensa
 	if _sacred_pressure > 0.5:
 		_add_offense(0.5 * delta * aggression, "sacred")
+		Isla.registrar_evento("zona_sagrada", player.global_position, delta)
 	# perdona: más rápido cuando la ofensa es chica, y con altibajos según el humor
 	var mercy: float = _forgive * (0.5 + _noise) * (0.12 + 0.025 * offense)
 	if _satisfaction > 0.0:
@@ -439,44 +443,154 @@ func _mood_line(m: Mood) -> String:
 
 # ------------------------------------------------------------------ decisión
 
+
+func _cargar_catalogo() -> void:
+	_catalogo.clear()
+	var dir: DirAccess = DirAccess.open("res://data/acciones")
+	if dir == null:
+		push_warning("IslandBrain: falta res://data/acciones")
+		return
+	for f: String in dir.get_files():
+		var nombre: String = f.trim_suffix(".remap")
+		if nombre.ends_with(".tres"):
+			var r: Resource = load("res://data/acciones/" + nombre)
+			if r is AccionIsla:
+				_catalogo.append(r)
+
+func _contexto() -> Dictionary:
+	var h: float = 2.0
+	if terrain != null:
+		h = terrain.height_at(player.global_position.x, player.global_position.z)
+	var spd: float = Vector2(_vel_smooth.x, _vel_smooth.z).length()
+	return {
+		"noche": _night, "dia": 1.0 - _night,
+		"quieto": clampf(_still_time / 20.0, 0.0, 1.0),
+		"moviendo": clampf(spd / 4.0, 0.0, 1.0),
+		"corriendo": clampf((spd - player.walk_speed) / maxf(player.run_speed - player.walk_speed, 0.1), 0.0, 1.0),
+		"en_cueva": 1.0 if _in_cave else 0.0,
+		"playa": 1.0 if (h < 1.25 and not _in_cave) else 0.0,
+		"bosque": 1.0 if (h >= 1.25 and not _in_cave) else 0.0,
+		"sagrado": _sacred_pressure,
+		"tras_accion": 1.0 - clampf(_t_ultima_accion / 30.0, 0.0, 1.0),
+	}
+
+## ¿Se puede ejecutar ahora? (enfriamiento, energía, reglas de daño y condiciones propias de cada acción)
+func _disponible(a: AccionIsla) -> bool:
+	if float(_cooldowns.get(a.id, 0.0)) > 0.0 or energy < a.costo:
+		return false
+	if a.dano:
+		if not _study_done or _global_attack_cd > 0.0:
+			return false                    # primero te estudia; un ataque cada tanto
+		if a.id != "cave_trap" and _in_cave:
+			return false                    # la cueva protege
+		if _effective_hostility() < a.min_hostilidad:
+			return false
+	match a.id:
+		"scare_birds":
+			return not get_tree().get_nodes_in_group("songbirds").is_empty()
+		"eyes":
+			return _night >= 0.5 and terrain != null and not terrain.tree_positions.is_empty()
+		"crab_rush":
+			var near: int = 0
+			for n: Node in get_tree().get_nodes_in_group("crabs"):
+				if (n as Node3D).global_position.distance_to(player.global_position) < 45.0:
+					near += 1
+			return near >= 3
+		"echo":
+			return _path.size() >= 90
+		"footsteps":
+			return _vel_smooth.length() >= 0.5 or _still_time >= 8.0
+		"wisp":
+			return _night >= 0.35
+		"cave_trap":
+			return _night >= 0.55 and _in_cave and _cave_visit >= 6.0 and not _trap_active
+	return true
+
+## Lo que aprendió del jugador inclina la decisión (veredicto del estudio).
+func _bonus_veredicto(id: String) -> float:
+	match id:
+		"rockfall":
+			return 0.25 if _grievance == "sacred" else 0.0
+		"thorns":
+			return 0.2 if (_grievance == "still" or _grievance == "taken") else 0.0
+		"crab_rush":
+			return 0.5 if _grievance == "animals" else 0.0
+		"cave_trap":
+			return 0.4 if _grievance == "cave" else 0.0
+	return 0.0
+
+## Decisión: cada 1-2 s puntúa todas las acciones y elige con azar ponderado ("nada" también compite).
 func _think() -> void:
 	var eff: float = _effective_hostility()
-	# a veces simplemente calla y observa
-	if eff < 40.0 and _rng.randf() < 0.28 * (1.0 - clampf(_activity(), 0.0, 1.0)):
-		return
 	# antes de castigar, siempre avisa una vez
 	if eff >= 22.0 and _study_done and not _warned and _global_attack_cd <= 0.0 and not _in_cave:
 		_warned = true
 		_global_attack_cd = _rng.randf_range(9.0, 18.0)
 		_say(voice.line("warn_%s" % _last_offense if IslandVoice.POOLS.has("warn_%s" % _last_offense) else "warn_generic", {"who": _who(), "place": _sacred_name if _sacred_name != "" else "ese lugar"}, 1), "omen")
 		return
-	var cands: Array[Dictionary] = []
-	for a: Dictionary in _actions:
-		var id: String = a["id"]
-		if float(_cooldowns.get(id, 0.0)) > 0.0:
-			continue
-		if energy < float(a["cost"]):
-			continue
-		if a["damaging"] and eff < float(a["min_h"]):
-			continue
-		var s: float = _score(a)
-		if s > 0.18:
-			cands.append({"a": a, "s": s})
-	if cands.is_empty():
+	if _catalogo.is_empty():
 		return
-	cands.sort_custom(func(x: Dictionary, y: Dictionary) -> bool: return float(x["s"]) > float(y["s"]))
-	var top: Array = cands.slice(0, 3)
+	# mientras dure el hueco de silencio solo "nada" es posible (el silencio también cuenta)
+	if _t_ultima_accion < _hueco:
+		return
+	var emo: Dictionary = {}
+	for e: String in Isla.EMOCIONES:
+		emo[e] = Isla.get_emocion(e)
+	var ctx: Dictionary = _contexto()
+	var cands: Array[Dictionary] = []
+	for a: AccionIsla in _catalogo:
+		if a.id != "nada" and not _disponible(a):
+			continue
+		var res: Dictionary = a.puntuar(emo, ctx)
+		var s: float = float(res["puntaje"])
+		if a.id != "nada":
+			if a.dano:
+				s = (s + _bonus_veredicto(a.id)) * _learned(a.id) * lerpf(0.6, 1.0, _night) * (0.6 + eff / 100.0 * 0.6)
+			else:
+				s *= (0.5 + 0.9 * _activity()) * 0.55      # escala para que "nada" compita de igual a igual
+			s *= clampf(energy / (maxf(a.costo, 1.0) * 1.4), 0.5, 1.2)
+		s += _rng.randf() * 0.08
+		cands.append({"a": a, "s": s, "r": res["razones"]})
 	var total: float = 0.0
-	for c: Dictionary in top:
-		total += pow(float(c["s"]), 2.0)
+	for c: Dictionary in cands:
+		total += pow(float(c["s"]), 1.5)
 	var roll: float = _rng.randf() * total
-	var chosen: Dictionary = top[0]["a"]
-	for c: Dictionary in top:
-		roll -= pow(float(c["s"]), 2.0)
+	var chosen: Dictionary = cands[0]
+	for c: Dictionary in cands:
+		roll -= pow(float(c["s"]), 1.5)
 		if roll <= 0.0:
-			chosen = c["a"]
+			chosen = c
 			break
-	_execute(chosen)
+	_registrar_decision(chosen, cands, emo, eff)
+	var ac: AccionIsla = chosen["a"]
+	if ac.id == "nada":
+		_hueco = _t_ultima_accion + _rng.randf_range(2.0, 8.0)     # eligió callar: el silencio se alarga un poco
+		return
+	_t_ultima_accion = 0.0
+	var mean: float = lerpf(16.0, 5.0, clampf(eff / 100.0, 0.0, 1.0)) * lerpf(1.4, 0.7, _noise)
+	_hueco = clampf(exp(_rng.randfn(log(mean), 0.65)), 3.0, 75.0)
+	_execute(ac)
+
+func _registrar_decision(chosen: Dictionary, cands: Array[Dictionary], _emo: Dictionary, eff: float) -> void:
+	var sorted: Array[Dictionary] = cands.duplicate()
+	sorted.sort_custom(func(x: Dictionary, y: Dictionary) -> bool: return float(x["s"]) > float(y["s"]))
+	var tops: Array[String] = []
+	for i in mini(5, sorted.size()):
+		tops.append("%s %.2f" % [(sorted[i]["a"] as AccionIsla).id, float(sorted[i]["s"])])
+	var ac: AccionIsla = chosen["a"]
+	var why: String = ", ".join(chosen["r"] as Array)
+	var line: String = "[%ds] eligió %s%s (%.2f) | %s | porque: %s | hostilidad %d | %s" % [int(_time_on_island), ac.id, "" if ac.implementada else " [sin implementar]", float(chosen["s"]), "  ".join(tops), why if why != "" else "base", int(eff), Isla.resumen()]
+	decision_log.append(line)
+	if decision_log.size() > 8:
+		decision_log.pop_front()
+	print("[Isla] ", line)
+	var f: FileAccess = FileAccess.open(LOG_PATH, FileAccess.READ_WRITE)
+	if f == null:
+		f = FileAccess.open(LOG_PATH, FileAccess.WRITE)
+	if f != null:
+		f.seek_end()
+		f.store_line(line)
+		f.close()
 
 ## Cuánta "vida" muestra la isla ahora: mezcla curiosidad y humor errático.
 func _activity() -> float:
@@ -487,87 +601,13 @@ func _learned(id: String) -> float:
 	var hits: float = float(s_hits.get(id, 0))
 	return clampf((hits + 1.5) / (tries + 3.0) * 1.7, 0.45, 1.5)
 
-func _score(a: Dictionary) -> float:
-	var id: String = a["id"]
-	var eff: float = _effective_hostility()
-	var dmg: bool = a["damaging"]
-	if dmg:
-		if not _study_done:
-			return 0.0                      # primero te estudia: solo presagios
-		if id != "cave_trap" and _in_cave:
-			return 0.0                      # la cueva protege
-		if _global_attack_cd > 0.0:
-			return 0.0
-	var s: float = 0.0
-	match id:
-		"whisper":
-			s = 0.3 + (0.25 if _in_cave else 0.0) + 0.2 * _sacred_pressure
-		"tremor":
-			s = 0.35 + 0.4 * _sacred_pressure + 0.12 * (1.0 - _night)
-		"scare_birds":
-			s = 0.3 + 0.2 * _sacred_pressure
-			if get_tree().get_nodes_in_group("songbirds").is_empty():
-				return 0.0
-		"eyes":
-			if _night < 0.5 or terrain == null or terrain.tree_positions.is_empty():
-				return 0.0
-			s = 0.6 * _night
-		"rockfall":
-			s = 0.55 + 0.35 * _sacred_pressure
-			if _grievance == "sacred":
-				s += 0.25
-			if _still_time > 15.0:
-				s += 0.2
-			if player.global_position.y > 4.5:
-				s += 0.15
-		"thorns":
-			s = 0.5 + 0.35 * _sacred_pressure
-			if _still_time > 12.0:
-				s += 0.35
-			if _grievance == "still" or _grievance == "taken":
-				s += 0.2
-		"crab_rush":
-			var near: int = 0
-			for n: Node in get_tree().get_nodes_in_group("crabs"):
-				if (n as Node3D).global_position.distance_to(player.global_position) < 45.0:
-					near += 1
-			if near < 3:
-				return 0.0
-			s = 0.45
-			if _grievance == "animals":
-				s += 0.5                    # se venga con sus propias criaturas
-			if terrain != null and terrain.height_at(player.global_position.x, player.global_position.z) < 1.7:
-				s += 0.35
-		"echo":
-			if _path.size() < 90:
-				return 0.0
-			s = 0.35 + 0.3 * _curiosity
-		"footsteps":
-			if _vel_smooth.length() < 0.5 and _still_time < 8.0:
-				return 0.0
-			s = 0.3 + 0.2 * _night
-		"wisp":
-			if _night < 0.35:
-				return 0.0
-			s = 0.3 + 0.3 * _night + 0.2 * _curiosity
-		"cave_trap":
-			if _night < 0.55 or not _in_cave or _cave_visit < 6.0 or _trap_active:
-				return 0.0
-			s = 1.0 + (0.4 if _grievance == "cave" else 0.0)
-	if dmg:
-		s *= _learned(id) * lerpf(0.6, 1.0, _night) * (0.6 + eff / 100.0 * 0.6)
-	else:
-		s *= 0.4 + 1.1 * _activity()
-	s *= clampf(energy / (float(a["cost"]) * 1.4), 0.5, 1.2)
-	return s + _rng.randf() * (0.08 if dmg else 0.22)       # los presagios son más impredecibles
-
-func _execute(a: Dictionary) -> void:
-	var id: String = a["id"]
-	energy -= float(a["cost"])
-	_cooldowns[id] = float(a["cd"]) * exp(_rng.randfn(0.0, 0.45))     # cola larga: a veces vuelve enseguida, a veces tarda
-	last_action = "%s (%s)" % [a["label"], _reason(id)]
+func _execute(a: AccionIsla) -> void:
+	var id: String = a.id
+	energy -= a.costo
+	_cooldowns[id] = a.cooldown * exp(_rng.randfn(0.0, 0.45))     # cola larga: a veces vuelve enseguida, a veces tarda
+	last_action = "%s (%s)" % [a.nombre, _reason(id)]
 	action_taken.emit(id)
-	if a["damaging"]:
+	if a.dano:
 		_global_attack_cd = 7.0
 	match id:
 		"whisper":
@@ -600,6 +640,14 @@ func _execute(a: Dictionary) -> void:
 		"cave_trap":
 			_say(voice.line("atk_trap"), "attack")
 			_do_cave_trap()
+		"niebla":
+			_do_niebla()
+		"sonidos":
+			_do_sonidos()
+		"mover_vegetacion":
+			_do_vegetacion()
+		_:
+			pass   # tormenta, criatura, regalo: por ahora solo quedan en el registro de decisiones
 
 func _reason(id: String) -> String:
 	match id:
@@ -648,6 +696,57 @@ func _pick_whisper() -> String:
 	if eff > 60.0:
 		return _pick(["Andate.", "Este no es tu lugar.", "Cada vez me duele más tenerte."])
 	return _pick(["No eres bienvenido.", "Los náufragos nunca se quedan.", "Pequeño y frágil..."])
+
+## Niebla: sube la densidad de la niebla del mundo, la sostiene un rato y se disipa.
+func _do_niebla() -> void:
+	var dn: Node = get_tree().get_first_node_in_group("daynight")
+	if dn == null:
+		return
+	if _fog_tween != null and _fog_tween.is_valid():
+		_fog_tween.kill()
+	var peak: float = clampf(_rng.randf_range(0.009, 0.016) * (0.8 + Isla.get_emocion("miedo") * 2.0 + Isla.get_emocion("enojo")), 0.008, 0.026)
+	_say(voice.line("niebla"), "omen")
+	_fog_tween = create_tween()
+	_fog_tween.tween_property(dn, "fog_boost", peak, 12.0).set_trans(Tween.TRANS_SINE)
+	_fog_tween.tween_interval(_rng.randf_range(25.0, 55.0))
+	_fog_tween.tween_property(dn, "fog_boost", 0.0, 18.0).set_trans(Tween.TRANS_SINE)
+
+## Sonidos 3D cerca del jugador que se mueven un poco (AudioManager usa AudioStreamPlayer3D).
+func _do_sonidos() -> void:
+	var opciones: Array[String] = ["crack", "creak", "pad"]
+	if _in_cave:
+		opciones = ["drip", "creak", "rumble"]
+	elif _night > 0.5:
+		opciones = ["owl", "creak", "pad", "crack", "frog"]
+	elif terrain != null and terrain.height_at(player.global_position.x, player.global_position.z) < 1.25:
+		opciones = ["gull", "creak", "crack"]
+	var n: int = _rng.randi_range(1, 3)
+	var ang: float = _rng.randf() * TAU
+	var dist: float = _rng.randf_range(7.0, 16.0)
+	var id: String = opciones[_rng.randi() % opciones.size()]
+	for i in n:
+		if player == null or not is_instance_valid(player) or player.dead:
+			return
+		var dir: Vector3 = Vector3(cos(ang), 0.0, sin(ang))
+		var pos: Vector3 = player.global_position + dir * dist
+		pos.y = terrain.height_at(pos.x, pos.z) + 0.5
+		AudioManager.play(get_tree(), id, pos, _rng.randf_range(-6.0, -1.0))
+		ang += _rng.randf_range(-0.5, 0.5)
+		dist = maxf(dist + _rng.randf_range(-3.0, 2.0), 4.0)
+		await get_tree().create_timer(_rng.randf_range(0.6, 2.5)).timeout
+	if _rng.randf() < 0.25:
+		_say(voice.line("sonidos"), "omen")
+
+## Mover vegetación: una racha sacude todo el follaje y se calma.
+func _do_vegetacion() -> void:
+	if _gust_tween != null and _gust_tween.is_valid():
+		_gust_tween.kill()
+	_gust_tween = create_tween()
+	_gust_tween.tween_method(Wind.set_gust, 0.0, 1.0, 2.0)
+	_gust_tween.tween_interval(_rng.randf_range(6.0, 14.0))
+	_gust_tween.tween_method(Wind.set_gust, 1.0, 0.0, 5.0)
+	if _rng.randf() < 0.5:
+		_say(voice.line("vegetacion"), "omen")
 
 ## Una luz repite un tramo que recorriste antes, como si alguien te siguiera el rastro.
 func _do_echo() -> void:
@@ -861,8 +960,18 @@ func _on_attack_finished(hit: bool, aim: Vector3, ppos: Vector3, kind: String, n
 
 # ------------------------------------------------------------------ panel de depuración
 
+## Borra lo aprendido en memoria estática (al empezar un ciclo nuevo de 7 vidas).
+static func olvidar_todo() -> void:
+	s_tries.clear()
+	s_hits.clear()
+	s_heat.clear()
+	s_lead = 0.8
+	s_deaths = 0
+	s_grievance = ""
+
 func notify_death() -> void:
 	s_deaths += 1
+	Isla.registrar_evento("muerte_jugador")
 
 func hottest_zone() -> String:
 	var best_cell: Vector2i = Vector2i.ZERO
@@ -889,6 +998,7 @@ func hottest_zone() -> String:
 func status_lines() -> Array[String]:
 	var lines: Array[String] = []
 	lines.append("Estado: %s" % MOOD_NAMES[mood])
+	lines.append("Emociones: %s" % Isla.resumen())
 	lines.append("Agravios: %.1f (solo suben si le hacés mal)   Curiosidad: %d%%   Humor: %d%%" % [offense, int(_curiosity * 100.0), int(_noise * 100.0)])
 	lines.append("Hostilidad: %d / 100" % int(_effective_hostility()))
 	lines.append("Energía: %d / 100" % int(energy))
@@ -911,4 +1021,6 @@ func status_lines() -> Array[String]:
 	lines.append("Anticipación (puntería): %.2f" % s_lead)
 	lines.append("Muertes que recuerda: %d" % s_deaths)
 	lines.append("Última acción: %s" % last_action)
+	for i in range(maxi(decision_log.size() - 3, 0), decision_log.size()):
+		lines.append("· " + decision_log[i].left(110))
 	return lines

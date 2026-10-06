@@ -28,8 +28,19 @@ var _hud: Hud
 
 func _on_player_died() -> void:
 	_brain.notify_death()
-	_hud.show_death("La isla ganó esta vez.\nRecuerda cómo lo hizo.")
-	await get_tree().create_timer(5.0).timeout
+	var res: Dictionary = Isla.cerrar_vida()          # la personalidad de la isla se desplaza según cómo jugó
+	_hud.refresh_lives()
+	if bool(res["fin"]):
+		# séptima muerte: el jugador se convierte en la isla
+		var fin: Dictionary = Isla.calcular_final()
+		_hud.show_ending(str(fin["titulo"]), str(fin["cuerpo"]))
+		await get_tree().create_timer(22.0).timeout
+		Isla.nuevo_ciclo(str(fin["tipo"]))
+		IslandBrain.olvidar_todo()
+	else:
+		var n: int = int(res["vidas_restantes"])
+		_hud.show_death("La isla ganó esta vez.\nRecuerda cómo lo hizo.\n\n%s" % ("Te queda 1 vida." if n == 1 else "Te quedan %d vidas." % n))
+		await get_tree().create_timer(5.0).timeout
 	get_tree().reload_current_scene()
 
 func _ready() -> void:

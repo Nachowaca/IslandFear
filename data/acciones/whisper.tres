@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AccionIsla" format=3]
+
+[ext_resource type="Script" path="res://scripts/accion_isla.gd" id="1_r358b"]
+
+[resource]
+script = ExtResource("1_r358b")
+id = "whisper"
+nombre = "Susurro"
+cooldown = 22.0
+costo = 1.0
+base = 0.35
+peso_emocion = {
+"confianza": 0.1,
+"curiosidad": 0.3
+}
+peso_contexto = {
+"en_cueva": 0.25,
+"quieto": 0.15,
+"sagrado": 0.2
+}

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AccionIsla" format=3]
+
+[ext_resource type="Script" path="res://scripts/accion_isla.gd" id="1_b4020"]
+
+[resource]
+script = ExtResource("1_b4020")
+id = "niebla"
+nombre = "Niebla"
+cooldown = 90.0
+costo = 4.0
+base = 0.25
+peso_emocion = {
+"confianza": -0.1,
+"curiosidad": 0.25,
+"enojo": 0.2,
+"miedo": 0.3
+}
+peso_contexto = {
+"noche": 0.3
+}

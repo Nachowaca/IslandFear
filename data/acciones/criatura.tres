@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AccionIsla" format=3]
+
+[ext_resource type="Script" path="res://scripts/accion_isla.gd" id="1_4vhy1"]
+
+[resource]
+script = ExtResource("1_4vhy1")
+id = "criatura"
+nombre = "Criatura"
+cooldown = 150.0
+costo = 8.0
+implementada = false
+base = 0.15
+peso_emocion = {
+"confianza": -0.1,
+"curiosidad": 0.35
+}
+peso_contexto = {
+"bosque": 0.2,
+"noche": 0.3
+}

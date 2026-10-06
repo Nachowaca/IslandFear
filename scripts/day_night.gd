@@ -41,6 +41,7 @@ var _f10_was_down: bool = false
 var _lighthouse: Lighthouse
 var _water_mat: ShaderMaterial
 var _vis_timer: float = 0.0
+var fog_boost: float = 0.0   ## niebla extra que levanta la isla (0 = normal)
 var _sun_shadow_on: bool = true
 var _moon_shadow_on: bool = false
 var _fx: AmbientFx
@@ -225,7 +226,7 @@ func _update(refresh_slow: bool) -> void:
 	# Ambiente, niebla y exposición
 	_env.ambient_light_energy = lerpf(0.7, 1.7, night) + dusk * 0.6
 	_env.fog_light_color = horizon
-	_env.fog_density = lerpf(0.0012, 0.0024, night) + dusk * 0.0006
+	_env.fog_density = lerpf(0.0012, 0.0024, night) + dusk * 0.0006 + fog_boost
 	_env.tonemap_exposure = lerpf(0.95, 1.1, night)
 
 	# Reloj

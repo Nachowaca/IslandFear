@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="AccionIsla" format=3]
+
+[ext_resource type="Script" path="res://scripts/accion_isla.gd" id="1_wflr5"]
+
+[resource]
+script = ExtResource("1_wflr5")
+id = "rockfall"
+nombre = "Caída de rocas"
+cooldown = 20.0
+costo = 18.0
+dano = true
+min_hostilidad = 30.0
+base = 0.4
+peso_emocion = {
+"confianza": -0.3,
+"enojo": 0.6
+}
+peso_contexto = {
+"quieto": 0.2,
+"sagrado": 0.35
+}

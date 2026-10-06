@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AccionIsla" format=3]
+
+[ext_resource type="Script" path="res://scripts/accion_isla.gd" id="1_t0xae"]
+
+[resource]
+script = ExtResource("1_t0xae")
+id = "nada"
+nombre = "Nada (silencio)"
+cooldown = 0.0
+costo = 0.0
+base = 0.45
+peso_emocion = {
+"confianza": 0.1,
+"curiosidad": -0.2
+}
+peso_contexto = {
+"quieto": 0.1,
+"tras_accion": 0.5
+}

@@ -18,6 +18,7 @@ var brain: IslandBrain
 
 # salud
 var _hp_root: Control
+var _lives: LivesBar
 var _fill: Panel
 var _fill_style: StyleBoxFlat
 var _gloss: Panel
@@ -117,6 +118,8 @@ func _ready() -> void:
 		_ghost_shown = player.health
 	if brain != null:
 		brain.thought.connect(_on_thought)
+	if Isla.vida > 1 or Isla.ciclo > 1:
+		show_toast("Vida %d de %d" % [Isla.vida, Isla.VIDAS_MAX], Color(0.5, 0.95, 0.9))
 
 func _build_health() -> void:
 	_hp_root = Control.new()
@@ -185,6 +188,13 @@ func _build_health() -> void:
 	_refuge_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hp_root.add_child(_refuge_label)
 
+	# las 7 vidas, sobre el medidor de salud
+	_lives = LivesBar.new()
+	_lives.position = Vector2(40, -10)
+	_lives.size = Vector2(LivesBar.STEP * float(LivesBar.TOTAL) + 8.0, 24)
+	_lives.alive = Isla.vidas_restantes()
+	_hp_root.add_child(_lives)
+
 func _on_damaged(amount: float, source: String) -> void:
 	_flash.color.a = clampf(0.12 + amount * 0.008, 0.12, 0.3)
 	_pulse = clampf(0.2 + amount * 0.01, 0.2, 0.45)
@@ -206,6 +216,43 @@ func show_toast(text: String, color: Color) -> void:
 	_toast.text = text
 	_toast.add_theme_color_override("font_color", color)
 	_toast_time = 5.0
+
+## Apaga las gemas que correspondan según las vidas que quedan.
+func refresh_lives() -> void:
+	if _lives != null:
+		_lives.set_alive(Isla.vidas_restantes())
+
+## Final del juego tras la séptima vida: pantalla negra con título y texto.
+func show_ending(title: String, body: String) -> void:
+	var bg := ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = Color(0, 0, 0, 0)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bg)
+	var box := VBoxContainer.new()
+	box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_theme_constant_override("separation", 28)
+	box.modulate.a = 0.0
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.add_child(box)
+	var t := Label.new()
+	t.text = title
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	t.add_theme_font_size_override("font_size", 54)
+	t.add_theme_color_override("font_color", Color(0.6, 0.95, 0.9))
+	box.add_child(t)
+	var b := Label.new()
+	b.text = body
+	b.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	b.custom_minimum_size = Vector2(1000, 0)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	b.add_theme_font_size_override("font_size", 26)
+	box.add_child(b)
+	var tw: Tween = create_tween()
+	tw.tween_property(bg, "color:a", 1.0, 2.0)
+	tw.tween_property(box, "modulate:a", 1.0, 2.5)
 
 func show_death(text: String) -> void:
 	_death.text = text

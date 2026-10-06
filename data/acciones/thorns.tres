@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="AccionIsla" format=3]
+
+[ext_resource type="Script" path="res://scripts/accion_isla.gd" id="1_jdh57"]
+
+[resource]
+script = ExtResource("1_jdh57")
+id = "thorns"
+nombre = "Raíces espinosas"
+cooldown = 28.0
+costo = 22.0
+dano = true
+min_hostilidad = 38.0
+base = 0.35
+peso_emocion = {
+"confianza": -0.25,
+"enojo": 0.5
+}
+peso_contexto = {
+"quieto": 0.35,
+"sagrado": 0.3
+}

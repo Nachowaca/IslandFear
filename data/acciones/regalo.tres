@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AccionIsla" format=3]
+
+[ext_resource type="Script" path="res://scripts/accion_isla.gd" id="1_6rwwb"]
+
+[resource]
+script = ExtResource("1_6rwwb")
+id = "regalo"
+nombre = "Regalo"
+cooldown = 180.0
+costo = 6.0
+implementada = false
+base = 0.05
+peso_emocion = {
+"confianza": 0.8,
+"enojo": -0.3
+}
+peso_contexto = {
+"dia": 0.1
+}
