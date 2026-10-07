@@ -209,3 +209,9 @@ Recordar: los pendientes sueltos (cueva a pie, fogata, clima, huellas, volver de
 ### Decisión (sesión del agua): objetos decorativos con física
 Dejado para más adelante: objetos decorativos de escenario (troncos, rocas, barriles, cajas, postes...) con colisión y física real. Se hará cuando todos los objetos estén ordenados en carpetas según uso (usables) o solo estéticos. Antes se hace: caminos de tierra y suciedad de piso (shader/marcas).
 Hecho en esta sesión: agua del mar (fondo sucio, mini olas, motas, peces, ballena de día), estanque verdoso con camalotes y musgo, mantaraya luminosa nocturna con canto cada 10 min (scripts/sea_life.gd, scripts/night_manta.gd).
+
+
+## PRÓXIMO PASO IMPORTANTE: Arte y luz artística de la isla
+Prioridad alta del usuario. Objetivo: que la isla tenga una identidad visual propia y luz de autor, no solo realista.
+Ideas a definir mañana con el usuario: paleta por hora del día (amanecer, mediodía, atardecer, noche teal con luces ámbar), luz cálida del sol bajo con sombras frías, rayos de luz entre árboles (falsos, sin volumétrica), luces puntuales ámbar en claros misteriosos y cueva, color grading/tonemap, contraste y saturación por bioma, niebla de color, reflejos cálidos en el agua, brillo de flores y bioluminiscencia.
+Reglas: Mobile, sin SDFGI ni niebla volumétrica; referencias en res://docs/ref/. Proponer, esperar OK, un cambio a la vez.

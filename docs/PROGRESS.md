@@ -198,3 +198,13 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Mantaraya luminosa nocturna con canto (night_manta.gd).
 - Caminos de tierra en el shader del terreno (island_terrain.gd _build_paths, is_on_path); sendas chicas de náufragos anteriores.
 - Pendiente: suciedad del piso, ordenar objetos en carpetas, física de objetos decorativos.
+
+
+## Próximos pasos (en orden)
+1. **ARTE Y LUZ ARTÍSTICA DE LA ISLA (prioridad del usuario).** Dar dirección de arte: iluminación artística, paleta, atmósfera, luces cálidas/frías, referencias en res://docs/ref/.
+2. Probar caminos a pie (ancho/color).
+3. Suciedad del piso: polvo, hojas, ramas caídas, vegetación seca.
+4. Ordenar objetos en carpetas (usables / solo estéticos).
+5. Física de objetos decorativos (después del orden).
+6. Plan OBJETOS (4.5), luego BLOQUE 6, luego bloque 5.
+7. Pendientes: espuma de orilla, chorro de la ballena, volumen del canto de la manta, preguntas de PERSONALITY.md, revertir pantalla completa cuando el usuario diga.
