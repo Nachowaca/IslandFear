@@ -169,3 +169,8 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Verificado solo con cámara aérea forzada; huellas muy tenues. Flores inclinándose no vistas.
 - Se borró la línea TEMPTEST de hora fija 14:00 en main.gd.
 - Pendiente: bloque 4 (limpieza técnica), bloque 5 (fases 5.1-5.8).
+
+## Bloque 4: limpieza (hecho)
+- Movidos a ~/islander-fear-backup (fuera del proyecto): main.tscn, world.tscn, addons simplex_terrain/terrain_3d/lowpolyterrain/FoliageFlow, demo/, OBJ/, FBX/, FBX (Unity)/, Sound FX Starter Pack, Biolumina.flac, __MACOSX, previews.
+- Se mantienen assets/ultimate_nature/glTF (usado) y addons/simplegrasstextured (una textura).
+- Pendiente: revisar memoria (texturas >1K).

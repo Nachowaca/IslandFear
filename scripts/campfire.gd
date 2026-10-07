@@ -74,11 +74,6 @@ func _build() -> void:
 	add_child(_embers)
 	# llama
 	_flames = CPUParticles3D.new()
-	var q := SphereMesh.new()
-	q.radius = 0.09
-	q.height = 0.18
-	q.radial_segments = 5
-	q.rings = 3
 	_flames.mesh = _soft_quad(0.55, true)
 	_flames.amount = 26
 	_flames.lifetime = 0.8
@@ -104,11 +99,6 @@ func _build() -> void:
 	add_child(_flames)
 	# humo
 	_smoke = CPUParticles3D.new()
-	var sm := SphereMesh.new()
-	sm.radius = 0.12
-	sm.height = 0.24
-	sm.radial_segments = 5
-	sm.rings = 3
 	_smoke.mesh = _soft_quad(0.9, false)
 	_smoke.amount = 14
 	_smoke.lifetime = 3.5
