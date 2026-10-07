@@ -204,3 +204,8 @@ Ideas extra a proponer mañana: diario/notas halladas, botellas con mensajes, re
 Ideas extra a proponer mañana: pescar, encender/apagar antorcha según clima, silbar/llamar, dejar ofrenda, inspeccionar objetos en mano, cámara fotográfica/diario.
 
 Recordar: los pendientes sueltos (cueva a pie, fogata, clima, huellas, volver de pantalla completa) siguen abiertos.
+
+
+### Decisión (sesión del agua): objetos decorativos con física
+Dejado para más adelante: objetos decorativos de escenario (troncos, rocas, barriles, cajas, postes...) con colisión y física real. Se hará cuando todos los objetos estén ordenados en carpetas según uso (usables) o solo estéticos. Antes se hace: caminos de tierra y suciedad de piso (shader/marcas).
+Hecho en esta sesión: agua del mar (fondo sucio, mini olas, motas, peces, ballena de día), estanque verdoso con camalotes y musgo, mantaraya luminosa nocturna con canto cada 10 min (scripts/sea_life.gd, scripts/night_manta.gd).

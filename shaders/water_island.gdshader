@@ -61,6 +61,22 @@ void fragment() {
 	float edge = 1.0 - smoothstep(0.0, foam_width, thickness + (n - 0.5) * 0.35);
 	float lapping = 0.5 + 0.5 * sin(TIME * 1.1 + thickness * 5.0);
 	float foam = clamp(edge * (0.55 + 0.45 * lapping), 0.0, 1.0);
+	// fondo sucio: manchas de algas y barro visibles en los bajos, y turbidez cerca de la orilla
+	float shallow_k = 1.0 - smoothstep(0.0, 3.2, thickness);
+	float dirt = vnoise(world_pos.xz * 0.9) * 0.6 + vnoise(world_pos.xz * 2.7 + 9.0) * 0.4;
+	vec3 algae = vec3(0.10, 0.28, 0.16);
+	vec3 mud = vec3(0.20, 0.17, 0.10);
+	vec3 dirt_col = mix(mud, algae, smoothstep(0.35, 0.7, vnoise(world_pos.xz * 0.45 + 31.0)));
+	col = mix(col, dirt_col, smoothstep(0.42, 0.75, dirt) * shallow_k * 0.65);
+	col = mix(col, mud * 1.3, shallow_k * 0.18);
+	// motas en suspensión que se desplazan despacio
+	float motes = smoothstep(0.86, 1.0, vnoise(world_pos.xz * 14.0 + vec2(TIME * 0.05, -TIME * 0.04)));
+	col += vec3(0.5, 0.6, 0.5) * motes * shallow_k * 0.18;
+
+	// mini olas: pequeñas crestas que avanzan hacia la orilla
+	float lines = sin(thickness * 4.0 - TIME * 1.3 + n * 3.0);
+	float crest = smoothstep(0.93, 1.0, lines) * (1.0 - smoothstep(0.5, 1.8, thickness)) * smoothstep(0.1, 0.6, thickness);
+	foam = clamp(foam + crest * 0.3, 0.0, 1.0);
 	col = mix(col, foam_color.rgb, foam);
 
 	// camino de destellos de la luna sobre el agua

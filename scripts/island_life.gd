@@ -28,6 +28,7 @@ var seed_value: int = 7
 var _rng := RandomNumberGenerator.new()
 var _materials: Dictionary = {}
 var _fish: Array[Dictionary] = []
+var _floaters: Array[Dictionary] = []
 var _time: float = 0.0
 var _critters: Array[Node] = []
 var _glow_mats: Array[ShaderMaterial] = []
@@ -53,12 +54,20 @@ func _ready() -> void:
 	marks.set("terrain", terrain)
 	marks.name = "Marcas"
 	add_child(marks)
+	var sea: Node3D = (load("res://scripts/sea_life.gd") as GDScript).new() as Node3D
+	sea.set("terrain", terrain)
+	sea.name = "VidaMarina"
+	add_child(sea)
 	call_deferred("_link_player")
 
 func _process(delta: float) -> void:
 	_time += delta
 	_update_heart(delta)
 	_update_glow()
+	for fl: Dictionary in _floaters:
+		var fn: Node3D = fl["node"]
+		fn.position.y = float(fl["y"]) + sin(_time * 0.8 + float(fl["ph"])) * 0.015
+		fn.rotation.y += delta * 0.03
 	for f: Dictionary in _fish:
 		var node: Node3D = f["node"]
 		f["angle"] = float(f["angle"]) + float(f["speed"]) * delta
@@ -146,7 +155,19 @@ func _build_pond() -> void:
 	var disc := _cyl(radius * 1.35, radius * 1.35, 0.04, 36)
 	water.mesh = disc
 	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(0.12, 0.5, 0.62, 0.72)
+	m.albedo_color = Color(0.1, 0.3, 0.17, 0.86)      # agua turbia y verdosa
+	var nz := FastNoiseLite.new()
+	nz.frequency = 0.05
+	nz.seed = seed_value + 3
+	var nt := NoiseTexture2D.new()
+	nt.noise = nz
+	nt.width = 128
+	nt.height = 128
+	nt.seamless = true
+	var gr := Gradient.new()
+	gr.colors = PackedColorArray([Color(0.55, 0.7, 0.45), Color(1.15, 1.1, 0.9)])
+	nt.color_ramp = gr
+	m.albedo_texture = nt
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.roughness = 0.08
 	m.metallic_specular = 0.9
@@ -170,6 +191,7 @@ func _build_pond() -> void:
 			"speed": _rng.randf_range(0.3, 0.7) * (1.0 if _rng.randf() < 0.5 else -1.0),
 			"depth": _rng.randf_range(0.45, 0.9),
 		})
+	_build_pond_scum(center, radius)
 	# juncos alrededor de la orilla
 	for i in 30:
 		var ang: float = _rng.randf() * TAU
@@ -185,6 +207,60 @@ func _build_pond() -> void:
 		if _rng.randf() < 0.5:
 			_mesh(reed, _cyl(0.05, 0.05, 0.22, 5), Color(0.4, 0.25, 0.12), Vector3(0, 1.3, 0))
 		add_child(reed)
+
+## Camalotes (plantas flotantes), manchas de musgo y hojas sobre el estanque.
+func _build_pond_scum(center: Vector2, radius: float) -> void:
+	var wy: float = terrain.pond_water_level + 0.03
+	var greens: Array[Color] = [Color(0.18, 0.42, 0.14), Color(0.25, 0.5, 0.18), Color(0.12, 0.33, 0.12), Color(0.35, 0.5, 0.2)]
+	# manchas de musgo/algas sobre la superficie
+	var scum_mat := StandardMaterial3D.new()
+	scum_mat.albedo_color = Color(0.14, 0.32, 0.1, 0.55)
+	scum_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	scum_mat.roughness = 1.0
+	for i in 40:
+		var ang: float = _rng.randf() * TAU
+		var rr: float = radius * sqrt(_rng.randf()) * 1.0
+		var disc := _cyl(_rng.randf_range(0.25, 0.7), 0.0, 0.005, 7)
+		disc.bottom_radius = disc.top_radius
+		var mi := MeshInstance3D.new()
+		mi.mesh = disc
+		mi.material_override = scum_mat
+		mi.position = Vector3(center.x + cos(ang) * rr, wy, center.y + sin(ang) * rr)
+		mi.rotation.y = _rng.randf() * TAU
+		mi.scale = Vector3(_rng.randf_range(0.8, 1.6), 1.0, _rng.randf_range(0.8, 1.6))
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
+	# camalotes: racimos de hojas redondas, a veces con flor lila
+	for i in 14:
+		var ang2: float = _rng.randf() * TAU
+		var rr2: float = radius * sqrt(_rng.randf()) * 0.95
+		var cluster := Node3D.new()
+		cluster.position = Vector3(center.x + cos(ang2) * rr2, wy + 0.02, center.y + sin(ang2) * rr2)
+		for k in _rng.randi_range(4, 8):
+			var leaf := _cyl(0.16, 0.16, 0.02, 7)
+			leaf.top_radius = _rng.randf_range(0.14, 0.3)
+			leaf.bottom_radius = leaf.top_radius
+			var la: float = _rng.randf() * TAU
+			var lr: float = _rng.randf_range(0.0, 0.5)
+			var lm := _mesh(cluster, leaf, greens[_rng.randi() % greens.size()], Vector3(cos(la) * lr, _rng.randf_range(0.0, 0.03), sin(la) * lr), Vector3(_rng.randf_range(-0.1, 0.1), 0, _rng.randf_range(-0.1, 0.1)))
+			lm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if _rng.randf() < 0.5:
+			_mesh(cluster, _sph(0.06, 6, 3), Color(0.62, 0.4, 0.8), Vector3(_rng.randf_range(-0.2, 0.2), 0.1, _rng.randf_range(-0.2, 0.2)))
+		cluster.rotation.y = _rng.randf() * TAU
+		add_child(cluster)
+		_floaters.append({"node": cluster, "y": cluster.position.y, "ph": _rng.randf() * TAU})
+	# musgo en la orilla: manchas verdes en el suelo alrededor
+	for i in 28:
+		var ang3: float = _rng.randf() * TAU
+		var rr3: float = radius * _rng.randf_range(1.05, 1.35)
+		var mx: float = center.x + cos(ang3) * rr3
+		var mz: float = center.y + sin(ang3) * rr3
+		var my: float = terrain.height_at(mx, mz)
+		if my < terrain.pond_water_level - 0.3:
+			continue
+		var moss := _sph(_rng.randf_range(0.5, 1.1), 7, 3)
+		var mo := _mesh(self, moss, Color(0.16, 0.34, 0.12).lerp(Color(0.26, 0.42, 0.14), _rng.randf()), Vector3(mx, my - 0.1, mz), Vector3.ZERO, Vector3(1.0, 0.18, 1.0))
+		mo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 # ------------------------------------------------------------------ madera
 
@@ -463,7 +539,7 @@ func _spawn_grass_tufts() -> void:
 			var x: float = c.x + cos(a) * d
 			var z: float = c.z + sin(a) * d
 			var y: float = terrain.height_at(x, z)
-			if y < 1.15 or y > 11.0 or terrain.is_in_pond_area(x, z, 1.1) or terrain.is_in_cave_area(x, z, 1.0):
+			if y < 1.15 or y > 11.0 or terrain.is_in_pond_area(x, z, 1.1) or terrain.is_in_cave_area(x, z, 1.0) or terrain.is_on_path(x, z, 0.25):
 				continue
 			# ruido de densidad y de altura (idea de FoliageFlow): zonas ralas, zonas de pasto largo y mucho pasto corto
 			var dn: float = remap(gnoise.get_noise_2d(x * 3.0 + 50.0, z * 3.0), -1.0, 1.0, 0.45, 1.0)
@@ -750,7 +826,7 @@ func _spawn_glow_flowers() -> void:
 			var x: float = c0.x + cos(a) * d
 			var z: float = c0.z + sin(a) * d
 			var y: float = terrain.height_at(x, z)
-			if y < 1.5 or y > 11.0 or terrain.is_in_pond_area(x, z, 1.1) or terrain.is_in_cave_area(x, z, 1.0):
+			if y < 1.5 or y > 11.0 or terrain.is_in_pond_area(x, z, 1.1) or terrain.is_in_cave_area(x, z, 1.0) or terrain.is_on_path(x, z, 0.25):
 				continue
 			var sc: float = rng.randf_range(0.8, 1.5)
 			var key: String = "%d,%d,%d" % [floori(x / 40.0), floori(z / 40.0), ci]

@@ -19,6 +19,9 @@ uniform float normal_strength = 0.9;
 uniform sampler2D biome_tex : source_color, filter_linear, repeat_disable;
 uniform vec2 biome_origin = vec2(-160.0);
 uniform float biome_size = 320.0;
+uniform sampler2D path_tex : filter_linear, repeat_disable;
+uniform vec2 path_origin = vec2(-160.0);
+uniform float path_size = 320.0;
 
 varying vec3 wpos;
 varying vec3 wnrm;
@@ -127,6 +130,15 @@ void fragment() {
 		float bare = smoothstep(0.58, 0.8, fbm(wp * 0.12 + 40.0) * 0.7 + vnoise(wp * 0.9) * 0.3) * g_only;
 		col = mix(col, c_dirt * vec3(1.2, 1.05, 0.82), bare * 0.5);
 		col = mix(col, col * vec3(1.18, 1.05, 0.72), w_sand * (1.0 - w_rock) * 0.7);   // arena amarilla cálida
+	// caminos de tierra: senderos principales (R) y sendas chicas cortadas (G), con borde irregular
+	vec3 pt = textureLod(path_tex, clamp((wpos.xz - path_origin) / path_size, 0.0, 1.0), 0.0).rgb;
+	float edge_n = fbm(uv * 1.4) * 0.55 + vnoise(uv * 5.0) * 0.45;
+	float pm = smoothstep(0.22, 0.5, pt.r + (edge_n - 0.5) * 0.4);
+	float pm2 = smoothstep(0.3, 0.55, pt.g + (edge_n - 0.5) * 0.5) * 0.75;
+	float path = max(pm, pm2) * (1.0 - w_rock) * smoothstep(0.7, 1.1, h);
+	vec3 path_col = c_dirt * vec3(1.3, 1.1, 0.85) * (0.8 + 0.4 * vnoise(uv * 3.0));
+	path_col *= 0.9 + 0.2 * step(0.82, vnoise(uv * 17.0));        // guijarros sueltos
+	col = mix(col, path_col, path * 0.92);
 	col = mix(col, col * vec3(1.35, 1.35, 1.42), w_rock * 0.6);             // roca más clara
 	col *= 1.0 + clamp((h - 6.0) * 0.02, 0.0, 0.15);                        // las cumbres, algo más claras
 
@@ -142,7 +154,7 @@ void fragment() {
 	vec3 p_d = vec3(n_d.x, 0.0, n_d.y);
 	vec3 p_s = vec3(n_s.x, 0.0, n_s.y);
 	vec3 p = p_g;
-	p = mix(p, p_d, w_dirt);
+	p = mix(p, p_d, max(w_dirt, path));
 	p = mix(p, p_rock, w_rock);
 	p = mix(p, p_s, w_sand * (1.0 - w_rock));
 	vec3 pn = normalize(wn + p * normal_strength);

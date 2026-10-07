@@ -190,3 +190,11 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Bloques 1-4 cerrados y subidos (84733a7). Kits integrados, memoria revisada.
 - Siguiente: el usuario quiere primero planificar OBJETOS, luego BLOQUE 6 (mecánicas), y después el bloque 5. Ver DESIGN.md, "Planes nuevos guardados". Mañana: proponer ideas y organizar; el usuario elige por dónde seguir.
 - Pendiente: que mire árboles retorcidos y senderos de piedras; 4 preguntas de PERSONALITY.md.
+
+
+## Sesión del agua y caminos
+- Agua del mar: fondo sucio, mini olas, motas; peces (sea_life.gd), ballena de día.
+- Estanque verdoso con camalotes y musgo.
+- Mantaraya luminosa nocturna con canto (night_manta.gd).
+- Caminos de tierra en el shader del terreno (island_terrain.gd _build_paths, is_on_path); sendas chicas de náufragos anteriores.
+- Pendiente: suciedad del piso, ordenar objetos en carpetas, física de objetos decorativos.

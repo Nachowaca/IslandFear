@@ -53,6 +53,9 @@ func _cave_bump(_x: float, _z: float) -> float:
 
 var _noise := FastNoiseLite.new()
 var _flora: Node3D
+var _path_img: Image
+var _path_half: float = 162.0
+const PATH_SIZE: int = 768
 var eco: EcoMap                         ## mapa ecológico (biomas, humedad, suelo); lo crea la propia isla
 var _noise_ready: bool = false
 var _mood: float = 0.0
@@ -396,6 +399,8 @@ func _scatter_flora() -> void:
 		eco.name = "EcoMap"
 		eco.terrain = self
 		add_child(eco)                                 # su _ready() calcula las capas
+	if _path_img == null:
+		_build_paths()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = noise_seed
 	tree_positions.clear()
@@ -559,7 +564,7 @@ func _scatter_flora() -> void:
 				var gr: float = rng.randf_range(0.6, 1.0 + 0.25 * n_group)
 				gp = Vector3(pos3.x + cos(ga) * gr, 0.0, pos3.z + sin(ga) * gr)
 				gp.y = _height(gp.x, gp.z)
-				if gp.y < 1.0 or gp.y > 13.0 or is_in_pond_area(gp.x, gp.z, 1.15) or is_in_cave_area(gp.x, gp.z, 1.0):
+				if gp.y < 1.0 or gp.y > 13.0 or is_in_pond_area(gp.x, gp.z, 1.15) or is_in_cave_area(gp.x, gp.z, 1.0) or is_on_path(gp.x, gp.z, 0.25):
 					continue
 			var mname: String
 			match sp:
@@ -635,7 +640,7 @@ func _add_rock_clusters(rng: RandomNumberGenerator) -> void:
 		var c: Vector3 = _random_spot(rng, 0.7 if coast else 3.0, 2.6 if coast else 14.0)
 		if c.y < -90.0:
 			continue
-		if is_in_pond_area(c.x, c.z, 1.6) or is_in_cave_area(c.x, c.z, 1.6):
+		if is_in_pond_area(c.x, c.z, 1.6) or is_in_cave_area(c.x, c.z, 1.6) or is_on_path(c.x, c.z, 0.2):
 			continue
 		var n: int = rng.randi_range(4, 7)
 		for i in n:
@@ -722,8 +727,149 @@ func _random_spot(rng: RandomNumberGenerator, min_h: float, max_h: float) -> Vec
 		var x: float = cos(a) * d
 		var z: float = sin(a) * d
 		var h: float = _height(x, z)
-		if is_in_pond_area(x, z, 1.15) or is_in_cave_area(x, z, 1.0):
+		if is_in_pond_area(x, z, 1.15) or is_in_cave_area(x, z, 1.0) or is_on_path(x, z, 0.25):
 			continue
 		if h >= min_h and h <= max_h:
 			return Vector3(x, h, z)
 	return Vector3(0, -100, 0)
+
+# ------------------------------------------------------------------ caminos de tierra
+
+## Valor del camino en (x, z): x = sendero principal, y = sendas chicas (0..1). Sale de un mapa pintado al arrancar.
+func path_value(x: float, z: float) -> Vector2:
+	if _path_img == null:
+		return Vector2.ZERO
+	var k: float = float(PATH_SIZE) / (_path_half * 2.0)
+	var ix: int = int((x + _path_half) * k)
+	var iy: int = int((z + _path_half) * k)
+	if ix < 0 or iy < 0 or ix >= PATH_SIZE or iy >= PATH_SIZE:
+		return Vector2.ZERO
+	var c: Color = _path_img.get_pixel(ix, iy)
+	return Vector2(c.r, c.g)
+
+func is_on_path(x: float, z: float, thr: float = 0.25) -> bool:
+	var v: Vector2 = path_value(x, z)
+	return v.x > thr or v.y * 0.6 > thr
+
+func _path_stamp(img: Image, p: Vector2, width: float, ch: int) -> void:
+	var k: float = float(PATH_SIZE) / (_path_half * 2.0)
+	var rm: float = width * 0.5 + 0.5
+	var rp: int = int(ceil(rm * k))
+	var cx: int = int((p.x + _path_half) * k)
+	var cy: int = int((p.y + _path_half) * k)
+	for dy in range(-rp, rp + 1):
+		for dx in range(-rp, rp + 1):
+			var ix: int = cx + dx
+			var iy: int = cy + dy
+			if ix < 0 or iy < 0 or ix >= PATH_SIZE or iy >= PATH_SIZE:
+				continue
+			var d: float = Vector2(float(dx), float(dy)).length() / k
+			var v: float = clampf(1.0 - d / rm, 0.0, 1.0)
+			if v <= 0.0:
+				continue
+			var c: Color = img.get_pixel(ix, iy)
+			if ch == 0:
+				c.r = maxf(c.r, v)
+			else:
+				c.g = maxf(c.g, v)
+			img.set_pixel(ix, iy, c)
+
+## Camina de a hacia b buscando terreno suave (evita agua, acantilados y el estanque) y va dejando huella.
+func _path_walk(img: Image, a: Vector2, b: Vector2, rng: RandomNumberGenerator, width: float, ch: int, broken: bool) -> void:
+	var pos: Vector2 = a
+	var dir: Vector2 = (b - a).normalized()
+	var max_steps: int = int(a.distance_to(b) * 0.9) + 40
+	var on: bool = true
+	var steps: int = 0
+	while pos.distance_to(b) > 2.5 and steps < max_steps:
+		steps += 1
+		var to_b: Vector2 = (b - pos).normalized()
+		var base: Vector2 = (to_b * 0.35 + dir * 0.65).normalized()
+		var hp: float = _height(pos.x, pos.y)
+		var best: Vector2 = base
+		var best_cost: float = 1.0e9
+		for ang: float in [-0.7, -0.4, -0.2, 0.0, 0.2, 0.4, 0.7]:
+			var d: Vector2 = base.rotated(ang)
+			var q: Vector2 = pos + d * 2.0
+			var h: float = _height(q.x, q.y)
+			var cost: float = absf(h - hp) * 3.0 + absf(ang) * 0.6 + rng.randf() * 0.35
+			if h < 1.1:
+				cost += 6.0
+			if _cliff_mask(q.x, q.y) > 0.3:
+				cost += 5.0
+			if is_in_pond_area(q.x, q.y, 1.0):
+				cost += 8.0
+			if cost < best_cost:
+				best_cost = cost
+				best = d
+		dir = best
+		var prev: Vector2 = pos
+		pos += dir * 2.0
+		if broken and rng.randf() < 0.07:
+			on = not on
+		if on:
+			for sub in 5:
+				var sp: Vector2 = prev.lerp(pos, float(sub + 1) / 5.0)
+				if _height(sp.x, sp.y) > 1.0:
+					_path_stamp(img, sp, width, ch)
+
+func _build_paths() -> void:
+	var half: float = radius * 1.35
+	_path_half = half
+	var img := Image.create(PATH_SIZE, PATH_SIZE, false, Image.FORMAT_RGB8)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = noise_seed * 7 + 3
+	var nodes: Array[Vector2] = [POND_CENTER, CAVE_CENTER + cave_dir2() * 12.0]
+	for c: Vector3 in eco.mystery_centers:
+		nodes.append(Vector2(c.x, c.z))
+	var beaches: Array[Vector2] = []
+	for i in 40:
+		if beaches.size() >= 3:
+			break
+		var bs: Vector3 = _random_spot(rng, 1.0, 1.5)
+		if bs.y < -90.0:
+			continue
+		var bp := Vector2(bs.x, bs.z)
+		var far_ok: bool = true
+		for o: Vector2 in beaches:
+			if o.distance_to(bp) < 60.0:
+				far_ok = false
+		if far_ok:
+			beaches.append(bp)
+	var joined: Array[Vector2] = [nodes[0]]
+	var rest: Array[Vector2] = nodes.slice(1)
+	while not rest.is_empty():
+		var bi: int = 0
+		var bj: int = 0
+		var bd: float = 1.0e9
+		for ii in joined.size():
+			for jj in rest.size():
+				var dd: float = joined[ii].distance_to(rest[jj])
+				if dd < bd:
+					bd = dd
+					bi = ii
+					bj = jj
+		_path_walk(img, joined[bi], rest[bj], rng, 1.5, 0, false)
+		joined.append(rest[bj])
+		rest.remove_at(bj)
+	for bp: Vector2 in beaches:
+		var near: Vector2 = nodes[0]
+		for n: Vector2 in nodes:
+			if n.distance_to(bp) < near.distance_to(bp):
+				near = n
+		_path_walk(img, bp, near, rng, 1.5, 0, false)
+	for i in 2:
+		var a: Vector2 = nodes[rng.randi() % nodes.size()]
+		var b: Vector2 = nodes[rng.randi() % nodes.size()]
+		if a.distance_to(b) > 15.0:
+			_path_walk(img, a, b, rng, 1.3, 0, false)
+	for i in 10:
+		var st: Vector2 = beaches[rng.randi() % beaches.size()] if not beaches.is_empty() else nodes[0]
+		var tg: Vector2 = nodes[rng.randi() % nodes.size()] + Vector2(rng.randf_range(-14.0, 14.0), rng.randf_range(-14.0, 14.0))
+		_path_walk(img, st, tg, rng, 0.6, 1, true)
+	_path_img = img
+	var mat: ShaderMaterial = material_override as ShaderMaterial
+	if mat != null:
+		mat.set_shader_parameter("path_tex", ImageTexture.create_from_image(img))
+		mat.set_shader_parameter("path_origin", Vector2(-half, -half))
+		mat.set_shader_parameter("path_size", half * 2.0)
