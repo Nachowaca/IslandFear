@@ -117,6 +117,9 @@ func _process(delta: float) -> void:
 	if _vis_timer <= 0.0:
 		_vis_timer = 1.0
 
+func moon_light() -> DirectionalLight3D:
+	return _moon
+
 func water_mat() -> ShaderMaterial:
 	return _water_mat
 
@@ -160,6 +163,11 @@ func _compute_astro() -> void:
 	var dec_m: float = asin(sin(beta) * cos(eps) + cos(beta) * sin(eps) * sin(lam_m))
 	moon_dir = _equatorial_to_dir(ra_m, dec_m, gmst)
 	moon_phase = (1.0 - cos(lam_m - lam_s)) * 0.5 # 0 luna nueva, 1 luna llena
+	# Luna de juego: arco propio. Sale por el este a las 19:00, culmina a las 01:00 y se pone a las 07:00 (siempre hay luna de noche)
+	var mu: float = fposmod(hour - 19.0, 24.0) / 12.0
+	var ma: float = mu * PI
+	moon_dir = Vector3(cos(ma), sin(ma) * 0.8, 0.35).normalized()
+	moon_phase = lerpf(0.55, 1.0, moon_phase)     # nunca tan fina que no se vea
 	if debug_moon_phase >= 0.0:
 		moon_phase = debug_moon_phase
 
@@ -192,9 +200,11 @@ func _update(refresh_slow: bool) -> void:
 	var moon_up: float = clampf(moon_pos.y, 0.0, 1.0)
 	_moon.global_transform = Transform3D(_look_basis(-moon_pos), moon_pos * 80.0)
 	_moon.light_energy = 1.5 * night * (0.55 + 0.45 * moon_phase * moon_phase) * smoothstep(0.0, 0.25, moon_up)
-	_moon.light_specular = 1.6   # reflejo plateado sobre el agua
+	_moon.light_specular = 0.5   # reflejo plateado sobre el agua
 	# luz de luna real: blanco frío, poco saturado
-	_moon.light_color = Color(0.3, 0.68, 0.85).lerp(Color(0.5, 0.82, 0.95), moon_phase * 0.7)
+	var mt: float = float(Time.get_ticks_msec()) * 0.001
+	var matiz: float = 0.5 + 0.5 * sin(mt * 0.05) * 0.6 + 0.2 * sin(mt * 0.13 + 1.7)   # el color de la luna deriva despacio
+	_moon.light_color = Color(0.3, 0.68, 0.85).lerp(Color(0.5, 0.82, 0.95), moon_phase * 0.7).lerp(Color(0.62, 0.58, 0.95), clampf(matiz, 0.0, 1.0) * 0.45)
 	var moon_visible: float = night * smoothstep(0.0, 0.2, moon_pos.y)
 	if _water_mat == null:
 		var w: MeshInstance3D = get_tree().get_first_node_in_group("water_surface") as MeshInstance3D
@@ -203,9 +213,9 @@ func _update(refresh_slow: bool) -> void:
 	if _water_mat != null:
 		_water_mat.set_shader_parameter("moon_dir", moon_pos)
 		_water_mat.set_shader_parameter("moon_glow", moon_visible * (0.2 + 0.8 * moon_phase))
-		_water_mat.set_shader_parameter("moon_tint", Color(1.0, 0.86, 0.55))   # reflejo cálido sobre el agua teal
-		_water_mat.set_shader_parameter("deep_color", Color(0.02, 0.30, 0.50).lerp(Color(0.01, 0.17, 0.28), night))
-		_water_mat.set_shader_parameter("shallow_color", Color(0.25, 0.88, 0.85).lerp(Color(0.08, 0.42, 0.46), night))
+		_water_mat.set_shader_parameter("moon_tint", Color(0.85, 0.9, 1.0).lerp(Color(1.0, 0.86, 0.6), clampf(matiz, 0.0, 1.0)))   # reflejo cálido sobre el agua teal
+		_water_mat.set_shader_parameter("deep_color", Color(0.0, 0.36, 0.48).lerp(Color(0.01, 0.17, 0.28), night))
+		_water_mat.set_shader_parameter("shallow_color", Color(0.1, 0.8, 0.72).lerp(Color(0.08, 0.42, 0.46), night))
 	# De noche el ojo ve casi sin color: se desatura
 	_env.adjustment_enabled = true
 	if _env.adjustment_color_correction == null:
@@ -216,7 +226,7 @@ func _update(refresh_slow: bool) -> void:
 		_moon_shadow_on = want_moon_shadow
 		_moon.shadow_enabled = want_moon_shadow
 
-	_starlight.light_energy = 0.3 * night * night
+	_starlight.light_energy = 0.1 * night * night
 	if _lighthouse == null or not is_instance_valid(_lighthouse):
 		_lighthouse = get_tree().get_first_node_in_group("lighthouse") as Lighthouse
 	if _lighthouse != null:

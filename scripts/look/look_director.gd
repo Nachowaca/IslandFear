@@ -34,6 +34,8 @@ var _dia: AmbientePreset = AmbientePreset.dia()
 var _atardecer: AmbientePreset = AmbientePreset.atardecer()
 var _modificador: Dictionary = {}
 var _haces: LookHaces
+var noche: LookNoche
+var eco: EcoMap
 var _contacto: LookContacto
 var _cam_attr: CameraAttributesPractical
 var _overlay_layer: CanvasLayer
@@ -86,6 +88,12 @@ func preparar_mundo(p_terrain: IslandTerrain, p_player: Node3D) -> void:
 	_contacto.name = "LookContacto"
 	_contacto.terrain = terrain
 	add_child(_contacto)
+	noche = LookNoche.new()
+	noche.name = "LookNoche"
+	noche.terrain = terrain
+	noche.eco = eco
+	noche.player = player
+	add_child(noche)
 	_aplicar_calidad()
 
 # ------------------------------------------------------------------ aplicar cada frame
@@ -111,17 +119,30 @@ func aplicar(day: float, dusk: float, golden: float, e: float, manana: bool) -> 
 	sun.visible = sun.light_energy > 0.01
 	sun.shadow_opacity = 0.9 if on else 1.0
 
+	# visibilidad nocturna local: luna tapada, bosque cerrado o cueva = más oscuro; playa y claros = más claro
+	var vis: float = 1.0
+	if noche != null:
+		noche.set_luna(daynight.moon_dir)
+		vis = noche.visibilidad
+	daynight.moon_light().light_energy *= lerpf(1.0, vis, _w_noche)
+	daynight.moon_light().visible = daynight.moon_light().light_energy > 0.01
+
 	# ambiente: el cielo ilumina; el tinte da color a las sombras
-	env.ambient_light_energy = p.energia_ambiente
+	var luna_alta: float = smoothstep(0.0, 0.45, daynight.moon_dir.y) * (0.4 + 0.6 * daynight.moon_phase)   # luna alta y llena = más luz de cielo
+	env.ambient_light_energy = p.energia_ambiente * lerpf(1.0, lerpf(0.2, 1.0, vis) * lerpf(0.6, 1.0, luna_alta), _w_noche)
 	env.ambient_light_color = p.color_ambiente
 	env.ambient_light_sky_contribution = p.contribucion_cielo if on else 1.0
 
 	# niebla: profundidad (siempre) + altura (solo look activo)
 	env.fog_light_color = p.color_niebla
-	env.fog_density = p.densidad_niebla + daynight.fog_local + daynight.fog_boost
+	# humedad del día: hay días secos y días muy húmedos (cambia la niebla baja y la de profundidad)
+	var dd: Dictionary = Time.get_date_dict_from_system()
+	var hd: float = fposmod(sin(float(int(dd.year) * 400 + int(dd.month) * 31 + int(dd.day)) * 12.9898) * 43758.5453, 1.0)
+	var hum_dia: float = lerpf(0.35, 1.8, hd)
+	env.fog_density = (p.densidad_niebla + daynight.fog_local) * lerpf(0.8, 1.25, hd) + daynight.fog_boost
 	if on and calidad >= Calidad.MEDIA:
 		env.fog_height = 2.4
-		env.fog_height_density = p.niebla_altura + daynight.fog_boost * 6.0
+		env.fog_height_density = p.niebla_altura * hum_dia + daynight.fog_boost * 6.0
 	else:
 		env.fog_height_density = 0.0
 
@@ -141,6 +162,9 @@ func aplicar(day: float, dusk: float, golden: float, e: float, manana: bool) -> 
 		wm.set_shader_parameter("sun_glow", smoothstep(0.0, 0.25, e) * (1.0 - smoothstep(0.55, 0.9, e) * 0.6))
 		wm.set_shader_parameter("sun_tint", Vector3(p.color_sol.r, p.color_sol.g, p.color_sol.b))
 		wm.set_shader_parameter("sky_reflect", 0.6 if on else 0.25)
+		wm.set_shader_parameter("noctiluca", _w_noche * daynight.night_amount if on else 0.0)
+		if player != null:
+			wm.set_shader_parameter("player_pos", player.global_position)
 
 	# extras del look
 	if _haces != null:
@@ -151,7 +175,7 @@ func aplicar(day: float, dusk: float, golden: float, e: float, manana: bool) -> 
 		if e <= 0.02 and daynight.moon_dir.y > 0.06:
 			luz_dir = daynight.moon_dir
 			luz_col = Color(0.55, 0.72, 1.0)
-			fuerza = _w_noche * (0.25 + 0.5 * daynight.moon_phase) * smoothstep(0.06, 0.3, daynight.moon_dir.y) * 0.8
+			fuerza = 0.0     # la luna no hace haces duros: su luz es suave y viene de la luz direccional y el ambiente
 		_haces.set_luz(luz_dir, luz_col, fuerza)
 		_haces.set_bruma(p.color_niebla.lerp(Color.WHITE, 0.15), clampf(p.niebla_altura / 0.04 + daynight.fog_boost * 40.0, 0.0, 1.0))
 	if _contacto != null:
@@ -171,12 +195,12 @@ func _aplicar_calidad() -> void:
 			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 			sun.directional_shadow_max_distance = 140.0
 			if _haces != null:
-				_haces.set_cantidades(6, 2)
+				_haces.set_cantidades(6, 0)
 		_:
 			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 			sun.directional_shadow_max_distance = 180.0
 			if _haces != null:
-				_haces.set_cantidades(12, 3)
+				_haces.set_cantidades(12, 0)
 	_aplicar_dof()
 
 func _aplicar_dof() -> void:
@@ -228,11 +252,12 @@ func _actualizar_overlay() -> void:
 		_extras_n["particulas"] = np
 	var hh: int = int(daynight.hour)
 	var mm: int = int((daynight.hour - float(hh)) * 60.0)
-	_overlay.text = "LOOK %s   calidad %s   DOF %s\nhora %02d:%02d   preset: noche %.2f  día %.2f  crepúsculo %.2f (%s)\nGPU %.2f ms   CPU render %.2f ms   FPS %d   proceso %.2f ms\nluces %d   partículas %d   draw calls %d\nF2 interruptor   F3 overlay   F4 calidad   F5 medir%s" % [
+	_overlay.text = "LOOK %s   calidad %s   DOF %s\nhora %02d:%02d   preset: noche %.2f  día %.2f  crepúsculo %.2f (%s)\nGPU %.2f ms   CPU render %.2f ms   FPS %d   proceso %.2f ms\nluces %d   partículas %d   draw calls %d\nvisibilidad nocturna %.2f  (luna %.2f  copa %.2f  rebote %.2f  cueva %.2f)\nF2 interruptor   F3 overlay   F4 calidad   F5 medir%s" % [
 		"ACTIVO" if look_cinematografico_activo else "apagado", NOMBRES_CALIDAD[calidad], "sí" if dof_activo else "no",
 		hh, mm, _w_noche, _w_dia, _w_tw, actual.nombre if actual.nombre != "" else "mezcla",
 		_gpu_ms, _cpu_ms, int(Engine.get_frames_per_second()), Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
 		int(_extras_n["luces"]), int(_extras_n["particulas"]), int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
+		noche.visibilidad if noche != null else 1.0, noche.f_luna if noche != null else 1.0, noche.f_copa if noche != null else 1.0, noche.f_rebote if noche != null else 0.0, noche.f_cueva if noche != null else 1.0,
 		("\n" + _medicion) if _medicion != "" else ""]
 
 func _cargar_cfg() -> void:

@@ -32,7 +32,7 @@ void fragment() {
 	float d = length(wpos.xz - CAMERA_POSITION_WORLD.xz);
 	float edge = 1.0 - smoothstep(radius * 0.4, radius, d);
 	float near_f = smoothstep(1.5, 7.0, d);
-	float vert = smoothstep(0.2, 2.2, abs(CAMERA_POSITION_WORLD.y - wpos.y));
+	float vert = smoothstep(0.5, 3.5, abs(CAMERA_POSITION_WORLD.y - wpos.y));
 	ALBEDO = mist_color.rgb;
-	ALPHA = smoothstep(0.38, 0.85, n) * edge * near_f * vert * intensity * 0.4;
+	ALPHA = smoothstep(0.2, 0.95, n) * edge * near_f * vert * intensity * 0.3;
 }

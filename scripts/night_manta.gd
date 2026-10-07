@@ -20,6 +20,7 @@ var _vis: float = 0.0
 var _time: float = 0.0
 var _player: AudioStreamPlayer3D
 var _song_timer: float = SONG_FIRST
+var _light: OmniLight3D
 
 func _ready() -> void:
 	_ang = randf() * TAU
@@ -84,6 +85,14 @@ func _build() -> void:
 	tail.rotation = Vector3(PI / 2.0, 0, 0)
 	tail.position = Vector3(0, 0, 8.5)
 	scale = Vector3.ONE * 2.2
+	_light = OmniLight3D.new()
+	_light.light_color = Color(0.3, 0.9, 1.0)
+	_light.omni_range = 320.0
+	_light.omni_attenuation = 1.6
+	_light.light_energy = 0.0
+	_light.shadow_enabled = false
+	_light.position = Vector3(0, -4.0, 0)
+	add_child(_light)
 	_player = AudioStreamPlayer3D.new()
 	_player.bus = "Ambience"
 	_player.unit_size = 120.0
@@ -99,7 +108,10 @@ func _process(delta: float) -> void:
 	var night: float = float(daynight.get("night_amount"))
 	_vis = move_toward(_vis, smoothstep(0.55, 0.9, night), delta * 0.25)
 	visible = _vis > 0.01
+	var wm: ShaderMaterial = daynight.call("water_mat") as ShaderMaterial
 	if not visible:
+		if wm != null:
+			wm.set_shader_parameter("manta_glow", 0.0)
 		return
 	_ang -= SPEED * delta
 	var pulse: float = 0.8 + 0.2 * sin(_time * 1.3)
@@ -110,6 +122,10 @@ func _process(delta: float) -> void:
 	position = pos
 	look_at(global_position + Vector3(sin(_ang), 0.0, -cos(_ang)), Vector3.UP)
 	rotate_object_local(Vector3.BACK, -0.18)             # leve inclinación al girar
+	_light.light_energy = 1.6 * _vis * pulse
+	if wm != null:
+		wm.set_shader_parameter("manta_pos", global_position)
+		wm.set_shader_parameter("manta_glow", _vis * pulse)
 	_song_timer -= delta
 	if _song_timer <= 0.0 and _vis > 0.8:
 		_song_timer = SONG_EVERY

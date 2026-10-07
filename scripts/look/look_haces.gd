@@ -8,7 +8,7 @@ extends Node3D
 const SHAFT_MAX: int = 14
 const LAYER_MAX: int = 3
 const RADIO: float = 46.0
-const CAPAS_Y: Array[float] = [1.0, 3.0, 5.2]
+const CAPAS_Y: Array[float] = [3.5, 6.0, 9.0]     ## sobre el suelo del jugador (más bajas cortaban el terreno y dejaban "charcos" con borde duro)
 
 var player: Node3D
 var terrain: IslandTerrain
@@ -118,7 +118,8 @@ func _process(delta: float) -> void:
 		if not on2:
 			continue
 		_layer_mats[j].set_shader_parameter("intensity", _k_bruma)
-		_layers[j].global_position = Vector3(pp.x, CAPAS_Y[j], pp.z)
+		var suelo: float = maxf(terrain.height_at(pp.x, pp.z), 0.0) if terrain != null else 0.0
+		_layers[j].global_position = Vector3(pp.x, suelo + CAPAS_Y[j], pp.z)
 
 func _recolocar(mi: MeshInstance3D, pp: Vector3) -> void:
 	for t in 8:

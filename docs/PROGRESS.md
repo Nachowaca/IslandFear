@@ -295,3 +295,12 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - `Inventario.cofre`, `cofre_agregar`, `mover`. Mochila llena: lo recogido va solo al baúl. El baúl se vacía con la vida (como la mochila).
 - `icon_render.gd`: los objetos sin PNG (todos los nuevos) ahora tienen ícono dibujando su modelo 3D (cache, se apaga tras 4 cuadros). Antes salían en blanco en la barra.
 - NO probado a pie: abrir con E, clics reales, desborde automático al baúl, choque con la plancha de desembarco.
+
+
+## Look y noche (sesión de arte)
+- Sistema de look: LookDirector (ambiente_preset, look_haces, look_contacto, look_noche). F2 on/off, F3 overlay, F4 calidad, F5 medir.
+- Noche oscura y azulada: visibilidad local (luna, copas, hondonadas, cueva, reflejo en playa). MINIMO 0.06 en look_noche.gd.
+- Luna de juego (arco propio 19h-7h, fase 0.55-1), disco con manchas/cráteres, luz de luna sin haces duros.
+- Agua: reflejo suave de luna, noctilucas (shader), luz y brillo de la mantaraya, mar turquesa con algas, espuma de orilla en bandas, más oleaje.
+- Niebla: sin capas de bruma; niebla de altura con humedad variable por día (35%-180%).
+- Pendiente: noctilucas en rompiente a pie, ajustes finos de espuma, commit de cada ajuste.

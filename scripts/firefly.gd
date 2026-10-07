@@ -145,7 +145,7 @@ func _process(delta: float) -> void:
 	_azul = lerpf(_azul, azul_want, 1.0 - exp(-2.5 * delta))
 	_light.light_color = COLOR_CALIDO.lerp(GUIA_AZUL, _azul)
 	_mat.emission = Color(1.0, 0.9, 0.5).lerp(GUIA_AZUL, _azul)
-	_light.light_energy = _energy
+	_light.light_energy = _energy * 0.85
 	_light.visible = _energy > 0.02
 	var glow: float = 0.25 + 0.75 * clampf(_energy / LIGHT_ENERGY, 0.0, 1.0)
 	_mat.albedo_color = Color(1.0, 0.92, 0.5).lerp(GUIA_AZUL, _azul) * (0.35 + glow * 0.6)   # <1: bajo el umbral de glow (evita bloques)

@@ -140,6 +140,7 @@ func _ready() -> void:
 	var daynight := DayNight.new()
 	daynight.setup($Water3D/Sun as DirectionalLight3D, $Water3D/WorldEnvironment as WorldEnvironment)
 	add_child(daynight)
+	daynight.look.eco = eco
 	daynight.look.preparar_mundo(_island, _castaway)
 	var firefly := Firefly.new()
 	firefly.name = "Firefly"
