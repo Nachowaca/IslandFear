@@ -181,3 +181,7 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Clover_2, Petals_4, Flower_3/4_Single en GROUND_KIT/GROUND_RULES (island_life.gd).
 - RockPath_*: senderos fijos de piedras planas desde cada claro hacia el centro (island_marks.gd `_make_stone_path`).
 - Verificado solo: arranca sin errores; senderos y retorcidos no inspeccionados de cerca.
+
+## Bloque 4 cerrado: memoria
+- Texturas de 2K del MegaKit (Textures/ y glTF/) con process/size_limit=1024 en su .import (24 archivos). ultimate_nature ya lo tenía.
+- Sin medir RAM/fps reales; solo verificado que arranca.
