@@ -10,6 +10,10 @@ var act: String = ""        ## "pickup", "eat", "drink" o ""
 var act_w: float = 0.0      ## intensidad 0..1 de la acción
 
 var _idx: Dictionary = {}
+var record_idle: bool = false     ## true mientras suena Idle: guarda la pose de los brazos en reposo
+var arm_damp: float = 0.0         ## 0..1: cuánto se aquietan los brazos hacia esa pose (caminar tranquilo)
+var _arm_rest: Dictionary = {}
+const ARM_BONES: Array[String] = ["UpperArm.L", "UpperArm.R", "LowerArm.L", "LowerArm.R"]
 
 func _bone(sk: Skeleton3D, bone_name: String) -> int:
 	if not _idx.has(bone_name):
@@ -46,6 +50,15 @@ func _process_modification() -> void:
 	var sk: Skeleton3D = get_skeleton()
 	if sk == null:
 		return
+	for ab: String in ARM_BONES:
+		var bi: int = _bone(sk, ab)
+		if bi < 0:
+			continue
+		if record_idle:
+			_arm_rest[ab] = sk.get_bone_pose_rotation(bi)
+		elif arm_damp > 0.001 and _arm_rest.has(ab) and act == "":
+			var k: float = arm_damp * (1.0 if ab.begins_with("Upper") else 0.8)
+			sk.set_bone_pose_rotation(bi, sk.get_bone_pose_rotation(bi).slerp(_arm_rest[ab], k))
 	var pw: float = act_w if act == "pickup" else 0.0
 	var c: float = maxf(crouch, pw * 0.8)
 	if c > 0.001:

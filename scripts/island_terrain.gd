@@ -45,21 +45,11 @@ static func cave_dir2() -> Vector2:
 	return (-CAVE_CENTER).normalized()
 
 ## Metros que se excavan en (x, z): pozo circular de paredes empinadas + rampa en trinchera.
-func _pit_carve(x: float, z: float) -> float:
-	var pc: Vector2 = Vector2(x, z) - CAVE_CENTER
-	var r: float = pc.length()
-	if r > PIT_R + RAMP_LEN + 3.0:
-		return 0.0
-	var c: float = PIT_DEPTH * (1.0 - smoothstep(PIT_R - 2.0, PIT_R, r))
-	var d: Vector2 = cave_dir2()
-	var along: float = pc.dot(d)
-	var across: float = absf(pc.dot(Vector2(-d.y, d.x)))
-	if along > 0.0 and along < PIT_R + RAMP_LEN:
-		var t0: float = PIT_R * 0.4
-		var k: float = clampf((along - t0) / (PIT_R + RAMP_LEN - t0), 0.0, 1.0)
-		var side: float = 1.0 - smoothstep(RAMP_HALF_W, RAMP_HALF_W + 1.2, across)
-		c = maxf(c, PIT_DEPTH * (1.0 - k) * side)
-	return c
+func _pit_carve(_x: float, _z: float) -> float:
+	return 0.0   # sin pozo: la cueva es una roca con túnel (ver IslandFeatures._build_cave_rock)
+
+func _cave_bump(_x: float, _z: float) -> float:
+	return 0.0
 
 var _noise := FastNoiseLite.new()
 var _flora: Node3D
@@ -67,6 +57,7 @@ var eco: EcoMap                         ## mapa ecológico (biomas, humedad, sue
 var _noise_ready: bool = false
 var _mood: float = 0.0
 var _mood_timer: float = 0.0
+var _flora_mood: float = 0.0
 
 var pond_water_level: float = 2.0
 var cave_floor_y: float = 3.0
@@ -88,12 +79,16 @@ func _process(delta: float) -> void:
 	var target: float = clampf(Isla.vinculo / 60.0, -1.0, 1.0)
 	_mood = lerpf(_mood, target, 0.05)
 	(material_override as ShaderMaterial).set_shader_parameter("mood", _mood)
+	# ánimo más fino para la flora: vínculo + emociones (enojo/miedo la tensan, confianza la calma)
+	var fino: float = Isla.vinculo / 60.0 * 0.6 + (Isla.get_emocion("confianza") - 0.45) * 0.6 - Isla.get_emocion("enojo") * 0.8 - Isla.get_emocion("miedo") * 0.4
+	_flora_mood = lerpf(_flora_mood, clampf(fino, -1.0, 1.0), 0.06)
+	Wind.set_mood(_flora_mood)
 
 func _setup_noise() -> void:
 	_noise.seed = noise_seed
 	_noise.frequency = 1.5 / radius
 	_noise_ready = true
-	cave_floor_y = maxf(_base_height(CAVE_CENTER.x, CAVE_CENTER.y), PIT_DEPTH + 1.3)   # el pozo queda sobre el nivel del mar: la zona es un montículo
+	cave_floor_y = maxf(_base_height(CAVE_CENTER.x, CAVE_CENTER.y), 2.0)   # meseta plana donde se apoya la roca de la cueva
 
 ## Altura del terreno en (x, z) — pública para el jugador, la barca y el resto del juego.
 func height_at(x: float, z: float) -> float:
@@ -110,6 +105,7 @@ func is_in_cave_area(x: float, z: float, margin: float = 1.0) -> bool:
 func _height(x: float, z: float) -> float:
 	var h: float = _base_height(x, z)
 	var dp: float = Vector2(x, z).distance_to(POND_CENTER) / (POND_RADIUS * 1.6)
+	dp *= 1.0 + _noise.get_noise_2d(x * 2.2 + 300.0, z * 2.2 - 120.0) * 0.32   # orilla irregular
 	if dp < 1.0:
 		var k: float = 1.0 - smoothstep(0.0, 1.0, dp)
 		h -= POND_DEPTH * k
@@ -117,6 +113,7 @@ func _height(x: float, z: float) -> float:
 	if dc < 1.0:
 		var kc: float = 1.0 - smoothstep(0.45, 1.0, dc)
 		h = lerpf(h, cave_floor_y, kc)
+	h += _cave_bump(x, z)
 	h -= _pit_carve(x, z)
 	return h
 
@@ -140,6 +137,7 @@ func _base_height(x: float, z: float) -> float:
 	var inland: float = d - bw
 	var hills: float = (_noise.get_noise_2d(x * 1.6 + 50.0, z * 1.6) * 0.5 + 0.5) * hill_height
 	var h: float = 0.9 + minf(inland * 5.0, 1.0) * (0.3 + hills * minf(inland * 3.0, 1.0))
+	h += _massif(x, z, inland)
 	if m > 0.0:
 		# meseta alta con pared casi vertical sobre la playa, y terrazas
 		var wall: float = smoothstep(0.0, 0.035, inland)
@@ -148,9 +146,29 @@ func _base_height(x: float, z: float) -> float:
 		h += terr * m * wall * fade
 	return h
 
+## Macizo central: la isla se eleva hacia adentro con crestas y valles (ruido en cresta), sin tocar la laguna ni la meseta de la cueva.
+func _massif(x: float, z: float, inland: float) -> float:
+	var d0: float = clampf(1.0 - Vector2(x, z).length() / radius, 0.0, 1.0)
+	var rise: float = smoothstep(0.32, 0.78, d0)
+	if rise <= 0.0:
+		return 0.0
+	var keep: float = smoothstep(POND_RADIUS * 1.6, POND_RADIUS * 3.2, Vector2(x, z).distance_to(POND_CENTER))
+	keep *= smoothstep(CAVE_PLATEAU_R, CAVE_PLATEAU_R * 2.2, Vector2(x, z).distance_to(CAVE_CENTER))
+	# lomas redondeadas: ruido suave con la posición deformada (sin crestas filosas)
+	var wx: float = x + _noise.get_noise_2d(x * 0.8 + 11.0, z * 0.8) * 14.0
+	var wz: float = z + _noise.get_noise_2d(x * 0.8, z * 0.8 + 77.0) * 14.0
+	var n1: float = _noise.get_noise_2d(wx * 0.75 + 130.0, wz * 0.75 - 70.0) * 0.5 + 0.5
+	var dome: float = smoothstep(0.3, 0.85, n1)
+	var ridge: float = dome * dome * (3.0 - 2.0 * dome)
+	var base: float = 2.5 + _noise.get_noise_2d(x * 0.5, z * 0.5 - 300.0) * 1.0 + _noise.get_noise_2d(x * 2.0, z * 2.0) * 0.35
+	return rise * keep * (base + ridge * 8.0) * minf(inland * 4.0, 1.0)
+
 ## Categoría del suelo pintada en el color del vértice (alfa): 1 normal, 0.6 cueva, 0.3 fondo de laguna.
 func _category(h: float, xz: Vector2) -> float:
-	if xz.distance_to(CAVE_CENTER) < PIT_R + 4.0 and h < cave_floor_y + 0.6:
+	var rel: Vector2 = xz - CAVE_CENTER                  # piso de piedra a lo largo de todo el túnel
+	var cd: Vector2 = cave_dir2()
+	var along: float = rel.dot(cd)
+	if along > -5.0 and along < IslandFeatures.CAVE_LEN and absf(rel.dot(Vector2(-cd.y, cd.x))) < 5.0 and h < cave_floor_y + 0.8:
 		return 0.6
 	if xz.distance_to(POND_CENTER) < POND_RADIUS * 1.6 and h < pond_water_level + 0.25:
 		return 0.3
@@ -211,10 +229,38 @@ func _build() -> void:
 	material_override = mat
 	layers = 1 | (1 << 19)         # la capa 20 recibe las huellas (decals)
 	_scatter_flora()
+	_bake_biome_tint(mat, half)
 	if not Engine.is_editor_hint():
 		_build_terrain_collision()
 		_feed_water_shader(half)
 		_spawn_life()
+
+## Mapa de color del pasto por bioma (textura pequeña, se interpola suave entre biomas).
+func _bake_biome_tint(mat: ShaderMaterial, half: float) -> void:
+	var size: int = 160
+	var img := Image.create(size, size, false, Image.FORMAT_RGB8)
+	# [costa, roquedal, selva, bosque, matorral, árido]
+	var cols: Array[Color] = [Color(1.1, 1.04, 0.74), Color(0.8, 0.93, 0.82), Color(0.5, 0.9, 0.5), Color(0.72, 0.98, 0.78), Color(1.25, 1.1, 0.6), Color(1.38, 1.1, 0.66)]
+	for j in size:
+		for i in size:
+			var x: float = -half + (float(i) + 0.5) / size * half * 2.0
+			var z: float = -half + (float(j) + 0.5) / size * half * 2.0
+			var c := Color(1, 1, 1)
+			var h: float = _height(x, z)
+			if h > 0.5:
+				var w: PackedFloat32Array = eco.get_bioma_pesos(Vector3(x, h, z))
+				var tot: float = 0.0
+				var acc := Vector3.ZERO
+				for k in 6:
+					tot += w[k]
+					acc += Vector3(cols[k].r, cols[k].g, cols[k].b) * w[k]
+				if tot > 0.001:
+					acc /= tot
+					c = Color(acc.x, acc.y, acc.z)
+			img.set_pixel(i, j, Color(c.r / 1.5, c.g / 1.5, c.b / 1.5))
+	mat.set_shader_parameter("biome_tex", ImageTexture.create_from_image(img))
+	mat.set_shader_parameter("biome_origin", Vector2(-half, -half))
+	mat.set_shader_parameter("biome_size", half * 2.0)
 
 ## Le pasa al agua un mapa de alturas del terreno para la espuma y la transparencia en la orilla.
 func _feed_water_shader(half: float) -> void:
@@ -459,7 +505,7 @@ func _scatter_flora() -> void:
 			sc = rng.randf_range(1.4, 1.9)
 		_add_tree(rng, pos2, kit_name, sc, Color(rng.randf_range(0.85, 1.05), rng.randf_range(0.9, 1.05), rng.randf_range(0.8, 0.95)), trunk_shape, vine, false)
 		made += 1
-	# arbustos: matorral costero denso detrás de la playa, disperso en el bosque, rarísimo en la arena
+	# sotobosque por bioma, en grupos de 1 a 6 plantas (de a 2, 3 o 6 juntas) de la misma especie casi siempre
 	made = 0
 	tries = 0
 	while made < bush_count and tries < bush_count * 5:
@@ -473,21 +519,67 @@ func _scatter_flora() -> void:
 			p_bush = 0.05
 		if rng.randf() > p_bush:
 			continue
+		var wet3: float = eco.get_humedad(pos3)
+		# pesos por especie según el bioma: [arbusto, helecho, hoja ancha, planta 7, flores]
+		var sw: Array[float] = [
+			bw3[0] * 0.3 + bw3[1] * 0.2 + bw3[2] * 0.3 + bw3[3] * 0.5 + bw3[4] * 1.0 + bw3[5] * 0.6,
+			bw3[2] * 1.2 + bw3[3] * 0.8 + bw3[4] * 0.2 + wet3 * 0.6,
+			bw3[0] * 0.7 + bw3[2] * 1.0 + bw3[3] * 0.3 + bw3[4] * 0.2,
+			bw3[0] * 0.5 + bw3[2] * 0.8 + bw3[3] * 0.2 + bw3[4] * 0.3 + bw3[5] * 0.5,
+			bw3[0] * 0.1 + bw3[3] * 0.5 + bw3[4] * 0.6 + bw3[5] * 0.05]
+		var tot: float = 0.0
+		for w: float in sw:
+			tot += w
+		if tot <= 0.001:
+			continue
+		var pick: float = rng.randf() * tot
+		var sp: int = 0
+		for k in sw.size():
+			pick -= sw[k]
+			if pick <= 0.0:
+				sp = k
+				break
+		# tamaño del grupo: helechos y flores en manchas grandes, arbustos más sueltos
+		var sizes: Array[int] = [1, 2, 2, 3, 3, 6]
+		if sp == 1 or sp == 4:
+			sizes = [2, 3, 3, 6, 6, 3]
+		elif sp == 0:
+			sizes = [1, 1, 2, 2, 3, 3]
+		var n_group: int = sizes[rng.randi() % sizes.size()]
 		var has_flowers: bool = rng.randf() < (0.5 if forest_value(pos3.x, pos3.z) < 0.0 else 0.2)
 		var bt: Color = Color(rng.randf_range(0.85, 1.05), rng.randf_range(0.9, 1.1), rng.randf_range(0.8, 1.0))
-		var b: Node3D
-		if true:
-			var opts: Array[String] = ["Bush", "Bush_Large", "Bush_Small"]
-			if has_flowers:
-				opts = ["Bush_Flowers", "Bush_Large_Flowers", "Bush_Small_Flowers"]
-			b = NatureKit.make_uq(opts[rng.randi() % 3], bt, 110.0)
-		else:
-			b = NatureKit.make("Bush_Common_Flowers" if has_flowers else "Bush_Common", bt, 110.0)
-		b.position = pos3 - Vector3(0, 0.1, 0)
-		b.rotation.y = rng.randf() * TAU
-		b.scale = Vector3.ONE * rng.randf_range(0.55, 1.1)
-		_flora.add_child(b)
-		made += 1
+		for gi in n_group:
+			var gp: Vector3 = pos3
+			if gi > 0:
+				var ga: float = rng.randf() * TAU
+				var gr: float = rng.randf_range(0.6, 1.0 + 0.25 * n_group)
+				gp = Vector3(pos3.x + cos(ga) * gr, 0.0, pos3.z + sin(ga) * gr)
+				gp.y = _height(gp.x, gp.z)
+				if gp.y < 1.0 or gp.y > 13.0 or is_in_pond_area(gp.x, gp.z, 1.15) or is_in_cave_area(gp.x, gp.z, 1.0):
+					continue
+			var mname: String
+			match sp:
+				0:
+					mname = "Bush_Common_Flowers" if has_flowers else "Bush_Common"
+				1:
+					mname = "Fern_1"
+				2:
+					mname = "Plant_1_Big" if rng.randf() < 0.3 else "Plant_1"
+				3:
+					mname = "Plant_7_Big" if rng.randf() < 0.3 else "Plant_7"
+				_:
+					mname = "Flower_3_Group" if rng.randf() < 0.5 else "Flower_4_Group"
+			if gi > 0 and rng.randf() < 0.2:
+				mname = "Fern_1" if sp != 1 else "Plant_1"      # algún vecino distinto
+			var b: Node3D = NatureKit.make(mname, bt, 110.0)
+			b.position = gp - Vector3(0, 0.1, 0)
+			b.rotation.y = rng.randf() * TAU
+			var gsc: float = rng.randf_range(0.8, 1.4) * (1.0 if gi == 0 else rng.randf_range(0.7, 1.0))   # el del centro es el más grande
+			b.scale = Vector3(rng.randf_range(0.7, 1.3), rng.randf_range(0.75, 1.35), rng.randf_range(0.7, 1.3)) * gsc
+			b.rotation.x = rng.randf_range(-0.08, 0.08)
+			b.rotation.z = rng.randf_range(-0.08, 0.08)
+			_flora.add_child(b)
+			made += 1
 	# rocas: derrumbe (talud) al pie de los acantilados y afloramientos sueltos
 	made = 0
 	tries = 0
@@ -506,7 +598,7 @@ func _scatter_flora() -> void:
 			if rng.randf() > 0.06 + bw4[1] * 0.9 + bw4[5] * 0.3 + bw4[4] * 0.15 + eco.get_misterio(pos4) * 0.9:
 				continue
 		var uq_rock: bool = true
-		var r: Node3D = NatureKit.make_uq("Rock_%d" % rng.randi_range(1, 5), Color.WHITE, 140.0) if uq_rock else NatureKit.make("Rock_Medium_%d" % rng.randi_range(1, 3), Color.WHITE, 140.0)
+		var r: Node3D = NatureKit.make_uq("Rock_%d" % rng.randi_range(1, 5), NatureKit.rock_tint(rng), 140.0) if uq_rock else NatureKit.make("Rock_Medium_%d" % rng.randi_range(1, 3), Color.WHITE, 140.0)
 		r.position = pos4 - Vector3(0, 0.15, 0)
 		r.rotation.y = rng.randf() * TAU
 		r.scale = Vector3.ONE * (rng.randf_range(0.3, 0.8) if talus else rng.randf_range(0.25, 0.6))
@@ -522,6 +614,44 @@ func _scatter_flora() -> void:
 		rock_body.add_child(rock_cs)
 		_flora.add_child(rock_body)
 		made += 1
+	_add_rock_clusters(rng)
+
+## Grupos de rocas grandes (una peña + satélites): en la costa y en las lomas, como en las referencias.
+func _add_rock_clusters(rng: RandomNumberGenerator) -> void:
+	var clusters: int = 0
+	var tries: int = 0
+	while clusters < 16 and tries < 400:
+		tries += 1
+		var coast: bool = clusters < 9
+		var c: Vector3 = _random_spot(rng, 0.7 if coast else 3.0, 2.6 if coast else 14.0)
+		if c.y < -90.0:
+			continue
+		if is_in_pond_area(c.x, c.z, 1.6) or is_in_cave_area(c.x, c.z, 1.6):
+			continue
+		var n: int = rng.randi_range(4, 7)
+		for i in n:
+			var big: bool = i == 0
+			var off: Vector2 = Vector2.ZERO if big else Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(2.5, 6.0)
+			var gx: float = c.x + off.x
+			var gz: float = c.z + off.y
+			var gy: float = height_at(gx, gz)
+			if gy < 0.3:
+				continue
+			var r: Node3D = NatureKit.make_uq("Rock_%d" % rng.randi_range(1, 5), NatureKit.rock_tint(rng), 200.0)
+			r.position = Vector3(gx, gy - 0.3, gz)
+			r.rotation = Vector3(rng.randf_range(-0.12, 0.12), rng.randf() * TAU, rng.randf_range(-0.12, 0.12))
+			var sc: float = rng.randf_range(1.7, 2.7) if big else rng.randf_range(0.5, 1.2)
+			r.scale = Vector3(sc * rng.randf_range(0.9, 1.3), sc * rng.randf_range(0.8, 1.2), sc * rng.randf_range(0.9, 1.3)) * 3.0
+			_flora.add_child(r)
+			var body := StaticBody3D.new()
+			var cs := CollisionShape3D.new()
+			var sh := SphereShape3D.new()
+			sh.radius = 0.5 * sc * 3.0 * 0.85
+			cs.shape = sh
+			body.position = r.position + Vector3(0, sh.radius * 0.7, 0)
+			body.add_child(cs)
+			_flora.add_child(body)
+		clusters += 1
 
 ## Árbol individual (talable): visual, colisión, lianas (solo los vivos) y registro en las listas.
 func _add_tree(rng: RandomNumberGenerator, pos: Vector3, kit_name: String, sc: float, tint: Color, shape: Shape3D, vine: Mesh, dead: bool) -> void:
@@ -546,7 +676,7 @@ func _add_tree(rng: RandomNumberGenerator, pos: Vector3, kit_name: String, sc: f
 		v.name = "Liana%d" % k
 		v.mesh = vine
 		var va: float = lr.randf() * TAU
-		v.position = Vector3(cos(va) * 0.95, 2.2, sin(va) * 0.95)
+		v.position = Vector3(cos(va) * 0.4, 2.0, sin(va) * 0.4)   # pegadas al tronco (antes colgaban a 0.95 m, en el aire)
 		tree.add_child(v)
 	tree_nodes.append(tree)
 	tree_positions.append(pos)

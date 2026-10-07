@@ -24,6 +24,7 @@ Inventario="*res://scripts/inventario.gd"
 
 window/size/viewport_width=1920.0
 window/size/viewport_height=1080.0
+window/size/mode=3.0
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
@@ -92,6 +93,7 @@ toggle_map={
 [rendering]
 
 rendering_device/driver.windows="d3d12"
+renderer/rendering_method="mobile"
 
 [shader_globals]
 

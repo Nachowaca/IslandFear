@@ -56,9 +56,9 @@ void sky() {
 		vec3 p = vec3(dot(d, star_x), dot(d, star_y), dot(d, star_z)) * 140.0;
 		vec3 ip = floor(p);
 		float r = hash13(ip);
-		float star = step(0.9965, r) * smoothstep(0.38, 0.0, length(fract(p) - 0.5));
+		float star = step(0.9945, r) * smoothstep(0.5, 0.0, length(fract(p) - 0.5));
 		float tw = 0.65 + 0.35 * sin(TIME * 2.5 + r * 60.0);
-		col += vec3(0.9, 0.95, 1.0) * star * tw * star_amount * clamp(h * 3.0, 0.0, 1.0) * 1.5;
+		col += vec3(1.0, 0.82, 0.45) * star * tw * star_amount * clamp(h * 3.0, 0.0, 1.0) * 1.5;
 	}
 	COLOR = col;
 }

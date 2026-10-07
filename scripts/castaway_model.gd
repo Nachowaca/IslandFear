@@ -9,9 +9,9 @@ const MODEL: PackedScene = preload("res://assets/character/quaternius_cc0-male-c
 const MODEL_SCALE: float = 0.372       ## el modelo mide 4.84 unidades -> 1.8 m
 const PREFIX: String = "HumanArmature|HumanArmature|Man_"
 const LOOPING: Array[String] = ["Idle", "Walk", "Run"]
-const WALK_REF: float = 1.6            ## m/s a los que la animación Walk se ve natural
+const WALK_REF: float = 2.9            ## m/s a los que la animación Walk se ve natural (más alto = pasos más lentos y tranquilos)
 const RUN_REF: float = 4.2
-const RUN_FROM: float = 2.8            ## desde esta velocidad se usa Run
+const RUN_FROM: float = 5.2            ## desde esta velocidad se usa Run (caminar normal = 4.0, correr = 7.5)
 
 var ap: AnimationPlayer
 var sk: Skeleton3D
@@ -98,9 +98,12 @@ func update(dt: float, h_speed: float, air: bool, dead: bool, crouch_target: flo
 	if _air:
 		_air = false
 		_cur = ""
+	pose.record_idle = _cur == "Idle" and h_speed < 0.25
+	var want_damp: float = 0.55 if _cur == "Walk" else 0.0
+	pose.arm_damp = lerpf(pose.arm_damp, want_damp, 1.0 - exp(-8.0 * dt))
 	if h_speed < 0.25:
 		_play("Idle", 0.25, 1.0)
 	elif h_speed < RUN_FROM:
-		_play("Walk", 0.2, clampf(h_speed / WALK_REF, 0.6, 2.0))
+		_play("Walk", 0.2, clampf(h_speed / WALK_REF, 0.6, 1.4))
 	else:
 		_play("Run", 0.2, clampf(h_speed / RUN_REF, 0.8, 1.9))

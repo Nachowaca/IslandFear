@@ -5,13 +5,13 @@ uniform sampler2D height_tex : repeat_disable, filter_linear;
 uniform vec2 height_origin = vec2(-40.5, -40.5);
 uniform float height_size = 81.0;
 uniform float water_y = 0.35;
-uniform vec4 deep_color : source_color = vec4(0.03, 0.2, 0.38, 1.0);
-uniform vec4 shallow_color : source_color = vec4(0.12, 0.62, 0.7, 1.0);
+uniform vec4 deep_color : source_color = vec4(0.02, 0.30, 0.50, 1.0);
+uniform vec4 shallow_color : source_color = vec4(0.25, 0.88, 0.85, 1.0);
 uniform vec4 foam_color : source_color = vec4(0.95, 1.0, 1.0, 1.0);
 uniform float wave_height = 0.15;
 uniform float wave_speed = 0.4;
 uniform float wave_scale = 0.25;
-uniform float clear_depth = 2.5;
+uniform float clear_depth = 4.0;
 uniform float foam_width = 0.6;
 uniform vec3 moon_dir = vec3(0.0, -1.0, 0.0);
 uniform float moon_glow = 0.0;      // 0..1: cuánta luna hay para reflejar
@@ -80,5 +80,5 @@ void fragment() {
 	ROUGHNESS = mix(0.06, 0.8, foam);
 	METALLIC = 0.0;
 	SPECULAR = 0.8;
-	ALPHA = clamp(mix(0.25, 1.0, smoothstep(0.0, 0.9, depth_k)) + foam * 0.7, 0.0, 1.0);
+	ALPHA = clamp(mix(0.12, 1.0, smoothstep(0.0, 0.8, depth_k)) + foam * 0.7, 0.0, 1.0);
 }

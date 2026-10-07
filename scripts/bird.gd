@@ -5,7 +5,7 @@ extends Node3D
 ## SONGBIRD: pajarito posado en un árbol que huye si el jugador se acerca y luego vuelve.
 
 enum Kind { GULL, SONGBIRD }
-enum State { PERCHED, FLEE, RETURN, ORBIT }
+enum State { PERCHED, FLEE, RETURN, ORBIT, WANDER }
 
 var kind: Kind = Kind.SONGBIRD
 var body_color: Color = Color(0.3, 0.5, 0.8)
@@ -17,6 +17,7 @@ var orbit_radius: float = 30.0
 var orbit_height: float = 18.0
 var orbit_speed: float = 0.25
 var player: Node3D
+var perches: Array[Vector3] = []     ## copas de árboles donde puede posarse (vuela de una a otra)
 
 var _state: State = State.PERCHED
 var _time: float = 0.0
@@ -26,6 +27,9 @@ var _flee_time: float = 0.0
 var _wing_l: Node3D
 var _wing_r: Node3D
 var _head: Node3D
+var _idle_left: float = 6.0
+var _wander_to: Vector3 = Vector3.ZERO
+var _wander_t: float = 0.0
 var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -37,6 +41,7 @@ func _ready() -> void:
 	else:
 		global_position = perch
 		_state = State.PERCHED
+		_idle_left = _rng.randf_range(2.0, 14.0)
 
 func _mat(c: Color) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -103,6 +108,8 @@ func _process(delta: float) -> void:
 			_do_flee(delta)
 		State.RETURN:
 			_do_return(delta)
+		State.WANDER:
+			_do_wander(delta)
 
 func _flap(speed: float, amp: float) -> void:
 	var a: float = sin(_time * speed) * amp
@@ -136,8 +143,19 @@ func _player_dist() -> float:
 		return 1000.0
 	return global_position.distance_to(player.global_position)
 
-func _do_perched(_delta: float) -> void:
+func _do_perched(delta: float) -> void:
 	_fold()
+	_idle_left -= delta
+	if _idle_left <= 0.0 and not perches.is_empty():
+		_idle_left = _rng.randf_range(8.0, 25.0)
+		for k in 8:
+			var cand: Vector3 = perches[_rng.randi_range(0, perches.size() - 1)]
+			var dd: float = cand.distance_to(global_position)
+			if dd > 6.0 and dd < 35.0:
+				_wander_to = cand
+				_wander_t = 0.0
+				_state = State.WANDER
+				return
 	_head.rotation.y = sin(_time * 1.3 + _angle) * 0.6 * maxf(0.0, sin(_time * 0.4 + _angle * 3.0))
 	_head.rotation.x = absf(sin(_time * 3.0 + _angle)) * 0.25 * maxf(0.0, sin(_time * 0.3 + _angle))
 	if _player_dist() < 8.0:
@@ -174,3 +192,38 @@ func _do_return(delta: float) -> void:
 	global_position += step
 	look_at(global_position + to, Vector3.UP)
 	_flap(30.0, 0.8)
+
+## Vuela a otra copa: despega con un salto, aletea en ráfagas con planeos, bambolea y aterriza frenando.
+func _do_wander(delta: float) -> void:
+	if player != null and _player_dist() < 5.0:
+		var away: Vector3 = global_position - player.global_position
+		away.y = 0.0
+		_flee_dir = away.normalized()
+		_flee_time = 0.0
+		_state = State.FLEE
+		return
+	_wander_t += delta
+	var to: Vector3 = _wander_to - global_position
+	var dist: float = to.length()
+	if dist < 0.3:
+		global_position = _wander_to
+		perch = _wander_to
+		_state = State.PERCHED
+		_idle_left = _rng.randf_range(6.0, 22.0)
+		return
+	var dir: Vector3 = to.normalized()
+	var speed: float = 5.5 * clampf(dist / 3.0, 0.25, 1.0)
+	var lift: float = 2.5 * maxf(0.0, 1.0 - _wander_t / 0.8)
+	var arc: float = 0.0
+	if dist > 4.0:
+		arc = sin(clampf(_wander_t * 0.6, 0.0, PI)) * 0.8
+	var vel: Vector3 = dir * speed + Vector3.UP * (lift + arc + sin(_time * 8.0 + _angle) * 0.7)
+	global_position += vel * delta
+	var flat: Vector3 = Vector3(dir.x, 0.0, dir.z)
+	if flat.length() > 0.05:
+		look_at(global_position + flat.normalized() * 2.0 + Vector3.UP * dir.y, Vector3.UP)
+	var burst: float = clampf(sin(_time * 3.2 + _angle) * 2.0 + 1.0, 0.0, 1.0)
+	if dist < 3.0 or _wander_t < 0.8:
+		burst = 1.0
+	_flap(26.0, lerpf(0.25, 0.9, burst))
+	rotation.z += sin(_time * 8.0 + _angle) * 0.12

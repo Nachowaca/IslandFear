@@ -10,8 +10,8 @@ const DAY_TOP := Color(0.2, 0.45, 0.82)
 const DAY_HORIZON := Color(0.72, 0.84, 0.93)
 const DUSK_TOP := Color(0.28, 0.3, 0.6)
 const DUSK_HORIZON := Color(1.0, 0.52, 0.28)
-const NIGHT_TOP := Color(0.012, 0.025, 0.09)
-const NIGHT_HORIZON := Color(0.05, 0.08, 0.17)
+const NIGHT_TOP := Color(0.015, 0.1, 0.17)
+const NIGHT_HORIZON := Color(0.05, 0.25, 0.3)
 
 var sun: DirectionalLight3D
 var env_node: WorldEnvironment
@@ -41,6 +41,7 @@ var _f10_was_down: bool = false
 var _lighthouse: Lighthouse
 var _water_mat: ShaderMaterial
 var _vis_timer: float = 0.0
+var fog_local: float = 0.0   ## niebla extra según el bioma (la pone BiomeAtmosphere)
 var fog_boost: float = 0.0   ## niebla extra que levanta la isla (0 = normal)
 var _sun_shadow_on: bool = true
 var _moon_shadow_on: bool = false
@@ -181,10 +182,10 @@ func _update(refresh_slow: bool) -> void:
 	var moon_pos: Vector3 = moon_dir
 	var moon_up: float = clampf(moon_pos.y, 0.0, 1.0)
 	_moon.global_transform = Transform3D(_look_basis(-moon_pos), moon_pos * 80.0)
-	_moon.light_energy = 1.1 * night * (0.15 + 0.85 * moon_phase * moon_phase) * smoothstep(0.0, 0.25, moon_up)
+	_moon.light_energy = 1.5 * night * (0.55 + 0.45 * moon_phase * moon_phase) * smoothstep(0.0, 0.25, moon_up)
 	_moon.light_specular = 1.6   # reflejo plateado sobre el agua
 	# luz de luna real: blanco frío, poco saturado
-	_moon.light_color = Color(0.78, 0.85, 1.0).lerp(Color(0.92, 0.95, 1.0), moon_phase * 0.7)
+	_moon.light_color = Color(0.3, 0.68, 0.85).lerp(Color(0.5, 0.82, 0.95), moon_phase * 0.7)
 	var moon_visible: float = night * smoothstep(0.0, 0.2, moon_pos.y)
 	if _water_mat == null:
 		var w: MeshInstance3D = get_tree().get_first_node_in_group("water_surface") as MeshInstance3D
@@ -193,8 +194,11 @@ func _update(refresh_slow: bool) -> void:
 	if _water_mat != null:
 		_water_mat.set_shader_parameter("moon_dir", moon_pos)
 		_water_mat.set_shader_parameter("moon_glow", moon_visible * (0.2 + 0.8 * moon_phase))
+		_water_mat.set_shader_parameter("moon_tint", Color(1.0, 0.86, 0.55))   # reflejo cálido sobre el agua teal
+		_water_mat.set_shader_parameter("deep_color", Color(0.02, 0.30, 0.50).lerp(Color(0.01, 0.17, 0.28), night))
+		_water_mat.set_shader_parameter("shallow_color", Color(0.25, 0.88, 0.85).lerp(Color(0.08, 0.42, 0.46), night))
 	# De noche el ojo ve casi sin color: se desatura
-	_env.adjustment_saturation = lerpf(1.12, 0.72, night)
+	_env.adjustment_saturation = lerpf(1.12, 1.2, night)
 	_moon.visible = _moon.light_energy > 0.01
 	var want_moon_shadow: bool = _moon.visible and moon_up > 0.12
 	if want_moon_shadow != _moon_shadow_on:
@@ -226,7 +230,7 @@ func _update(refresh_slow: bool) -> void:
 	# Ambiente, niebla y exposición
 	_env.ambient_light_energy = lerpf(0.7, 1.7, night) + dusk * 0.6
 	_env.fog_light_color = horizon
-	_env.fog_density = lerpf(0.0012, 0.0024, night) + dusk * 0.0006 + fog_boost
+	_env.fog_density = lerpf(0.0012, 0.0024, night) + dusk * 0.0006 + fog_boost + fog_local
 	_env.tonemap_exposure = lerpf(0.95, 1.1, night)
 
 	# Reloj

@@ -130,6 +130,19 @@ func _ready() -> void:
 	var daynight := DayNight.new()
 	daynight.setup($Water3D/Sun as DirectionalLight3D, $Water3D/WorldEnvironment as WorldEnvironment)
 	add_child(daynight)
+	var firefly := Firefly.new()
+	firefly.name = "Firefly"
+	firefly.player = _castaway
+	firefly.terrain = _island
+	firefly.daynight = daynight
+	add_child(firefly)
+	var atmo := BiomeAtmosphere.new()
+	atmo.name = "BiomeAtmosphere"
+	atmo.terrain = _island
+	atmo.eco = eco
+	atmo.daynight = daynight
+	atmo.player = _castaway
+	add_child(atmo)
 	_overview_cam = Camera3D.new()
 	_overview_cam.far = 3000.0
 	add_child(_overview_cam)
@@ -221,7 +234,7 @@ var _f11_was_down: bool = false
 func _process(delta: float) -> void:
 	_time += delta
 	# F11: pantalla completa / ventana
-	var f11: bool = Input.is_physical_key_pressed(KEY_F11)
+	var f11: bool = Input.is_physical_key_pressed(KEY_F11) or (Input.is_physical_key_pressed(KEY_ENTER) and (Input.is_physical_key_pressed(KEY_ALT) or Input.is_physical_key_pressed(KEY_META)))   # F11, Option+Enter o Cmd+Enter
 	if f11 and not _f11_was_down:
 		var fs: bool = DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fs else DisplayServer.WINDOW_MODE_FULLSCREEN)

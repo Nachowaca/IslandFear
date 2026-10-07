@@ -15,6 +15,7 @@ var sacred_spots: Array[Dictionary] = []     # {name, pos, radius, kind}
 var cave_center: Vector3
 var cave_dir: Vector3 = Vector3.RIGHT        # hacia dónde mira la entrada
 var cave_entrance: Vector3
+const CAVE_LEN: float = 13.0                  # largo de la cueva desde el centro de la cámara hasta la boca
 const CAVE_INNER_R: float = 3.5
 const CAVE_RING_R: float = 5.4
 
@@ -125,48 +126,20 @@ func _spot(min_h: float, max_h: float, min_origin: float = 0.0, max_origin: floa
 func _build_cave() -> void:
 	# La cueva es un POZO excavado en el terreno (ver IslandTerrain._pit_carve) con luces misteriosas adentro.
 	var c2: Vector2 = IslandTerrain.CAVE_CENTER
-	var floor_y: float = terrain.cave_floor_y - IslandTerrain.PIT_DEPTH
+	var floor_y: float = terrain.cave_floor_y
 	cave_center = Vector3(c2.x, floor_y, c2.y)
 	var d2: Vector2 = IslandTerrain.cave_dir2()
 	cave_dir = Vector3(d2.x, 0.0, d2.y)
-	var ep: Vector2 = c2 + d2 * (IslandTerrain.PIT_R + 3.5)       # donde la isla puede sellar la rampa
+	var ep: Vector2 = c2 + d2 * (CAVE_LEN - 1.5)                   # donde la isla puede sellar la boca
 	cave_entrance = Vector3(ep.x, terrain.height_at(ep.x, ep.y), ep.y)
 	var dark: StandardMaterial3D = _mat(Color(0.28, 0.27, 0.28))
 
-	# paredes de roca (pack Quaternius): anillo en el borde y en las paredes, techo que sobresale al fondo
-	var a_e: float = atan2(cave_dir.z, cave_dir.x)
-	for i in 34:
-		var ang: float = TAU * (float(i) + _rng.randf()) / 34.0
-		if absf(angle_difference(ang, a_e)) < 0.5:
-			continue                                         # deja libre la entrada de la rampa
-		var rr2: float = IslandTerrain.PIT_R + _rng.randf_range(-1.6, 1.4)
-		var rp: Vector3 = Vector3(c2.x + cos(ang) * rr2, 0.0, c2.y + sin(ang) * rr2)
-		rp.y = terrain.height_at(rp.x, rp.z) - 0.4
-		_wall_rock(rp, _rng.randf_range(1.5, 2.5))
-	for i in 16:
-		var ang2: float = TAU * (float(i) + _rng.randf()) / 16.0
-		if absf(angle_difference(ang2, a_e)) < 0.7:
-			continue
-		var r3: float = IslandTerrain.PIT_R - _rng.randf_range(0.6, 2.2)
-		var rp2: Vector3 = Vector3(c2.x + cos(ang2) * r3, 0.0, c2.y + sin(ang2) * r3)
-		rp2.y = terrain.height_at(rp2.x, rp2.z) - 0.3
-		_wall_rock(rp2, _rng.randf_range(1.2, 1.9))
-	for i in 7:                                              # techo: rocas sobre el borde del fondo, hacia adentro
-		var ang3: float = a_e + PI + _rng.randf_range(-1.15, 1.15)
-		var rp3: Vector3 = Vector3(c2.x + cos(ang3) * (IslandTerrain.PIT_R - 0.9), 0.0, c2.y + sin(ang3) * (IslandTerrain.PIT_R - 0.9))
-		rp3.y = terrain.height_at(c2.x + cos(ang3) * (IslandTerrain.PIT_R + 1.0), c2.y + sin(ang3) * (IslandTerrain.PIT_R + 1.0)) + 0.1
-		_wall_rock(rp3, _rng.randf_range(2.4, 3.2))
-	for s: float in [-1.0, 1.0]:                             # peñascos que enmarcan la rampa
-		for k in 3:
-			var along: float = IslandTerrain.PIT_R + 2.0 + float(k) * 4.5
-			var side: Vector2 = Vector2(-d2.y, d2.x) * s * (IslandTerrain.RAMP_HALF_W + 1.6)
-			var fp: Vector2 = c2 + d2 * along + side
-			_wall_rock(Vector3(fp.x, terrain.height_at(fp.x, fp.y) - 0.3, fp.y), _rng.randf_range(1.3, 1.8))
+	_build_cave_rock(c2, d2)
 
 	# cristales y luces flotantes dentro del pozo
 	for i in 7:
 		var a5: float = _rng.randf() * TAU
-		var rr: float = _rng.randf_range(1.6, 4.2)
+		var rr: float = _rng.randf_range(1.6, 3.6)
 		var m := StandardMaterial3D.new()
 		m.albedo_color = Color(0.3, 0.8, 0.85)
 		m.emission_enabled = true
@@ -187,7 +160,7 @@ func _build_cave() -> void:
 		om.emission_energy_multiplier = 3.0
 		_crystal_mats.append(om)
 		var orb := _mi(self, _sph(_rng.randf_range(0.09, 0.18), 8, 4), om, cave_center, Vector3.ZERO)
-		var base: Vector3 = cave_center + Vector3(_rng.randf_range(-3.6, 3.6), _rng.randf_range(0.8, 6.0), _rng.randf_range(-3.6, 3.6))
+		var base: Vector3 = cave_center + Vector3(_rng.randf_range(-3.6, 3.6), _rng.randf_range(0.8, 3.8), _rng.randf_range(-3.6, 3.6))
 		_cave_orbs.append({"node": orb, "base": base, "ph": _rng.randf() * TAU, "sp": _rng.randf_range(0.4, 1.0), "amp": _rng.randf_range(0.25, 0.7)})
 		orb.position = base
 	var motes := CPUParticles3D.new()
@@ -220,25 +193,174 @@ func _build_cave() -> void:
 	_seal_body = StaticBody3D.new()
 	_seal_body.position = cave_entrance + Vector3(0, 1.2, 0)
 	_seal_shape = CollisionShape3D.new()
-	_seal_shape.shape = _sphere_shape(1.6)
+	_seal_shape.shape = _sphere_shape(2.3)
 	_seal_shape.disabled = true
 	_seal_body.add_child(_seal_shape)
-	_seal_mesh = _mi(_seal_body, _sph(1.7, 7, 4), dark, Vector3.ZERO, Vector3(0.3, 0.8, 0.1), Vector3(0.01, 0.01, 0.01))
+	_seal_mesh = _mi(_seal_body, _sph(2.4, 7, 4), dark, Vector3.ZERO, Vector3(0.3, 0.8, 0.1), Vector3(0.01, 0.01, 0.01))
 	_seal_mesh.visible = false
 	add_child(_seal_body)
 
 	sacred_spots.append({"name": "Cueva", "pos": cave_center, "radius": 6.0, "kind": "refuge"})
 
+## La cueva es UNA roca grande (malla procedural) con un túnel y una cámara perforados; el piso es el propio terreno.
+func _build_cave_rock(c2: Vector2, d2: Vector2) -> void:
+	var nz := FastNoiseLite.new()
+	nz.seed = 31
+	nz.frequency = 0.22
+	var nz2 := FastNoiseLite.new()
+	nz2.seed = 77
+	nz2.frequency = 0.7
+	var side: Vector2 = Vector2(-d2.y, d2.x)
+	var seg: int = 20
+	var L: float = CAVE_LEN
+	var inner: Array = []
+	var outer: Array = []
+	var n_in: int = 34
+	for k in n_in + 1:
+		var a: float = lerpf(-4.8, L, float(k) / float(n_in))
+		var wi: float
+		var hi: float
+		if a >= 0.0:
+			var t: float = smoothstep(2.5, 6.5, a)
+			wi = lerpf(4.4, 2.0, t)
+			hi = lerpf(5.0, 3.2, t)
+		else:
+			var f: float = sqrt(maxf(1.0 - (a / 4.8) * (a / 4.8), 0.0))
+			wi = 4.4 * f
+			hi = 5.0 * f
+		var ring: Array = []
+		var cxz: Vector2 = c2 + d2 * a
+		var y0: float = terrain.height_at(cxz.x, cxz.y)
+		for j in seg + 1:
+			var th: float = PI * float(j) / float(seg)
+			var q: Vector2 = cxz + side * (wi * cos(th))
+			var sn: float = sin(th)
+			var yq: float = lerpf(terrain.height_at(q.x, q.y) - 0.05, y0, pow(sn, 0.35))   # el arranque de la pared sigue al piso real (sin escalón)
+			var pt: Vector3 = Vector3(q.x, yq + hi * pow(sn, 0.85), q.y)
+			var amp: float = 0.55 * sn
+			pt += Vector3(nz.get_noise_3d(pt.x, pt.y, pt.z), nz.get_noise_3d(pt.x + 50.0, pt.y, pt.z), nz.get_noise_3d(pt.x, pt.y, pt.z + 50.0)) * amp
+			ring.append(pt)
+		inner.append(ring)
+	var n_out: int = 36
+	for k in n_out + 1:
+		var a2: float = lerpf(-8.0, L, float(k) / float(n_out))
+		var wo: float
+		var ho: float
+		if a2 >= 0.0:
+			var t2: float = smoothstep(0.0, L, a2)
+			wo = lerpf(7.0, 4.4, t2)
+			ho = lerpf(9.5, 5.2, t2)
+		else:
+			var f2: float = sqrt(maxf(1.0 - (a2 / 8.0) * (a2 / 8.0), 0.0))
+			wo = 7.0 * f2
+			ho = 9.5 * f2
+		var ring2: Array = []
+		var cxz2: Vector2 = c2 + d2 * a2
+		var lf: Vector2 = cxz2 + side * wo
+		var rt: Vector2 = cxz2 - side * wo
+		var yl: float = terrain.height_at(lf.x, lf.y) - 1.0
+		var yr: float = terrain.height_at(rt.x, rt.y) - 1.0
+		for j in seg + 1:
+			var th2: float = PI * float(j) / float(seg)
+			var q2: Vector2 = cxz2 + side * (wo * cos(th2))
+			var sn2: float = sin(th2)
+			var yb: float = lerpf(yl, yr, float(j) / float(seg))
+			var pt2: Vector3 = Vector3(q2.x, yb + ho * pow(sn2, 0.8), q2.y)
+			var amp2: float = 0.4 + 1.3 * sn2
+			pt2 += Vector3(nz.get_noise_3d(pt2.x, pt2.y, pt2.z), nz.get_noise_3d(pt2.x + 50.0, pt2.y, pt2.z), nz.get_noise_3d(pt2.x, pt2.y, pt2.z + 50.0)) * amp2 * 2.0
+			pt2 += Vector3(nz2.get_noise_3d(pt2.x, pt2.y, pt2.z), 0.0, nz2.get_noise_3d(pt2.x, pt2.y + 9.0, pt2.z)) * 0.5 * sn2
+			ring2.append(pt2)
+		outer.append(ring2)
+
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var cols := PackedColorArray()
+	var cd: Dictionary = {"v": verts, "n": norms, "c": cols, "c2": c2}
+	for k in n_in:
+		for j in seg:
+			_cave_quad(cd, inner[k][j], inner[k][j + 1], inner[k + 1][j + 1], inner[k + 1][j], false)
+	for k in n_out:
+		for j in seg:
+			_cave_quad(cd, outer[k][j], outer[k][j + 1], outer[k + 1][j + 1], outer[k + 1][j], true)
+	for j in seg:                                             # cara de la boca: une el borde interior con el exterior
+		_cave_quad(cd, inner[n_in][j], inner[n_in][j + 1], outer[n_out][j + 1], outer[n_out][j], true)
+	verts = cd["v"]
+	cols = cd["c"]
+	var st := SurfaceTool.new()          # normales suaves: la roca se ve redondeada, no facetada
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for vi in verts.size():
+		st.set_color(cols[vi])
+		st.set_smooth_group(0)
+		st.add_vertex(verts[vi])
+	st.generate_normals()
+	var am: ArrayMesh = st.commit()
+	var rm := StandardMaterial3D.new()
+	rm.vertex_color_use_as_albedo = true
+	rm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	rm.roughness = 0.95
+	am.surface_set_material(0, rm)
+	var body := StaticBody3D.new()
+	body.name = "CaveRock"
+	var mi := MeshInstance3D.new()
+	mi.mesh = am
+	body.add_child(mi)
+	var cs := CollisionShape3D.new()
+	var shp: ConcavePolygonShape3D = am.create_trimesh_shape() as ConcavePolygonShape3D
+	shp.backface_collision = true
+	cs.shape = shp
+	body.add_child(cs)
+	add_child(body)
+
+## Agrega un quad (2 triángulos planos, normales por cara) a la malla de la cueva.
+func _cave_quad(cd: Dictionary, p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, is_outer: bool) -> void:
+	var verts: PackedVector3Array = cd["v"]
+	var norms: PackedVector3Array = cd["n"]
+	var cols: PackedColorArray = cd["c"]
+	var c2: Vector2 = cd["c2"]
+	var tris: Array = [[p0, p1, p2], [p0, p2, p3]]
+	for tri: Array in tris:
+		var t0: Vector3 = tri[0]
+		var t1: Vector3 = tri[1]
+		var t2v: Vector3 = tri[2]
+		var nn: Vector3 = (t1 - t0).cross(t2v - t0)
+		if nn.length() < 0.0001:
+			continue
+		nn = nn.normalized()
+		var cen: Vector3 = (t0 + t1 + t2v) / 3.0
+		var hv: float = float(absi(hash(Vector3i(roundi(cen.x * 3.0), roundi(cen.y * 3.0), roundi(cen.z * 3.0)))) % 100) / 100.0
+		var colr: Color
+		if is_outer:
+			var out_dir: Vector3 = Vector3(cen.x - c2.x, cen.y - cave_center.y - 2.0, cen.z - c2.y)
+			if nn.dot(out_dir) < 0.0:
+				nn = -nn
+			colr = Color(0.27, 0.27, 0.30) * (0.93 + hv * 0.14)
+			var moss: float = smoothstep(0.62, 0.85, nn.y) * smoothstep(cave_center.y + 1.5, cave_center.y + 4.5, cen.y)
+			colr = colr.lerp(Color(0.18, 0.30, 0.12), moss * 0.85)
+		else:
+			colr = Color(0.16, 0.16, 0.19) * (0.93 + hv * 0.14)
+		colr = colr.lerp(Color(colr.get_luminance(), colr.get_luminance(), colr.get_luminance()), 0.0)
+		colr.a = 1.0
+		for pv: Vector3 in [t0, t1, t2v]:
+			verts.append(pv)
+			norms.append(nn)
+			cols.append(colr)
+
 ## Roca grande del pack nuevo, con colisión simple; no se puede atravesar pero queda en las paredes.
 func _wall_rock(pos: Vector3, sc: float) -> void:
-	var r: Node3D = NatureKit.make_uq("Rock_%d" % _rng.randi_range(1, 5), Color(0.8, 0.8, 0.85), 220.0)
+	var r: Node3D = NatureKit.make_uq("Rock_%d" % _rng.randi_range(1, 5), Color(0.8, 0.8, 0.85, 0.3), 220.0)
 	r.position = pos
 	r.rotation = Vector3(_rng.randf_range(-0.2, 0.2), _rng.randf() * TAU, _rng.randf_range(-0.2, 0.2))
 	r.scale = Vector3.ONE * sc
 	add_child(r)
 
 func is_inside_cave(p: Vector3) -> bool:
-	return Vector2(p.x - cave_center.x, p.z - cave_center.z).length() < IslandTerrain.PIT_R - 0.3 and p.y < cave_center.y + IslandTerrain.PIT_DEPTH - 1.0
+	var rel: Vector2 = Vector2(p.x - cave_center.x, p.z - cave_center.z)
+	var d2: Vector2 = Vector2(cave_dir.x, cave_dir.z)
+	var along: float = rel.dot(d2)
+	var across: float = absf(rel.dot(Vector2(-d2.y, d2.x)))
+	if p.y > cave_center.y + 5.0 or along < -4.0 or along > CAVE_LEN - 1.0:
+		return false
+	return across < (4.2 if along < 3.0 else 2.0)
 
 func is_cave_sealed() -> bool:
 	return _sealed

@@ -30,6 +30,9 @@ var _materials: Dictionary = {}
 var _fish: Array[Dictionary] = []
 var _time: float = 0.0
 var _critters: Array[Node] = []
+var _glow_mats: Array[ShaderMaterial] = []
+var _glow_stem: ShaderMaterial
+var _glow_player: Node3D
 
 func _ready() -> void:
 	_rng.seed = seed_value * 31 + 5
@@ -40,16 +43,22 @@ func _ready() -> void:
 	_spawn_mushrooms()
 	_spawn_shells()
 	_spawn_materials()
-	_spawn_grass()
+	_spawn_grass_tufts()
+	_spawn_glow_flowers()
 	_spawn_wildlife()
 	_spawn_kit_ground()
 	_spawn_heart_tree()
 	_spawn_stelas()
+	var marks: Node3D = (load("res://scripts/island_marks.gd") as GDScript).new() as Node3D
+	marks.set("terrain", terrain)
+	marks.name = "Marcas"
+	add_child(marks)
 	call_deferred("_link_player")
 
 func _process(delta: float) -> void:
 	_time += delta
 	_update_heart(delta)
+	_update_glow()
 	for f: Dictionary in _fish:
 		var node: Node3D = f["node"]
 		f["angle"] = float(f["angle"]) + float(f["speed"]) * delta
@@ -134,7 +143,7 @@ func _build_pond() -> void:
 	var center: Vector2 = terrain.POND_CENTER
 	var radius: float = terrain.POND_RADIUS * 1.6
 	var water := MeshInstance3D.new()
-	var disc := _cyl(radius, radius, 0.04, 20)
+	var disc := _cyl(radius * 1.35, radius * 1.35, 0.04, 36)
 	water.mesh = disc
 	var m := StandardMaterial3D.new()
 	m.albedo_color = Color(0.12, 0.5, 0.62, 0.72)
@@ -249,9 +258,15 @@ func _spawn_food() -> void:
 			spawned += 1
 	# arbustos de bayas
 	for i in berry_bush_count:
-		var p: Vector3 = _spot(1.4, 5.0)
+		var p: Vector3 = _biome_spot(1.4, 6.0, "berry")
 		if not _valid(p):
 			continue
+		var bwb: PackedFloat32Array = terrain.eco.get_bioma_pesos(p)
+		var bcol: Color = Color(0.75, 0.1, 0.2)                    # bosque: rojas
+		if bwb[2] > 0.45:
+			bcol = Color(0.38, 0.12, 0.55)                          # selva: moradas
+		elif bwb[4] > 0.45:
+			bcol = Color(0.9, 0.45, 0.1)                            # matorral: naranjas
 		var it2: WorldItem = _item("bayas", "Bayas", 3, p, _rng.randf() * TAU)
 		it2.edible = true
 		it2.nutrition = 0.15
@@ -260,10 +275,10 @@ func _spawn_food() -> void:
 		for b in 8:
 			var a: float = _rng.randf() * TAU
 			var rad: float = _rng.randf_range(0.3, 0.52)
-			_mesh(it2, _sph(0.06, 5, 3), Color(0.75, 0.1, 0.2), Vector3(cos(a) * rad, _rng.randf_range(0.3, 0.7), sin(a) * rad))
+			_mesh(it2, _sph(0.06, 5, 3), bcol, Vector3(cos(a) * rad, _rng.randf_range(0.3, 0.7), sin(a) * rad))
 	# raíces comestibles (tubérculos)
 	for i in root_count:
-		var p2: Vector3 = _spot(1.2, 5.5)
+		var p2: Vector3 = _biome_spot(1.2, 6.0, "root")
 		if not _valid(p2):
 			continue
 		var it3: WorldItem = _item("raiz", "Raíz comestible", 1, p2, _rng.randf() * TAU)
@@ -275,7 +290,7 @@ func _spawn_food() -> void:
 		_mesh(it3, _cyl(0.0, 0.07, 0.18, 5), Color(0.9, 0.5, 0.15), Vector3(0, 0.05, 0))
 	# hierbas medicinales
 	for i in herb_count:
-		var p3: Vector3 = _spot(1.2, 5.5)
+		var p3: Vector3 = _biome_spot(1.2, 6.0, "herb")
 		if not _valid(p3):
 			continue
 		var it4: WorldItem = _item("hierba", "Hierba medicinal", 1, p3, _rng.randf() * TAU)
@@ -283,6 +298,25 @@ func _spawn_food() -> void:
 			var a3: float = TAU * l / 6.0
 			_mesh(it4, _prism(Vector3(0.1, 0.32, 0.015)), Color(0.5, 0.75, 0.35), Vector3(cos(a3) * 0.08, 0.15, sin(a3) * 0.08), Vector3(sin(a3) * 0.3, -a3, -cos(a3) * 0.3))
 		_mesh(it4, _sph(0.035, 4, 2), Color(0.95, 0.95, 0.85), Vector3(0, 0.34, 0))
+
+## Un punto donde crece lo comestible según el bioma: bayas en bosque/selva/matorral, raíces en suelo seco, hierbas en húmedo.
+func _biome_spot(min_h: float, max_h: float, kind: String) -> Vector3:
+	for i in 16:
+		var p: Vector3 = _spot(min_h, max_h)
+		if not _valid(p):
+			continue
+		var bw: PackedFloat32Array = terrain.eco.get_bioma_pesos(p)   # [costa, roquedal, selva, bosque, matorral, árido]
+		var w: float = 0.0
+		match kind:
+			"berry":
+				w = bw[2] * 0.9 + bw[3] * 0.8 + bw[4] * 0.6 + bw[1] * 0.1 + bw[0] * 0.04
+			"root":
+				w = bw[4] * 0.9 + bw[5] * 0.9 + bw[0] * 0.3 + bw[3] * 0.3 + bw[2] * 0.12
+			"herb":
+				w = bw[2] * 0.9 + bw[3] * 0.7 + bw[1] * 0.2 + terrain.eco.get_humedad(p) * 0.4
+		if _rng.randf() < clampf(w, 0.0, 1.0):
+			return p
+	return Vector3(0.0, -100.0, 0.0)
 
 func _spawn_mushrooms() -> void:
 	if terrain.tree_positions.is_empty():
@@ -380,6 +414,155 @@ func _spawn_grass() -> void:
 	mmi.multimesh = mm
 	mmi.name = "Grass"
 	add_child(mmi)
+
+## Pasto en manchas por bioma: mechones del MegaKit agrupados en celdas de 32 m (instancias múltiples),
+## así cada celda se descarta entera cuando está lejos. Mucho pasto corto y pequeño, con zonas de pasto largo por ruido.
+const GRASS_PATCHES: int = 2600
+const GRASS_CELL: float = 24.0
+const GRASS_VIS: float = 48.0
+
+func _spawn_grass_tufts() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 313 + 7
+	var gnoise := FastNoiseLite.new()
+	gnoise.seed = seed_value + 99
+	gnoise.frequency = 0.045
+	var cells: Dictionary = {}     # "cx,cz,modelo" -> Array[Transform3D]
+	var made: int = 0
+	var tries: int = 0
+	while made < GRASS_PATCHES and tries < GRASS_PATCHES * 8:
+		tries += 1
+		var c: Vector3 = terrain.find_spot(rng, 1.25, 9.0)
+		if not _valid(c):
+			continue
+		var bw: PackedFloat32Array = terrain.eco.get_bioma_pesos(c)   # [costa, roquedal, selva, bosque, matorral, árido]
+		var dens: float = bw[0] * 0.3 + bw[1] * 0.06 + bw[2] * 0.4 + bw[3] * 0.65 + bw[4] * 1.0 + bw[5] * 0.35
+		dens *= clampf(0.85 - terrain.forest_value(c.x, c.z) * 0.9, 0.25, 1.1)    # más en claros que bajo arboleda cerrada
+		dens = maxf(dens, terrain.eco.get_misterio(c) * 0.9)
+		if terrain._cliff_mask(c.x, c.z) > 0.3:
+			continue
+		if rng.randf() > dens:
+			continue
+		# especie dominante de la mancha según bioma y humedad
+		var wet: float = terrain.eco.get_humedad(c)
+		var model: String = "Grass_Common_Short"
+		var r: float = rng.randf()
+		if bw[0] + bw[5] > 0.5 and r < 0.7:
+			model = "Grass_Wispy_Short"
+		elif (bw[2] > 0.4 or wet > 0.6) and r < 0.65:
+			model = "Grass_Common_Tall"
+		elif bw[4] > 0.4 and r < 0.35:
+			model = "Grass_Wispy_Tall"
+		elif r > 0.85:
+			model = "Grass_Common_Tall"
+		var n: int = rng.randi_range(26, 48)
+		var rad: float = rng.randf_range(1.4, 3.0)
+		for i in n:
+			var a: float = rng.randf() * TAU
+			var d: float = sqrt(rng.randf()) * rad
+			var x: float = c.x + cos(a) * d
+			var z: float = c.z + sin(a) * d
+			var y: float = terrain.height_at(x, z)
+			if y < 1.15 or y > 11.0 or terrain.is_in_pond_area(x, z, 1.1) or terrain.is_in_cave_area(x, z, 1.0):
+				continue
+			# ruido de densidad y de altura (idea de FoliageFlow): zonas ralas, zonas de pasto largo y mucho pasto corto
+			var dn: float = remap(gnoise.get_noise_2d(x * 3.0 + 50.0, z * 3.0), -1.0, 1.0, 0.45, 1.0)
+			if rng.randf() > dn:
+				continue
+			var zone: float = gnoise.get_noise_2d(x, z)
+			var m: String = "Grass_Common_Short"
+			var sc: float = rng.randf_range(0.25, 0.5)
+			if model.begins_with("Grass_Wispy") and zone < 0.35:
+				m = model
+				sc = rng.randf_range(0.28, 0.5)
+			elif zone > 0.2 or model.ends_with("Tall") and zone > -0.1:
+				m = "Grass_Common_Tall" if rng.randf() < 0.75 else "Grass_Wispy_Tall"
+				sc = rng.randf_range(0.5, 0.95) * clampf(remap(zone, 0.2, 0.6, 0.7, 1.15), 0.7, 1.15)
+			sc *= 1.0 - 0.3 * (d / rad)
+			if m == "Grass_Common_Short":
+				# alfombra: tarjetas con textura de hojas (como SimpleGrassTextured), muy baratas y tupidas
+				m = "CARD%d" % rng.randi_range(0, 2)
+				sc = rng.randf_range(0.3, 0.62) * (1.0 - 0.3 * (d / rad))
+			elif rng.randf() > 0.55:
+				continue      # los mechones 3D altos se reparten más ralos
+			var gb := Basis(Vector3.UP, rng.randf() * TAU) * Basis(Vector3.RIGHT, rng.randf_range(-0.12, 0.12)) * Basis(Vector3.FORWARD, rng.randf_range(-0.12, 0.12))
+			var wmul: float = 1.6 if m.begins_with("CARD") else 1.0
+			gb = gb.scaled(Vector3(sc * wmul * rng.randf_range(0.85, 1.2), sc * rng.randf_range(0.8, 1.25), sc * wmul * rng.randf_range(0.85, 1.2)))
+			var key: String = "%d,%d,%s" % [floori(x / GRASS_CELL), floori(z / GRASS_CELL), m]
+			if not cells.has(key):
+				cells[key] = [] as Array[Transform3D]
+			(cells[key] as Array[Transform3D]).append(Transform3D(gb, Vector3(x, y - 0.04, z)))
+		made += 1
+	var root := Node3D.new()
+	root.name = "GrassTufts"
+	add_child(root)
+	var total: int = 0
+	for key: String in cells.keys():
+		var parts: PackedStringArray = key.split(",")
+		var xf: Array[Transform3D] = cells[key]
+		var mmi: MultiMeshInstance3D
+		if parts[2].begins_with("CARD"):
+			mmi = _grass_cards(int(parts[2].substr(4)), xf)
+		else:
+			mmi = NatureKit.multi(parts[2], xf, GRASS_VIS)
+		if mmi != null:
+			root.add_child(mmi)
+			total += xf.size()
+	print("Pasto: %d mechones en %d lotes" % [total, cells.size()])
+
+static var _card_mesh: ArrayMesh
+static var _card_mats: Dictionary = {}
+
+## Tres cuadros cruzados a 60° (1 m de ancho y alto, base en y=0), con la textura de hojas recortadas.
+func _grass_cards(variant: int, xf: Array[Transform3D]) -> MultiMeshInstance3D:
+	if _card_mesh == null:
+		var verts := PackedVector3Array()
+		var uvs := PackedVector2Array()
+		var norms := PackedVector3Array()
+		var idx := PackedInt32Array()
+		for k in 3:
+			var ang: float = k * PI / 3.0
+			var dx: Vector3 = Vector3(cos(ang), 0.0, sin(ang)) * 0.5
+			var b: int = verts.size()
+			verts.append_array([-dx, dx, dx + Vector3.UP, -dx + Vector3.UP])
+			uvs.append_array([Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)])
+			for q in 4:
+				norms.append(Vector3.UP)
+			idx.append_array([b, b + 1, b + 2, b, b + 2, b + 3])
+		var arr: Array = []
+		arr.resize(Mesh.ARRAY_MAX)
+		arr[Mesh.ARRAY_VERTEX] = verts
+		arr[Mesh.ARRAY_TEX_UV] = uvs
+		arr[Mesh.ARRAY_NORMAL] = norms
+		arr[Mesh.ARRAY_INDEX] = idx
+		_card_mesh = ArrayMesh.new()
+		_card_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	if not _card_mats.has(variant):
+		var sh := ShaderMaterial.new()
+		sh.shader = preload("res://shaders/wind_leaf.gdshader")
+		sh.set_shader_parameter("albedo_tex", load("res://addons/simplegrasstextured/textures/grassbushcc008.png"))
+		var tints: Array[Color] = [Color(0.85, 1.0, 0.7), Color(1.0, 1.0, 0.72), Color(0.7, 0.95, 0.72)]
+		sh.set_shader_parameter("tint", tints[variant % 3])
+		var pr: Dictionary = NatureKit.WIND_PARAMS["grass"]
+		for k: String in pr.keys():
+			sh.set_shader_parameter(k, pr[k])
+		sh.set_shader_parameter("height_ref", 0.9)
+		Wind.register(sh)
+		_card_mats[variant] = sh
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = _card_mesh
+	mm.instance_count = xf.size()
+	for i in xf.size():
+		mm.set_instance_transform(i, xf[i])
+	var out := MultiMeshInstance3D.new()
+	out.multimesh = mm
+	out.material_override = _card_mats[variant]
+	out.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	out.visibility_range_end = GRASS_VIS
+	out.visibility_range_end_margin = GRASS_VIS * 0.1
+	out.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+	return out
 
 ## Piedras talladas: pistas de otros náufragos (cambian cada 5 vidas) y las tumbas de tus vidas pasadas.
 func _spawn_stelas() -> void:
@@ -523,6 +706,105 @@ func _update_heart(delta: float) -> void:
 	for m: StandardMaterial3D in _heart_mats:
 		m.emission_energy_multiplier = 0.15 + night * 3.0 * pulse
 
+## Flores que brillan de noche (turquesa y violeta): en claros misteriosos, selva y bosque húmedo. Sin luces reales, solo emisión.
+const GLOW_SHADER: Shader = preload("res://shaders/glow_flower.gdshader")
+
+func _spawn_glow_flowers() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 53 + 3
+	var cols: Array[Color] = [Color(1.0, 0.68, 0.2), Color(1.0, 0.5, 0.16)]   # ámbar, como farolitos en la noche teal
+	for c: Color in cols:
+		var gm := ShaderMaterial.new()
+		gm.shader = GLOW_SHADER
+		gm.set_shader_parameter("albedo", c.darkened(0.45))
+		gm.set_shader_parameter("glow", c)
+		gm.set_shader_parameter("energy", 0.3)
+		gm.set_shader_parameter("base_off", 0.31)
+		_glow_mats.append(gm)
+	var stem_mat := ShaderMaterial.new()
+	stem_mat.shader = GLOW_SHADER
+	stem_mat.set_shader_parameter("albedo", Color(0.2, 0.4, 0.16))
+	stem_mat.set_shader_parameter("glow", Color(0, 0, 0))
+	stem_mat.set_shader_parameter("energy", 0.0)
+	stem_mat.set_shader_parameter("base_off", 0.15)
+	_glow_stem = stem_mat
+	var stem_mesh: Mesh = _cyl(0.008, 0.013, 0.3, 4)
+	var bulb_mesh: Mesh = _sph(0.06, 6, 4)
+	var stems: Dictionary = {}
+	var bulbs: Dictionary = {}
+	var made: int = 0
+	var tries: int = 0
+	while made < 70 and tries < 3000:
+		tries += 1
+		var c0: Vector3 = terrain.find_spot(rng, 1.8, 9.0)
+		if not _valid(c0):
+			continue
+		var bw: PackedFloat32Array = terrain.eco.get_bioma_pesos(c0)
+		var w: float = terrain.eco.get_misterio(c0) * 1.0 + bw[2] * 0.3 + bw[3] * 0.15 + terrain.eco.get_humedad(c0) * 0.1
+		if rng.randf() > w:
+			continue
+		var ci: int = rng.randi() % 2
+		for k in rng.randi_range(3, 7):
+			var a: float = rng.randf() * TAU
+			var d: float = rng.randf() * 1.3
+			var x: float = c0.x + cos(a) * d
+			var z: float = c0.z + sin(a) * d
+			var y: float = terrain.height_at(x, z)
+			if y < 1.5 or y > 11.0 or terrain.is_in_pond_area(x, z, 1.1) or terrain.is_in_cave_area(x, z, 1.0):
+				continue
+			var sc: float = rng.randf_range(0.8, 1.5)
+			var key: String = "%d,%d,%d" % [floori(x / 40.0), floori(z / 40.0), ci]
+			if not stems.has(key):
+				stems[key] = [] as Array[Transform3D]
+				bulbs[key] = [] as Array[Transform3D]
+			(stems[key] as Array[Transform3D]).append(Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * sc), Vector3(x, y + 0.15 * sc, z)))
+			(bulbs[key] as Array[Transform3D]).append(Transform3D(Basis.IDENTITY.scaled(Vector3(sc, sc * 0.8, sc)), Vector3(x, y + 0.31 * sc, z)))
+		made += 1
+	var root := Node3D.new()
+	root.name = "GlowFlowers"
+	add_child(root)
+	for key: String in stems.keys():
+		var ci2: int = int(key.split(",")[2])
+		root.add_child(_multi_of(stem_mesh, stem_mat, stems[key]))
+		root.add_child(_multi_of(bulb_mesh, _glow_mats[ci2], bulbs[key]))
+
+func _multi_of(mesh: Mesh, mat: Material, xf: Array[Transform3D]) -> MultiMeshInstance3D:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = mesh
+	mm.instance_count = xf.size()
+	for i in xf.size():
+		mm.set_instance_transform(i, xf[i])
+	var mi := MultiMeshInstance3D.new()
+	mi.multimesh = mm
+	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.visibility_range_end = 70.0
+	mi.visibility_range_end_margin = 7.0
+	mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+	return mi
+
+func _update_glow() -> void:
+	if _glow_mats.is_empty():
+		return
+	var dn: Node = get_tree().get_first_node_in_group("daynight")
+	var night: float = float(dn.get("night_amount")) if dn != null else 0.0
+	for i in _glow_mats.size():
+		var pulse: float = 0.7 + 0.3 * sin(_time * 1.1 + float(i) * 2.1)
+		_glow_mats[i].set_shader_parameter("energy", 0.25 + night * 2.2 * pulse)
+	# las flores se inclinan hacia el jugador si la isla está serena y se apartan si está tensa
+	if _glow_player == null:
+		_glow_player = get_tree().get_first_node_in_group("player") as Node3D
+	if _glow_player != null:
+		var pp: Vector3 = _glow_player.global_position
+		var lean: float = 0.25 + 0.75 * Wind.get_mood()
+		for gm: ShaderMaterial in _glow_mats:
+			gm.set_shader_parameter("player_pos", pp)
+			gm.set_shader_parameter("lean", lean)
+		if _glow_stem != null:
+			_glow_stem.set_shader_parameter("player_pos", pp)
+			_glow_stem.set_shader_parameter("lean", lean)
+
 ## Cobertura del suelo con el pack de naturaleza (instancias múltiples: miles de plantas baratas).
 ## [modelo, cantidad, altura mín, altura máx, escala mín, escala máx]
 const GROUND_MULT: float = 2.0
@@ -578,7 +860,6 @@ const GROUND_KIT: Array = [
 	["UQ:Petals_1", 120, 1.6, 7.0, 0.5, 0.9],
 	["UQ:Petals_2", 120, 1.6, 7.0, 0.5, 0.9],
 	["UQ:Petals_3", 120, 1.6, 7.0, 0.5, 0.9],
-	["Grass_Wispy_Short", 500, 0.9, 3.0, 0.5, 0.9],
 	["Flower_3_Group", 40, 1.6, 6.0, 0.22, 0.38],
 	["Flower_4_Group", 40, 1.6, 6.0, 0.22, 0.38],
 	["UQ:Flower_1_Clump", 96, 1.6, 7.0, 0.7, 1.1],
@@ -627,6 +908,29 @@ func _spawn_kit_ground() -> void:
 
 # ------------------------------------------------------------------ fauna
 
+## Puntos donde posarse: la copa real de cada árbol (según su malla), no una altura supuesta.
+func _tree_perches() -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	for tn: Node3D in terrain.tree_nodes:
+		if not is_instance_valid(tn):
+			continue
+		var box: AABB = AABB()
+		var first: bool = true
+		var stack: Array[Node] = [tn]
+		while not stack.is_empty():
+			var c: Node = stack.pop_back()
+			if c is MeshInstance3D:
+				var mi: MeshInstance3D = c
+				var ab: AABB = mi.global_transform * mi.get_aabb()
+				box = ab if first else box.merge(ab)
+				first = false
+			stack.append_array(c.get_children())
+		if first or box.size.y < 2.5:
+			continue
+		var c3: Vector3 = box.get_center()
+		out.append(Vector3(c3.x, box.end.y - 0.15, c3.z))
+	return out
+
 func _spawn_wildlife() -> void:
 	for i in gull_count:
 		var gull := Bird.new()
@@ -646,19 +950,19 @@ func _spawn_wildlife() -> void:
 		[Color(0.8, 0.25, 0.2), Color(0.95, 0.9, 0.85)],
 		[Color(0.35, 0.65, 0.3), Color(0.9, 0.85, 0.4)],
 	]
+	var perch_list: Array[Vector3] = _tree_perches()
 	for i in songbird_count:
-		if terrain.tree_positions.is_empty():
+		if perch_list.is_empty():
 			break
-		var idx: int = _rng.randi_range(0, terrain.tree_positions.size() - 1)
-		var tp: Vector3 = terrain.tree_positions[idx]
-		var ts: float = terrain.tree_scales[idx]
+		var tp: Vector3 = perch_list[_rng.randi_range(0, perch_list.size() - 1)]
 		var bird := Bird.new()
 		bird.kind = Bird.Kind.SONGBIRD
 		var pal: Array = palettes[i % palettes.size()]
 		bird.body_color = pal[0]
 		bird.belly_color = pal[1]
 		bird.size = 1.0
-		bird.perch = tp + Vector3(_rng.randf_range(-0.7, 0.7), 4.9 * ts, _rng.randf_range(-0.7, 0.7))
+		bird.perch = tp
+		bird.perches = perch_list
 		bird.name = "Songbird%d" % i
 		bird.add_to_group("songbirds")
 		add_child(bird)

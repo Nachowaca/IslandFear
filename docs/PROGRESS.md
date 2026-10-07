@@ -161,3 +161,11 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Clima/lluvia (weather.gd, SoundBank.rain) escrito pero DESACTIVADO en main.gd (memoria).
 - Personaje nuevo: castaway_model.gd + castaway_pose.gd (glb Quaternius). Ctrl = agacharse; gestos recoger/comer/beber/cortar. castaway_rig.gd borrado. Escena de prueba: scenes/test_character.tscn.
 - Pendiente: probar el personaje caminando, medir fps/memoria, vestimenta, memoria de biomas -> acciones de la isla, convivencia pasos 2-5.
+
+
+## Sesión: bloques 2 y 3 (hechos)
+- Bloque 2: fogata con quads suaves, flores ámbar, luna/agua nocturnas, luciérnaga activa.
+- Bloque 3: flora/viento según ánimo de la isla (`Wind.set_mood/get_mood`); claros misteriosos con anillo pisado y huellas (`scripts/island_marks.gd`, usa `Isla.calor_paso/calor_dano`); flores nocturnas con `shaders/glow_flower.gdshader` que se inclinan hacia/lejos del jugador. SIN daño al pisar (pedido del usuario).
+- Verificado solo con cámara aérea forzada; huellas muy tenues. Flores inclinándose no vistas.
+- Se borró la línea TEMPTEST de hora fija 14:00 en main.gd.
+- Pendiente: bloque 4 (limpieza técnica), bloque 5 (fases 5.1-5.8).

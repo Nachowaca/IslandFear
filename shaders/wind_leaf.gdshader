@@ -13,6 +13,7 @@ uniform float flutter = 0.0;
 uniform vec2 wind_dir = vec2(1.0, 0.4);
 uniform float gust_strength = 1.0;
 uniform float push = 1.0;          // reacción al roce del jugador (0 = árboles)
+uniform float mood = 0.0;          // ánimo de la isla: -1 tensa/enojada … +1 serena (muy sutil)
 
 void vertex() {
 	vec3 wp = MODEL_MATRIX[3].xyz;
@@ -20,9 +21,13 @@ void vertex() {
 	h *= h;
 	float phase = dot(wp.xz, normalize(wind_dir)) * 0.18;
 	float gust = 0.55 + 0.45 * sin(TIME * 0.35 + phase * 0.5);
-	float g = sin(TIME * speed + phase) + 0.5 * sin(TIME * speed * 2.3 + phase * 1.7);
-	vec3 off = vec3(wind_dir.x, 0.0, wind_dir.y) * g * sway * h * gust * gust_strength;
-	off += vec3(sin(TIME * 5.0 + wp.x * 3.0 + VERTEX.x * 6.0), 0.3 * sin(TIME * 4.0 + wp.z * 3.0), cos(TIME * 6.0 + wp.z * 3.0 + VERTEX.z * 6.0)) * flutter * h;
+	float tension = max(-mood, 0.0);
+	float calm = max(mood, 0.0);
+	float sp = speed * (1.0 + tension * 0.45 - calm * 0.15);
+	float g = sin(TIME * sp + phase) + 0.5 * sin(TIME * speed * 2.3 + phase * 1.7);
+	float expo = 0.7 + 0.7 * smoothstep(1.5, 9.0, wp.y) + 0.3 * (1.0 - smoothstep(0.5, 2.0, wp.y));   // más viento en lomas y en la costa, menos en el bosque bajo
+	vec3 off = vec3(wind_dir.x, 0.0, wind_dir.y) * g * sway * h * gust * gust_strength * expo * (1.0 + tension * 0.7 - calm * 0.2);
+	off += vec3(sin(TIME * 5.0 + wp.x * 3.0 + VERTEX.x * 6.0), 0.3 * sin(TIME * 4.0 + wp.z * 3.0), cos(TIME * 6.0 + wp.z * 3.0 + VERTEX.z * 6.0)) * (flutter + tension * 0.018) * h;
 	float hk = clamp((VERTEX.y - base_y) / max(height_ref, 0.01), 0.0, 1.0);
 	off += foliage_push(wp, sqrt(hk), push);
 	VERTEX += (inverse(mat3(MODEL_MATRIX)) * off);
@@ -30,7 +35,13 @@ void vertex() {
 
 void fragment() {
 	vec4 t = texture(albedo_tex, UV);
-	ALBEDO = t.rgb * tint.rgb;
+	vec3 c = t.rgb * tint.rgb;
+	float tn = max(-mood, 0.0);
+	float cm = max(mood, 0.0);
+	c = mix(c, vec3(dot(c, vec3(0.3, 0.59, 0.11))), tn * 0.3);   // tensa: se apaga y pierde color
+	c *= 1.0 - tn * 0.14 + cm * 0.05;
+	c = mix(c, c * vec3(1.06, 1.03, 0.9), cm * 0.5);             // serena: un poco más cálida y viva
+	ALBEDO = c;
 	ALPHA = t.a;
 	ALPHA_SCISSOR_THRESHOLD = 0.5;
 	ROUGHNESS = 1.0;

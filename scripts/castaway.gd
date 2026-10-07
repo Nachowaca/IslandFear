@@ -123,6 +123,8 @@ func add_shake(strength: float) -> void:
 	_shake = maxf(_shake, strength)
 var terrain: IslandTerrain
 
+var _cam_frac: float = 1.0
+var _cam_shape: SphereShape3D = SphereShape3D.new()
 @onready var _pivot: Node3D = $CameraPivot
 @onready var _camera: Camera3D = $CameraPivot/Camera3D
 @onready var _model: Node3D = $Model
@@ -204,6 +206,9 @@ func _emit_step(power: float) -> void:
 	_step_fx.emitting = true
 
 func _ready() -> void:
+	_cam_shape.radius = 0.35
+	_camera.near = 0.2      # near/far más cerrados: los clusters de luces se parten mejor (evita bloques con luces cercanas)
+	_camera.far = 1200.0
 	add_to_group("player")
 	for old: Node in _model.get_children():
 		_model.remove_child(old)
@@ -254,9 +259,11 @@ func _physics_process(delta: float) -> void:
 	_animate(delta)
 	_update_pivot(delta)
 
+var menu_lock: bool = false   ## con un menú abierto las flechas eligen y no mueven al personaje
+
 ## Teclas leídas directo: W adelante, S o X atrás, A izquierda, D derecha (+ flechas y acciones del Input Map).
 func _read_move_input() -> Vector2:
-	var v: Vector2 = Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	var v: Vector2 = Vector2.ZERO if menu_lock else Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if _key(KEY_A):
 		v.x -= 1.0
 	if _key(KEY_D):
@@ -370,12 +377,20 @@ func _update_pivot(delta: float) -> void:
 	# La cámara no atraviesa terreno, árboles ni rocas
 	_camera.transform = _cam_default
 	var from: Vector3 = _pivot.global_position
-	var to: Vector3 = _camera.global_position
-	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, to, 1)
-	query.exclude = [get_rid()]
-	var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(query)
-	if not hit.is_empty():
-		var hit_pos: Vector3 = hit["position"]
-		_camera.global_position = hit_pos + (from - hit_pos).normalized() * 0.3
+	var full: Vector3 = _camera.global_position - from
+	var sq: PhysicsShapeQueryParameters3D = PhysicsShapeQueryParameters3D.new()
+	sq.shape = _cam_shape
+	sq.transform = Transform3D(Basis.IDENTITY, from)
+	sq.motion = full
+	sq.collision_mask = 1
+	sq.exclude = [get_rid()]
+	var cast: PackedFloat32Array = get_world_3d().direct_space_state.cast_motion(sq)
+	var want_frac: float = 1.0
+	if cast.size() >= 1:
+		want_frac = clampf(cast[0], 0.12, 1.0)
+	# se acerca rápido al chocar, vuelve despacio al liberarse (sin saltos)
+	var rate: float = 18.0 if want_frac < _cam_frac else 2.5
+	_cam_frac = lerpf(_cam_frac, want_frac, 1.0 - exp(-rate * delta))
+	_camera.global_position = from + full * _cam_frac
 	if _shake > 0.001:
 		_camera.global_position += Vector3(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * _shake * 0.12

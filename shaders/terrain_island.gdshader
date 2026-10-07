@@ -16,6 +16,9 @@ uniform sampler2D rock_n : hint_normal, filter_linear_mipmap_anisotropic, repeat
 uniform float water_y = 0.35;
 uniform float mood : hint_range(-1.0, 1.0) = 0.0;   // -1 isla hostil (seca, apagada) .. 1 isla confiada (viva)
 uniform float normal_strength = 0.9;
+uniform sampler2D biome_tex : source_color, filter_linear, repeat_disable;
+uniform vec2 biome_origin = vec2(-160.0);
+uniform float biome_size = 320.0;
 
 varying vec3 wpos;
 varying vec3 wnrm;
@@ -97,6 +100,35 @@ void fragment() {
 	col *= mix(1.0, 0.55, wet * w_sand);
 	// tinte por vértice (variación por triángulo, estilo low-poly)
 	col *= vcol.rgb;
+
+	// color más vivo y menos plano (referencias: arena amarilla cálida, pasto saturado con parches, roca clara)
+	float lum = dot(col, vec3(0.299, 0.587, 0.114));
+	col = mix(vec3(lum), col, 1.3);                                         // más saturación
+	// pintado irregular y desprolijo del pasto: doble domain warp + varias escalas, transiciones blandas
+		vec2 w1 = vec2(fbm(uv * 0.09 + 3.0), fbm(uv * 0.09 - 9.0)) * 2.0 - 1.0;
+		vec2 wp = uv + w1 * 22.0;
+		vec2 w2 = vec2(fbm(wp * 0.21 + 17.0), fbm(wp * 0.21 - 4.0)) * 2.0 - 1.0;
+		wp += w2 * 7.0;
+		float patch_n = fbm(wp * 0.06 + 21.0) * 0.6 + fbm(wp * 0.19) * 0.4;
+		float patch_m = fbm(wp * 0.13 - 5.0) * 0.55 + vnoise(wp * 0.45) * 0.45;
+		float patch_s = fbm(wp * 0.7 + 11.0);
+		float g_only = (1.0 - w_sand) * (1.0 - w_rock) * (1.0 - w_dirt);
+		vec3 warm_grass = vec3(1.18, 1.08, 0.66);
+		vec3 cool_grass = vec3(0.78, 1.05, 0.90);
+		vec3 lush_grass = vec3(0.72, 0.95, 0.66);
+		vec3 gtint = mix(cool_grass, warm_grass, smoothstep(0.25, 0.75, patch_n));
+		gtint = mix(gtint, lush_grass, smoothstep(0.4, 0.75, patch_m) * 0.6);
+		col *= mix(vec3(1.0), gtint, g_only * 0.8);
+		// color del pasto según el bioma (selva verde profundo, matorral y zona árida amarillentos, roquedal grisáceo)
+		vec3 btint = textureLod(biome_tex, clamp((wpos.xz - biome_origin) / biome_size, 0.0, 1.0), 0.0).rgb * 1.5;
+		col *= mix(vec3(1.0), btint, g_only * 0.95 + (1.0 - g_only) * w_dirt * 0.3);
+		col *= 1.0 + (patch_s - 0.5) * 0.6 * g_only;                            // moteado desparejo
+		// tierra pisada: manchas sueltas y rotas, no círculos
+		float bare = smoothstep(0.58, 0.8, fbm(wp * 0.12 + 40.0) * 0.7 + vnoise(wp * 0.9) * 0.3) * g_only;
+		col = mix(col, c_dirt * vec3(1.2, 1.05, 0.82), bare * 0.5);
+		col = mix(col, col * vec3(1.18, 1.05, 0.72), w_sand * (1.0 - w_rock) * 0.7);   // arena amarilla cálida
+	col = mix(col, col * vec3(1.35, 1.35, 1.42), w_rock * 0.6);             // roca más clara
+	col *= 1.0 + clamp((h - 6.0) * 0.02, 0.0, 0.15);                        // las cumbres, algo más claras
 
 	// relieve: perturba la normal plana con los mapas de normales
 	vec3 n_g = tex2(grass_n, uv, 0.22) * 2.0 - 1.0;

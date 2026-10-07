@@ -18,6 +18,9 @@ var _craft: Control
 var _recipes: Array = []
 var _recipe_idx: int = 0
 var _msg_t: float = 0.0
+var _prog: Control
+var _prog_frac: float = -1.0
+var _prog_text: String = ""
 var _info_t: float = 0.0
 var _pulse: float = 0.0
 
@@ -91,6 +94,20 @@ func _ready() -> void:
 	_msg.modulate.a = 0.0
 	add_child(_msg)
 
+	_prog = Control.new()
+	_prog.anchor_left = 0.5
+	_prog.anchor_right = 0.5
+	_prog.anchor_top = 0.5
+	_prog.anchor_bottom = 0.5
+	_prog.offset_left = -120.0
+	_prog.offset_right = 120.0
+	_prog.offset_top = 70.0
+	_prog.offset_bottom = 290.0
+	_prog.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_prog.visible = false
+	_prog.draw.connect(_draw_prog)
+	add_child(_prog)
+
 	_craft = Control.new()
 	_craft.anchor_top = 0.5
 	_craft.anchor_bottom = 0.5
@@ -128,6 +145,24 @@ func show_recipes(list: Array, idx: int) -> void:
 	_craft.visible = true
 	_craft.queue_redraw()
 
+## Círculo de espera mientras el náufrago fabrica (frac 0..1). frac < 0 lo oculta.
+func set_progress(frac: float, text: String = "") -> void:
+	_prog_frac = frac
+	_prog_text = text
+	_prog.visible = frac >= 0.0
+	if _prog.visible:
+		_prog.queue_redraw()
+
+func _draw_prog() -> void:
+	var c: Vector2 = Vector2(120.0, 90.0)
+	_prog.draw_circle(c, 58.0, Color(0.02, 0.06, 0.08, 0.78))
+	_prog.draw_arc(c, 50.0, 0.0, TAU, 48, Color(UiTheme.C_BRASS, 0.35), 5.0, true)
+	_prog.draw_arc(c, 50.0, -PI * 0.5, -PI * 0.5 + TAU * _prog_frac, 48, UiTheme.C_TEAL, 6.0, true)
+	for i in 3:                                              # puntitos que giran: la isla y el náufrago "piensan"
+		var a: float = _pulse * 3.2 + float(i) * TAU / 3.0
+		_prog.draw_circle(c + Vector2(cos(a), sin(a)) * 30.0, 4.5 - float(i) * 0.9, Color(UiTheme.C_TEXT, 0.9))
+	UiTheme.text(_prog, UiTheme.BOLD, Vector2(0, 186.0), _prog_text, 22, UiTheme.C_TEXT, 240.0, HORIZONTAL_ALIGNMENT_CENTER, 5)
+
 func hide_recipes() -> void:
 	_craft.visible = false
 
@@ -142,6 +177,8 @@ func _process(delta: float) -> void:
 	elif _info_panel.modulate.a > 0.0:
 		_info_panel.modulate.a = 0.0
 	_bar.queue_redraw()
+	if _prog.visible:
+		_prog.queue_redraw()
 
 # ------------------------------------------------------------------ dibujo
 
@@ -196,7 +233,7 @@ func _draw_craft() -> void:
 	var h: float = 86.0 + 84.0 * float(rows)
 	UiTheme.draw_panel(_craft, Rect2(0, 0, 600, h), UiTheme.C_TEAL)
 	UiTheme.text(_craft, UiTheme.TITLE, Vector2(28, 46), "COMBINAR", 30, UiTheme.C_TEAL, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 5)
-	UiTheme.text(_craft, UiTheme.BODY, Vector2(0, 46), "Rueda: elegir     E: fabricar     C: cerrar", 17, UiTheme.C_DIM, 572.0, HORIZONTAL_ALIGNMENT_RIGHT, 3)
+	UiTheme.text(_craft, UiTheme.BODY, Vector2(0, 46), "Rueda o ↑↓: elegir     E: fabricar     C: cerrar", 17, UiTheme.C_DIM, 572.0, HORIZONTAL_ALIGNMENT_RIGHT, 3)
 	for i in rows:
 		var rc: Dictionary = _recipes[i]
 		var y: float = 66.0 + 84.0 * float(i)

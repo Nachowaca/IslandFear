@@ -19,6 +19,13 @@ var _stela: Stela
 var _craft_open: bool = false
 var _craft_idx: int = 0
 var _cut_cd: float = 0.0
+var _pan: float = 0.0
+var _crafting: bool = false
+var _craft_t: float = 0.0
+var _craft_dur: float = 2.2
+var _craft_recipe: Dictionary = {}
+var _aviso: Dictionary = {}
+var _aviso_t: float = 0.0
 var _rng := RandomNumberGenerator.new()
 
 const SPOT_INFO: Dictionary = {
@@ -40,25 +47,46 @@ func _edge(key: Key) -> bool:
 func _unhandled_input(event: InputEvent) -> void:
 	if player == null or not player.controllable:
 		return
+	var step: int = 0
 	if event is InputEventMouseButton and event.pressed:
 		var mb: InputEventMouseButton = event
-		var step: int = 0
 		if mb.button_index == MOUSE_BUTTON_WHEEL_UP:
 			step = -1
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			step = 1
-		if step != 0:
-			if _craft_open:
-				_craft_idx = posmod(_craft_idx + step, Recipes.LIST.size())
-				_refrescar_craft()
-			else:
-				Inventario.seleccionar(Inventario.seleccionado + step)
+	elif event is InputEventPanGesture:              # trackpad de Mac: el scroll llega como gesto, no como rueda
+		_pan += (event as InputEventPanGesture).delta.y
+		if absf(_pan) >= 1.0:
+			step = 1 if _pan > 0.0 else -1
+			_pan = 0.0
+	if step != 0:
+		_cambiar(step)
+
+func _cambiar(step: int) -> void:
+	if _crafting:
+		return
+	if _craft_open:
+		_craft_idx = posmod(_craft_idx + step, Recipes.LIST.size())
+		_refrescar_craft()
+	else:
+		Inventario.seleccionar(Inventario.seleccionado + step)
 
 
 func _process(delta: float) -> void:
 	if player == null or ui == null:
 		return
 	_cut_cd = maxf(_cut_cd - delta, 0.0)
+	player.menu_lock = _craft_open
+	_avisar_recetas(delta)
+	if _crafting:
+		_craft_t += delta
+		ui.set_progress(_craft_t / _craft_dur, "Fabricando…")
+		if player.dead or not _craft_open or _craft_t >= _craft_dur:
+			var fin: bool = _craft_t >= _craft_dur and not player.dead
+			_crafting = false
+			ui.set_progress(-1.0)
+			if fin:
+				_terminar_crear(_craft_recipe)
 	var cam: Camera3D = player.get_camera()
 	if not player.controllable or player.dead or cam == null or not cam.current:
 		ui.set_prompt("")
@@ -84,13 +112,19 @@ func _process(delta: float) -> void:
 		if _plant != null:
 			partes.append("Q: cortar")
 	ui.set_prompt("    ".join(partes))
+	if _craft_open and not _crafting:
+		if _edge(KEY_UP):
+			_cambiar(-1)
+		if _edge(KEY_DOWN):
+			_cambiar(1)
 	if _edge(KEY_C):
 		_craft_open = not _craft_open
 		_craft_idx = clampi(_craft_idx, 0, Recipes.LIST.size() - 1)
 		_refrescar_craft()
 	if _edge(KEY_E):
 		if _craft_open:
-			_crear()
+			if not _crafting:
+				_crear()
 		else:
 			_recoger()
 	if _craft_open:
@@ -400,6 +434,22 @@ func _cortar() -> void:
 
 # ------------------------------------------------------------------ combinar (C)
 
+## Avisa cuando juntás lo necesario para fabricar algo nuevo.
+func _avisar_recetas(delta: float) -> void:
+	_aviso_t -= delta
+	if _aviso_t > 0.0:
+		return
+	_aviso_t = 0.5
+	for r: Dictionary in Recipes.LIST:
+		var id: String = str(r["id"])
+		var ok: bool = Recipes.can(r)
+		if ok and not _aviso.get(id, false) and not _craft_open:
+			ui.message("Ya podés fabricar: %s  (C)" % str(r["name"]))
+			_aviso[id] = true
+			return
+		if not ok:
+			_aviso[id] = false
+
 func _refrescar_craft() -> void:
 	if not _craft_open:
 		ui.hide_recipes()
@@ -412,6 +462,17 @@ func _refrescar_craft() -> void:
 
 func _crear() -> void:
 	var r: Dictionary = Recipes.LIST[_craft_idx]
+	if not Recipes.can(r):
+		ui.message("Te faltan materiales: %s" % Recipes.ingredients_text(r))
+		return
+	_craft_recipe = r                       # tarda unos segundos, con un círculo de espera
+	_craft_dur = 3.0 if str(r.get("special", "")) == "fuego" else 2.2
+	_craft_t = 0.0
+	_crafting = true
+	player.play_action("cut")
+	_sonido("crack", player.global_position, -10.0)
+
+func _terminar_crear(r: Dictionary) -> void:
 	if not Recipes.can(r):
 		ui.message("Te faltan materiales: %s" % Recipes.ingredients_text(r))
 		return

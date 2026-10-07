@@ -6,6 +6,21 @@ extends RefCounted
 const SHADER: Shader = preload("res://shaders/wind_foliage.gdshader")
 
 static var _registro: Array = []
+static var _mood: float = 0.0
+
+static func get_mood() -> float:
+	return _mood
+
+## Ánimo de la isla (-1 tensa/enojada … +1 serena): la flora se mece y se ve distinta, muy sutil.
+static func set_mood(k: float) -> void:
+	_mood = clampf(k, -1.0, 1.0)
+	var vivos: Array = []
+	for w: WeakRef in _registro:
+		var mat: ShaderMaterial = w.get_ref() as ShaderMaterial
+		if mat != null:
+			mat.set_shader_parameter("mood", _mood)
+			vivos.append(w)
+	_registro = vivos
 
 ## Racha de viento que sacude toda la vegetación (0 = normal, 1 = muy fuerte). La usa la isla.
 static func set_gust(k: float) -> void:
@@ -21,10 +36,12 @@ static func set_gust(k: float) -> void:
 ## Registra un material con shader de viento ya creado (para que las rachas lo afecten).
 static func register(m: ShaderMaterial) -> void:
 	_registro.append(weakref(m))
+	m.set_shader_parameter("mood", _mood)
 
 static func make(color: Color, base_y: float, height_ref: float, sway: float, flutter: float = 0.0, speed: float = 1.2) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	_registro.append(weakref(m))
+	m.set_shader_parameter("mood", _mood)
 	m.shader = SHADER
 	m.set_shader_parameter("albedo", color)
 	m.set_shader_parameter("base_y", base_y)

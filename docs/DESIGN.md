@@ -134,3 +134,48 @@ Pozo de 8 m con paredes y techo de rocas del pack Quaternius. `Weather` (weather
 Modelo `res://assets/character/quaternius_cc0-male-character-1352.glb` (7.9k tris, 42 huesos, 6 materiales: piel, ojos, pelo, remera, pantalón, medias → fácil de cambiar la ropa). `castaway_model.gd` (CastawayModel) maneja las animaciones del archivo: Idle, Walk, Run, Jump, RunningJump, Death y SwordSlash (tajo al cortar, tecla Q). `castaway_pose.gd` (SkeletonModifier3D) suma poses por código: agacharse (Ctrl, 45% de velocidad, sin saltar), recoger, comer y beber (`Castaway.play_action`). Reemplaza al rig procedural viejo (castaway_rig.gd, borrado). No hay cara animada (`express()` queda vacío) ni nadar (no se puede entrar al mar profundo). Escena de prueba: `res://scenes/test_character.tscn`.
 
 Árbol ancestral (island_features) y árbol corazón (island_life) ahora son MapleTree del pack nuevo (escala 2.4 y 1.5). Se eliminó la copa de esferas y el TwistedTree: ya no quedan árboles del MegaKit.
+
+Luciérnaga de la isla (firefly.gd): regalo nocturno. Si el vínculo >= 15 (se va < 8) y es de noche, acompaña al jugador y lo alumbra; de día vuelve a su escondite (junto a un árbol). Sin avisos. Solo acompaña, no guía. Luna más fuerte (1.5, mínimo 0.3).
+
+
+## Ideas guardadas para después (plan de mejoras de la isla)
+Orden acordado: 1) pulir lo hecho, 2) isla viva, 3) isla que te estudia, 4) orden técnico.
+
+**1. Pulir (en curso):** ajustar rocas oscuras, colores de bioma y troncos tras probar caminando; cueva con piso de piedra, recorrerla y probar el sello de noche; revisar de cerca plantas en grupos, pájaros y mariposas.
+
+**2. Isla viva (después):**
+- Viento visible: ramas y pasto se mueven más en lomas y menos en bosque cerrado.
+- Flores y bayas comestibles según el bioma (`get_bioma_pesos`), hoy no lo usan (`island_life.gd`).
+- Flores que brillan de noche (15-20% de las flores, emisión turquesa/violeta pulsante, sin luces reales), sobre todo en claros misteriosos; usar `res://Biolumina.flac`.
+- **Mejorar la fogata (`campfire.gd`):** hoy emite una luz muy geométrica (círculo naranja duro sobre el suelo, halo plano, humo en bolas blancas facetadas). Debe ser ambiental: colores cálidos difuminados que se funden con el entorno, sin borde visible de la luz (atenuación suave, tinte cálido que cae gradualmente y tiñe pasto y árboles cercanos), parpadeo orgánico, humo suave y translúcido en vez de bolas blancas. El usuario traerá referencias de cómo se lo imagina; esperarlas antes de implementar.
+- Referencia de ambiente nocturno (cálido/frío, teal + ámbar): A paleta de noche y B fogata hechos; pendientes C agua teal con reflejos cálidos, D flores nocturnas en ámbar, bajar la luz de luna sobre la arena.
+- Luciérnagas (`firefly.gd`, desactivada) y clima/lluvia (`weather.gd`, desactivado): al final, vigilando la memoria.
+
+**3. Isla que te estudia (después):**
+- Pasto, flores y claros reaccionan sutilmente al vínculo (más apagado si hostil, más vivo si confía; el shader del terreno ya tiene `mood`), sin que el jugador vea la relación.
+- Huellas y marcas de la isla en los claros misteriosos.
+
+**5. Jugabilidad e interacción (nuevo, la lista de ideas se arma después con el usuario):**
+- Mejorar la interacción con los objetos de la isla (más acciones sobre piedras, plantas, agua, árboles, cueva, ruinas).
+- Mejorar el sistema de ofrendas y ofensas a la isla (más formas de ofrecer y de ofender, respuestas más variadas; el vínculo sigue oculto y los ataques nunca matan).
+- Agua: si el náufrago se sumerge mucho tiempo, pierde vida de a poco (aguantar la respiración o nadar demasiado agota).
+- Principio: libertad total; más mecánicas para interactuar con toda la isla, sin guiar al jugador. Mantener la regla de convivir y no herirse.
+- **Ecología con sentido:** todo objeto de la isla existe por un porqué ligado a su bioma y su medioambiente. Para convivir hay que **mantener ese medioambiente**, no solo sobrevivir (ej.: talar sin replantar, arrancar la planta de un claro, ensuciar el agua o encender fuego en la selva húmeda dañan el equilibrio de esa zona; cuidar, replantar y devolver sí lo sostienen). Cada zona tendría su "salud" (EcoMap), que la isla percibe.
+- **Huellas de otros náufragos:** más objetos aleatorios dejados por jugadores anteriores (mochilas, cartas, herramientas rotas, campamentos viejos, marcas en troncos), con historias sueltas, repartidos por biomas.
+- **Fuego:** da calor (frío de noche, mojado, cueva) y a futuro se podrá cocinar. Hoy solo ilumina.
+- **Frases de la isla:** sumar ~200 frases nuevas (texto, la isla no tiene voz hablada) que reaccionen a las acciones y movimientos del jugador (dónde camina, qué recoge, qué corta, fuego, agua, ofrendas, ofensas, quedarse quieto, correr, noche, cueva). Se escriben por categorías para `island_voice.gd`.
+- Ideas sumadas por mí (a confirmar): clima del cuerpo (frío/calor, mojado, secarse junto al fuego); semillas y replantar árboles; cosechar sin arrancar (solo frutos); ofrendas con sentido por bioma (flor al claro, piedra al roquedal, agua a la selva); ofensas graduales (pisar flores raras, ensuciar el estanque); refugio y camas con hojas; pescar y cocinar; marcar caminos con piedras sin dañar; sentarse a observar y que la fauna se acerque; escuchar la isla (sonido cambia con la salud de la zona).
+- Hecho de paso (menú C): selección con flechas/rueda/trackpad, espera con círculo al fabricar y aviso al juntar materiales.
+
+**Plan de ejecución del bloque 5 (fases, una por vez, probada antes de seguir):**
+- **5.1 Salud de zonas (base de todo):** `EcoMap` guarda una "salud" por celda/bioma (`Isla.registrar_evento` ya acumula `bioma_eventos`). Talar sin replantar, arrancar plantas, ensuciar agua y fuego en zona húmeda la bajan; replantar, ofrendas y cuidado la suben. Efecto sutil y oculto (pasto/flores más apagados en el shader con `mood` por zona, fauna menos, sonido). Sin indicadores.
+- **5.2 Semillas y replantar + cosechar sin arrancar:** frutos se toman sin dañar la planta (rebrotan); al talar se obtienen semillas/brotes que se plantan (`_plant` en `interaccion.gd`) y crecen por etapas. Sube la salud de la zona.
+- **5.3 Fuego, calor y cocina:** `Campfire` ya existe; agregar temperatura corporal (frío de noche, mojado, cueva) en `castaway.gd` y calor cerca del fuego; luego cocinar (receta nueva en `recipes.gd`: comida cruda -> cocida, y pescado). El fuego en selva/bosque húmedo ofende un poco, en costa/claro no.
+- **5.4 Agua:** nado/inmersión larga baja vida de a poco (aliento); salir del agua moja (alimenta 5.3). Ensuciar el estanque es una ofensa leve.
+- **5.5 Ofrendas y ofensas con sentido:** ofrenda por bioma (flor al claro, piedra al roquedal, agua a la selva) vale más que una genérica; ofensas graduales (pisar flores raras, cortar en sagrado, ensuciar agua). Todo pasa por `registrar_evento` con el bioma; nunca mata.
+- **5.6 Huellas de otros náufragos:** nuevo `island_traces.gd` (o dentro de `island_features.gd`): campamentos viejos, mochilas, cartas, herramientas rotas, marcas en troncos, repartidos por bioma con semilla fija; inspeccionar (F) da texto corto. Cargas livianas (pocas mallas, MultiMesh/kit).
+- **5.7 200 frases de la isla:** ampliar `POOLS` de `island_voice.gd` por categorías (caminar por bioma, quedarse quieto, correr, noche/día, recoger, talar, replantar, fuego, agua/nado, cueva, ofrenda, ofensa, objetos de otros náufragos, salud de la zona). Texto, sin voz; disparadas por eventos ya registrados y por movimiento (`sumar_paso`, tiempo quieto).
+- **5.8 Extras:** refugio/cama de hojas, pescar, marcar caminos con piedras, sentarse a observar (fauna se acerca), sonido que cambia con la salud de la zona.
+- Orden sugerido: 5.1 -> 5.2 -> 5.4 -> 5.3 -> 5.5 -> 5.6 -> 5.7 -> 5.8 (las frases van repartidas: se agregan las de cada fase al hacerla, y 5.7 completa hasta 200).
+
+**4. Orden técnico (después):** (la hora fija 14:00 TEMPTEST ya se quitó); limpiar `main.tscn`/`world.tscn` y duplicados OBJ/FBX del MegaKit; actualizar PROGRESS.md; commit/push solo al cerrar la sesión.
