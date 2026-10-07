@@ -26,6 +26,7 @@ var _pulse: float = 0.0
 
 func _ready() -> void:
 	layer = 19
+	add_child(IconRender.new())
 	var w: float = float(Inventario.ESPACIOS) * (SLOT + GAP) - GAP
 	_bar = Control.new()
 	_bar.anchor_left = 0.5

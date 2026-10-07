@@ -278,10 +278,13 @@ func _physics_process(delta: float) -> void:
 	_animate(delta)
 	_update_pivot(delta)
 
+var ui_lock: bool = false      ## con el baúl abierto el personaje no se mueve
 var menu_lock: bool = false   ## con un menú abierto las flechas eligen y no mueven al personaje
 
 ## Teclas leídas directo: W adelante, S o X atrás, A izquierda, D derecha (+ flechas y acciones del Input Map).
 func _read_move_input() -> Vector2:
+	if ui_lock:
+		return Vector2.ZERO
 	var v: Vector2 = Vector2.ZERO if menu_lock else Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if _key(KEY_A):
 		v.x -= 1.0
@@ -329,7 +332,7 @@ func _move(delta: float) -> void:
 	velocity.z = horizontal.z
 
 	# Salto y gravedad
-	if _grounded and _key(KEY_SPACE) and not _crouching:
+	if _grounded and _key(KEY_SPACE) and not _crouching and not ui_lock:
 		velocity.y = jump_velocity
 		_grounded = false
 	elif _grounded:

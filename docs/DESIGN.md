@@ -248,3 +248,6 @@ Antes de finalizar el juego: borrar la cámara del cielo (sky_cam.gd) o inventar
 - **Reparto por zona** (playa, orilla, playa alta, caminos, estanque, cueva, bosque), ~84 por vida, objetos x1.5, sin destello propio.
 - **Luciérnaga guía:** de noche ofrece (solo a ~3 m) sutilmente útiles (luz cálida) y ofrendas (luz azul suave); no comida ni materiales de fabricación.
 - **Pendiente / ideas:** baúl de madera en la playa para guardar más objetos (decidir tamaño, si la isla lo toma como propio, y si sobrevive a la muerte); tienda y telas (con frío/sueño); pistas de la isla sobre semillas; usos de herramientas (bloque 6).
+
+## Baúl de la playa (diseño aplicado)
+Baúl de madera fijo en la playa de llegada, vacío, con la inscripción 'Welcome!'. 30 celdas separadas, mismo estilo de GUI que el inventario. Lo que no entra en la mochila se guarda solo en el baúl. Pendiente a decidir: si el contenido sobrevive a la muerte, y si la isla lo toma como algo tuyo.

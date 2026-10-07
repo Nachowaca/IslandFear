@@ -1,0 +1,285 @@
+class_name LookDirector
+extends Node
+
+## Dueño del look de autor (luz, color, niebla). Lo crea DayNight y le pasa cada frame cómo está el sol.
+## - Mezcla 4 AmbientePreset (noche, amanecer, día, atardecer) y los aplica: cielo, sol, ambiente, niebla
+##   (UNA sola: profundidad + altura; BiomeAtmosphere y la isla solo suman con fog_local / fog_boost), glow, exposición.
+## - Extras baratos: sombras con color (ambiente tintado), sombras de contacto, haces y bruma en capas,
+##   agua que refleja el cielo, DOF opcional.
+## - Interruptor maestro (F2), overlay de debug (F3), calidad Baja/Media/Alta (F4).
+## Mobile: sin SSAO/SSR/SDFGI/niebla volumétrica; todo con mallas, shaders simples y vertex colors.
+
+enum Calidad { BAJA, MEDIA, ALTA }
+const NOMBRES_CALIDAD: Array[String] = ["Baja", "Media", "Alta"]
+const CFG_PATH: String = "user://look.cfg"
+
+## Apagado = luz simple: sin haces, bruma, sombras de contacto, glow, DOF ni tinte de sombras. Reversible en caliente.
+var look_cinematografico_activo: bool = true
+var calidad: int = Calidad.MEDIA
+var dof_activo: bool = false          ## ver medición: solo con calidad Alta
+
+var daynight: DayNight
+var env: Environment
+var env_node: WorldEnvironment
+var sky_mat: ShaderMaterial
+var sun: DirectionalLight3D
+var terrain: IslandTerrain
+var player: Node3D
+
+var actual: AmbientePreset = AmbientePreset.new()
+var _base: AmbientePreset = AmbientePreset.new()
+var _noche: AmbientePreset = AmbientePreset.noche()
+var _amanecer: AmbientePreset = AmbientePreset.amanecer()
+var _dia: AmbientePreset = AmbientePreset.dia()
+var _atardecer: AmbientePreset = AmbientePreset.atardecer()
+var _modificador: Dictionary = {}
+var _haces: LookHaces
+var _contacto: LookContacto
+var _cam_attr: CameraAttributesPractical
+var _overlay_layer: CanvasLayer
+var _overlay: Label
+var _overlay_t: float = 0.0
+var _keys: Dictionary = {}
+var _w_noche: float = 0.0
+var _w_dia: float = 0.0
+var _w_tw: float = 0.0
+var _extras_n: Dictionary = {"luces": 0, "particulas": 0}
+var _extras_t: float = 0.0
+var _gpu_ms: float = 0.0
+var _cpu_ms: float = 0.0
+var _medicion: String = ""
+
+## Punto de entrada para que la isla viva altere luz y tono según su estado emocional
+## (cielo frío y cerrado si está enojada, cálido si confía). TODAVÍA NO HACE NADA: solo guarda el diccionario.
+## Claves previstas: "tinte" (Color), "niebla" (float), "energia_sol" (float), "bloom" (float).
+func set_modificador(d: Dictionary) -> void:
+	_modificador = d
+
+func _ready() -> void:
+	_cargar_cfg()
+	_cam_attr = CameraAttributesPractical.new()
+	_cam_attr.dof_blur_far_distance = 70.0
+	_cam_attr.dof_blur_far_transition = 140.0
+	_cam_attr.dof_blur_amount = 0.05
+	_overlay_layer = CanvasLayer.new()
+	_overlay_layer.layer = 30
+	add_child(_overlay_layer)
+	_overlay = Label.new()
+	_overlay.position = Vector2(20, 90)
+	_overlay.add_theme_font_size_override("font_size", 17)
+	_overlay.add_theme_color_override("font_outline_color", Color.BLACK)
+	_overlay.add_theme_constant_override("outline_size", 5)
+	_overlay.visible = false
+	_overlay_layer.add_child(_overlay)
+	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
+
+## Crea las mallas del look que dependen del mundo (una sola vez). Lo llama main cuando la isla ya existe.
+func preparar_mundo(p_terrain: IslandTerrain, p_player: Node3D) -> void:
+	terrain = p_terrain
+	player = p_player
+	_haces = LookHaces.new()
+	_haces.name = "LookHaces"
+	_haces.terrain = terrain
+	_haces.player = player
+	add_child(_haces)
+	_contacto = LookContacto.new()
+	_contacto.name = "LookContacto"
+	_contacto.terrain = terrain
+	add_child(_contacto)
+	_aplicar_calidad()
+
+# ------------------------------------------------------------------ aplicar cada frame
+
+## day: 0 noche..1 día; dusk: cercanía al horizonte; golden: sol bajo; e: elevación del sol; mañana: antes de mediodía.
+func aplicar(day: float, dusk: float, golden: float, e: float, manana: bool) -> void:
+	_w_noche = 1.0 - day
+	_w_dia = day
+	_w_tw = clampf(maxf(dusk, golden * 0.75), 0.0, 1.0)
+	AmbientePreset.mezclar(_noche, _dia, day, _base)
+	AmbientePreset.mezclar(_base, _amanecer if manana else _atardecer, _w_tw, actual)
+	var p: AmbientePreset = actual
+	var on: bool = look_cinematografico_activo
+
+	# cielo
+	sky_mat.set_shader_parameter("top_color", p.color_cielo_alto)
+	sky_mat.set_shader_parameter("horizon_color", p.color_cielo_horizonte)
+	sky_mat.set_shader_parameter("ground_color", p.color_cielo_horizonte.darkened(0.55))
+
+	# sol
+	sun.light_color = p.color_sol
+	sun.light_energy = p.energia_sol * smoothstep(-0.03, 0.22, e)
+	sun.visible = sun.light_energy > 0.01
+	sun.shadow_opacity = 0.9 if on else 1.0
+
+	# ambiente: el cielo ilumina; el tinte da color a las sombras
+	env.ambient_light_energy = p.energia_ambiente
+	env.ambient_light_color = p.color_ambiente
+	env.ambient_light_sky_contribution = p.contribucion_cielo if on else 1.0
+
+	# niebla: profundidad (siempre) + altura (solo look activo)
+	env.fog_light_color = p.color_niebla
+	env.fog_density = p.densidad_niebla + daynight.fog_local + daynight.fog_boost
+	if on and calidad >= Calidad.MEDIA:
+		env.fog_height = 2.4
+		env.fog_height_density = p.niebla_altura + daynight.fog_boost * 6.0
+	else:
+		env.fog_height_density = 0.0
+
+	# postproceso
+	env.tonemap_exposure = p.exposicion
+	env.adjustment_saturation = p.saturacion
+	env.adjustment_contrast = p.contraste
+	env.glow_enabled = on and calidad >= Calidad.MEDIA
+	env.glow_intensity = p.intensidad_bloom
+
+	# agua: refleja el cielo actual y el brillo del sol
+	var wm: ShaderMaterial = daynight.water_mat()
+	if wm != null:
+		wm.set_shader_parameter("sky_color", p.color_cielo_horizonte)
+		wm.set_shader_parameter("zenith_color", p.color_cielo_alto)
+		wm.set_shader_parameter("sun_dir", daynight.sun_dir)
+		wm.set_shader_parameter("sun_glow", smoothstep(0.0, 0.25, e) * (1.0 - smoothstep(0.55, 0.9, e) * 0.6))
+		wm.set_shader_parameter("sun_tint", Vector3(p.color_sol.r, p.color_sol.g, p.color_sol.b))
+		wm.set_shader_parameter("sky_reflect", 0.6 if on else 0.25)
+
+	# extras del look
+	if _haces != null:
+		_haces.activo = on
+		var luz_dir: Vector3 = daynight.sun_dir
+		var luz_col: Color = p.color_sol
+		var fuerza: float = p.intensidad_haces * smoothstep(0.02, 0.14, e)
+		if e <= 0.02 and daynight.moon_dir.y > 0.06:
+			luz_dir = daynight.moon_dir
+			luz_col = Color(0.55, 0.72, 1.0)
+			fuerza = _w_noche * (0.25 + 0.5 * daynight.moon_phase) * smoothstep(0.06, 0.3, daynight.moon_dir.y) * 0.8
+		_haces.set_luz(luz_dir, luz_col, fuerza)
+		_haces.set_bruma(p.color_niebla.lerp(Color.WHITE, 0.15), clampf(p.niebla_altura / 0.04 + daynight.fog_boost * 40.0, 0.0, 1.0))
+	if _contacto != null:
+		_contacto.visible = on and calidad >= Calidad.MEDIA
+		_contacto.set_fuerza(lerpf(0.5, 0.3, _w_noche))
+
+# ------------------------------------------------------------------ calidad, DOF, entrada
+
+func _aplicar_calidad() -> void:
+	match calidad:
+		Calidad.BAJA:
+			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+			sun.directional_shadow_max_distance = 80.0
+			if _haces != null:
+				_haces.set_cantidades(0, 0)
+		Calidad.MEDIA:
+			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+			sun.directional_shadow_max_distance = 140.0
+			if _haces != null:
+				_haces.set_cantidades(6, 2)
+		_:
+			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+			sun.directional_shadow_max_distance = 180.0
+			if _haces != null:
+				_haces.set_cantidades(12, 3)
+	_aplicar_dof()
+
+func _aplicar_dof() -> void:
+	var quiere: bool = look_cinematografico_activo and calidad == Calidad.ALTA and dof_activo
+	_cam_attr.dof_blur_far_enabled = quiere
+	if env_node != null:
+		env_node.camera_attributes = _cam_attr if quiere else null
+
+func _edge(k: Key) -> bool:
+	var down: bool = Input.is_physical_key_pressed(k)
+	var was: bool = bool(_keys.get(k, false))
+	_keys[k] = down
+	return down and not was
+
+func _process(delta: float) -> void:
+	if _edge(KEY_F2):
+		look_cinematografico_activo = not look_cinematografico_activo
+		_aplicar_dof()
+		_guardar_cfg()
+	if _edge(KEY_F3):
+		_overlay.visible = not _overlay.visible
+	if _edge(KEY_F5):
+		medir()
+	if _edge(KEY_F4):
+		calidad = (calidad + 1) % 3
+		_aplicar_calidad()
+		_guardar_cfg()
+	if _overlay.visible:
+		_overlay_t -= delta
+		if _overlay_t <= 0.0:
+			_overlay_t = 0.25
+			_actualizar_overlay()
+
+func _actualizar_overlay() -> void:
+	var vp: RID = get_viewport().get_viewport_rid()
+	_gpu_ms = RenderingServer.viewport_get_measured_render_time_gpu(vp)
+	_cpu_ms = RenderingServer.viewport_get_measured_render_time_cpu(vp)
+	_extras_t -= 0.25
+	if _extras_t <= 0.0:
+		_extras_t = 1.0
+		_extras_n["luces"] = get_tree().root.find_children("*", "Light3D", true, false).filter(func(n: Node) -> bool: return (n as Light3D).is_visible_in_tree()).size()
+		var np: int = 0
+		for n: Node in get_tree().root.find_children("*", "GPUParticles3D", true, false):
+			if (n as GPUParticles3D).is_visible_in_tree() and (n as GPUParticles3D).emitting:
+				np += 1
+		for n2: Node in get_tree().root.find_children("*", "CPUParticles3D", true, false):
+			if (n2 as CPUParticles3D).is_visible_in_tree() and (n2 as CPUParticles3D).emitting:
+				np += 1
+		_extras_n["particulas"] = np
+	var hh: int = int(daynight.hour)
+	var mm: int = int((daynight.hour - float(hh)) * 60.0)
+	_overlay.text = "LOOK %s   calidad %s   DOF %s\nhora %02d:%02d   preset: noche %.2f  día %.2f  crepúsculo %.2f (%s)\nGPU %.2f ms   CPU render %.2f ms   FPS %d   proceso %.2f ms\nluces %d   partículas %d   draw calls %d\nF2 interruptor   F3 overlay   F4 calidad   F5 medir%s" % [
+		"ACTIVO" if look_cinematografico_activo else "apagado", NOMBRES_CALIDAD[calidad], "sí" if dof_activo else "no",
+		hh, mm, _w_noche, _w_dia, _w_tw, actual.nombre if actual.nombre != "" else "mezcla",
+		_gpu_ms, _cpu_ms, int(Engine.get_frames_per_second()), Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
+		int(_extras_n["luces"]), int(_extras_n["particulas"]), int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
+		("\n" + _medicion) if _medicion != "" else ""]
+
+func _cargar_cfg() -> void:
+	var cf := ConfigFile.new()
+	if cf.load(CFG_PATH) != OK:
+		return
+	look_cinematografico_activo = bool(cf.get_value("look", "activo", true))
+	calidad = clampi(int(cf.get_value("look", "calidad", Calidad.MEDIA)), 0, 2)
+	dof_activo = bool(cf.get_value("look", "dof", false))
+
+func _guardar_cfg() -> void:
+	var cf := ConfigFile.new()
+	cf.set_value("look", "activo", look_cinematografico_activo)
+	cf.set_value("look", "calidad", calidad)
+	cf.set_value("look", "dof", dof_activo)
+	cf.save(CFG_PATH)
+
+## Mide el costo de la GPU de varias combinaciones (promedio de ~2 s cada una) y lo imprime y muestra en el overlay.
+## Para decidir con números si glow y DOF valen la pena. Se llama a mano (F5).
+func medir() -> void:
+	var vp: RID = get_viewport().get_viewport_rid()
+	var guardado: Array = [look_cinematografico_activo, calidad, dof_activo]
+	var variantes: Array = [
+		["look apagado", false, Calidad.MEDIA, false],
+		["media (glow, haces, bruma)", true, Calidad.MEDIA, false],
+		["alta", true, Calidad.ALTA, false],
+		["alta + DOF", true, Calidad.ALTA, true],
+	]
+	var res: PackedStringArray = []
+	for v: Array in variantes:
+		look_cinematografico_activo = v[1]
+		calidad = v[2]
+		dof_activo = v[3]
+		_aplicar_calidad()
+		await get_tree().create_timer(0.8).timeout
+		var suma: float = 0.0
+		var n: int = 0
+		var fps_sum: float = 0.0
+		for i in 40:
+			await get_tree().process_frame
+			suma += RenderingServer.viewport_get_measured_render_time_gpu(vp)
+			fps_sum += Engine.get_frames_per_second()
+			n += 1
+		res.append("%s: GPU %.2f ms  (%d fps)" % [v[0], suma / float(n), int(fps_sum / float(n))])
+	look_cinematografico_activo = guardado[0]
+	calidad = guardado[1]
+	dof_activo = guardado[2]
+	_aplicar_calidad()
+	_medicion = "\n".join(res)
+	print("MEDICION LOOK\n", _medicion)

@@ -10,6 +10,8 @@ var player: Castaway
 var terrain: IslandTerrain
 var features: IslandFeatures
 var ui: InventoryUi
+var cofre_ui: CofreUi
+var _cofre: CofrePlaya
 
 var _prev: Dictionary = {}
 var _target: WorldItem
@@ -76,7 +78,14 @@ func _process(delta: float) -> void:
 	if player == null or ui == null:
 		return
 	_cut_cd = maxf(_cut_cd - delta, 0.0)
-	player.menu_lock = _craft_open
+	var cofre_abierto: bool = cofre_ui != null and cofre_ui.abierto
+	player.menu_lock = _craft_open or cofre_abierto
+	player.ui_lock = cofre_abierto
+	if cofre_abierto:
+		ui.set_prompt("")
+		if player.dead or _edge(KEY_E):
+			cofre_ui.cerrar()
+		return
 	_avisar_recetas(delta)
 	if _crafting:
 		_craft_t += delta
@@ -100,6 +109,7 @@ func _process(delta: float) -> void:
 	_fire = _fogata_cercana()
 	_plant = _planta_delante()
 	_stela = _stela_delante()
+	_cofre = _cofre_delante()
 	var partes: Array[String] = []
 	if not _craft_open:
 		if _target != null:
@@ -107,6 +117,8 @@ func _process(delta: float) -> void:
 			partes.append("F: investigar")
 		elif _stela != null:
 			partes.append("F: leer la piedra")
+		elif _cofre != null:
+			partes.append("E: abrir el baúl")
 		elif _fire != null:
 			partes.append("E: echar leña al fuego")
 		if _plant != null:
@@ -164,6 +176,23 @@ func _buscar_objetivo() -> WorldItem:
 			if dist < best_d:
 				best_d = dist
 				best = it
+	return best
+
+## Baúl de la playa delante (a menos de 2.6 m).
+func _cofre_delante() -> CofrePlaya:
+	var fwd: Vector3 = _cam_fwd()
+	var best: CofrePlaya = null
+	var best_d: float = 2.6
+	for n: Node in get_tree().get_nodes_in_group("cofre"):
+		var c: CofrePlaya = n as CofrePlaya
+		if c == null:
+			continue
+		var d: Vector3 = c.global_position - player.global_position
+		var flat: Vector3 = Vector3(d.x, 0.0, d.z)
+		var dist: float = flat.length()
+		if dist < best_d and (dist < 1.3 or fwd.dot(flat.normalized()) > 0.3):
+			best_d = dist
+			best = c
 	return best
 
 func _fogata_cercana() -> Campfire:
@@ -230,7 +259,9 @@ func _sonido(id: String, pos: Vector3, db: float = -6.0) -> void:
 
 func _recoger() -> void:
 	if _target == null:
-		if _fire != null:
+		if _cofre != null and cofre_ui != null:
+			cofre_ui.abrir(_cofre)
+		elif _fire != null:
 			_avivar()
 		return
 	var it: WorldItem = _target
@@ -245,6 +276,11 @@ func _recoger() -> void:
 		Isla.registrar_evento("cuidado", player.global_position, 0.2)
 		return
 	var resto: int = Inventario.agregar(it.item_id, it.amount)
+	var al_cofre: int = 0
+	if resto > 0:                                   # mochila llena: lo que sobra va solo al baúl de la playa
+		var r2: int = Inventario.cofre_agregar(it.item_id, resto)
+		al_cofre = resto - r2
+		resto = r2
 	if resto >= it.amount:
 		ui.message("Inventario lleno.")
 		return
@@ -259,6 +295,8 @@ func _recoger() -> void:
 		it.remove_from_group("dropped_item")
 		it.queue_free()
 		ui.message("+%d %s" % [tomadas, it.display_name])
+	if al_cofre > 0:
+		ui.message("Mochila llena: +%d %s va al baúl de la playa" % [al_cofre, it.display_name])
 
 ## Crea un objeto en el mundo (lo soltado no cuenta como "tomado" de la isla).
 func _spawn_item(id: String, n: int, pos: Vector3) -> WorldItem:

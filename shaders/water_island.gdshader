@@ -16,6 +16,12 @@ uniform float foam_width = 0.6;
 uniform vec3 moon_dir = vec3(0.0, -1.0, 0.0);
 uniform float moon_glow = 0.0;      // 0..1: cuánta luna hay para reflejar
 uniform vec3 moon_tint : source_color = vec3(0.85, 0.9, 1.0);
+uniform vec3 sky_color : source_color = vec3(0.7, 0.8, 0.9);     // color del cielo actual (lo pone el LookDirector)
+uniform vec3 zenith_color : source_color = vec3(0.2, 0.45, 0.8);
+uniform float sky_reflect = 0.6;
+uniform vec3 sun_dir = vec3(0.0, -1.0, 0.0);
+uniform float sun_glow = 0.0;
+uniform vec3 sun_tint : source_color = vec3(1.0, 0.9, 0.7);
 
 float wave(vec2 p, float t) {
 	return sin(p.x * 1.0 + t) * 0.5 + sin(p.y * 1.3 - t * 0.8 + p.x * 0.4) * 0.35 + sin((p.x + p.y) * 0.7 + t * 1.2) * 0.25;
@@ -55,6 +61,7 @@ void fragment() {
 	float depth_k = clamp(thickness / clear_depth, 0.0, 1.0);
 	vec3 col = mix(shallow_color.rgb, deep_color.rgb, smoothstep(0.0, 1.0, depth_k));
 	col = mix(col, shallow_color.rgb * 1.2, fres * 0.5);
+	col = mix(col, mix(sky_color, zenith_color, 0.35), fres * sky_reflect);       // el agua refleja el cielo del momento
 
 	vec2 fp = world_pos.xz * 1.5;
 	float n = vnoise(fp + TIME * 0.2) * 0.6 + vnoise(fp * 2.3 - TIME * 0.15) * 0.4;
@@ -90,6 +97,19 @@ void fragment() {
 		float sparkle = smoothstep(0.35, 1.0, vnoise(wp * 3.5 + TIME * 0.9));
 		float glint = pow(nh, 220.0) * (0.4 + 1.6 * sparkle) + pow(nh, 30.0) * 0.18;
 		EMISSION += moon_tint * glint * moon_glow * (1.0 - foam);
+	}
+
+	// destello del sol sobre el agua (mismo método que la luna)
+	if (sun_glow > 0.001) {
+		vec2 wp2 = world_pos.xz;
+		vec2 nn2 = vec2(vnoise(wp2 * 2.0 + TIME * 0.3), vnoise(wp2 * 2.0 + 11.0 - TIME * 0.25)) - 0.5;
+		vec3 nrm2 = normalize(NORMAL + vec3(nn2.x, 0.0, nn2.y) * 0.2);
+		vec3 L2 = normalize((VIEW_MATRIX * vec4(normalize(sun_dir), 0.0)).xyz);
+		vec3 H2 = normalize(L2 + VIEW);
+		float nh2 = max(dot(nrm2, H2), 0.0);
+		float spark2 = smoothstep(0.3, 1.0, vnoise(wp2 * 3.2 + TIME * 0.8));
+		float gl2 = pow(nh2, 180.0) * (0.5 + 1.5 * spark2) + pow(nh2, 26.0) * 0.12;
+		EMISSION += sun_tint * gl2 * sun_glow * (1.0 - foam) * 0.8;
 	}
 
 	ALBEDO = col;

@@ -107,12 +107,16 @@ func _ready() -> void:
 	var inv_ui := InventoryUi.new()
 	inv_ui.name = "InventoryUi"
 	add_child(inv_ui)
+	var cofre_ui := CofreUi.new()
+	cofre_ui.name = "CofreUi"
+	add_child(cofre_ui)
 	var inter := Interaccion.new()
 	inter.name = "Interaccion"
 	inter.player = _castaway
 	inter.terrain = _island
 	inter.features = features
 	inter.ui = inv_ui
+	inter.cofre_ui = cofre_ui
 	add_child(inter)
 	var mano := HeldItem.new()
 	mano.name = "ObjetoEnMano"
@@ -136,6 +140,7 @@ func _ready() -> void:
 	var daynight := DayNight.new()
 	daynight.setup($Water3D/Sun as DirectionalLight3D, $Water3D/WorldEnvironment as WorldEnvironment)
 	add_child(daynight)
+	daynight.look.preparar_mundo(_island, _castaway)
 	var firefly := Firefly.new()
 	firefly.name = "Firefly"
 	firefly.player = _castaway
@@ -158,16 +163,35 @@ func _ready() -> void:
 	sky_cam.player = _castaway
 	sky_cam.player_cam = _castaway.get_camera()
 	add_child(sky_cam)
-	daynight._offset_hours = fposmod(22.5 - daynight._current_hour(), 24.0)  # FIXHOUR
 	_boat_target = _find_landing_point()
 	if skip_voyage:
 		var back: Vector3 = _boat.global_position - _boat_target
 		back.y = 0.0
 		_boat.global_position = _boat_target + back.normalized() * 6.0   # arranca casi en la orilla
+	_build_chest()
 	_make_hint()
 	_hint.text = "La corriente arrastra la barca hacia una isla..."
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
+
+## Baúl de madera fijo en la playa de llegada: a un costado del desembarco, de frente al mar, vacío.
+func _build_chest() -> void:
+	var inland: Vector3 = Vector3.ZERO - _boat_target
+	inland.y = 0.0
+	inland = inland.normalized()
+	var side: Vector3 = Vector3(-inland.z, 0.0, inland.x)
+	var p: Vector3 = _boat_target + side * 5.0 + inland * 4.0
+	for i in 25:
+		if _island.height_at(p.x, p.z) >= 1.0:
+			break
+		p += inland
+	var h: float = _island.height_at(p.x, p.z)
+	_island.clear_area(Vector2(p.x, p.z), 1.5)
+	var chest := CofrePlaya.new()
+	chest.name = "CofrePlaya"
+	add_child(chest)
+	chest.global_position = Vector3(p.x, h - 0.04, p.z)
+	chest.rotation.y = atan2(-inland.x, -inland.z)
 
 ## Puente (roto) desde la costa hasta el faro.
 func _build_bridge(shore: Vector2, dir: Vector2, light_r: float) -> void:

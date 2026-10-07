@@ -10,6 +10,8 @@ const MAX_PILA: int = 9
 
 var espacios: Array = []        ## cada uno: null o {"id": String, "n": int}
 var seleccionado: int = 0
+const COFRE_ESPACIOS: int = 30
+var cofre: Array = []           ## baúl de la playa: 30 celdas, cada una null o {"id", "n"}
 var descubiertos: Dictionary = {}   ## item_id -> true (investigados)
 var linterna_carga: float = 0.0     ## segundos de luz que le quedan a la batería puesta
 var linterna_on: bool = false
@@ -19,6 +21,9 @@ func _ready() -> void:
 
 func vaciar() -> void:
 	espacios.clear()
+	cofre.clear()
+	for k in COFRE_ESPACIOS:
+		cofre.append(null)
 	for i in ESPACIOS:
 		espacios.append(null)
 	seleccionado = 0
@@ -49,6 +54,50 @@ func agregar(id: String, n: int) -> int:
 	if resto < n:
 		cambiado.emit()
 	return resto
+
+## Agrega a una lista de celdas cualquiera (mochila o baúl). Devuelve lo que NO entró.
+func _agregar_a(arr: Array, id: String, n: int) -> int:
+	var resto: int = n
+	for i in arr.size():
+		var e: Variant = arr[i]
+		if e != null and str(e["id"]) == id and int(e["n"]) < MAX_PILA:
+			var t: int = mini(MAX_PILA - int(e["n"]), resto)
+			e["n"] = int(e["n"]) + t
+			resto -= t
+			if resto <= 0:
+				return 0
+	for i in arr.size():
+		if resto <= 0:
+			break
+		if arr[i] == null:
+			var t2: int = mini(MAX_PILA, resto)
+			arr[i] = {"id": id, "n": t2}
+			resto -= t2
+	return resto
+
+## Guarda en el baúl. Devuelve lo que NO entró.
+func cofre_agregar(id: String, n: int) -> int:
+	var resto: int = _agregar_a(cofre, id, n)
+	if resto < n:
+		cambiado.emit()
+	return resto
+
+## Pasa hasta n unidades de una celda a la otra lista (mochila <-> baúl). Devuelve cuántas pasaron.
+func mover(desde_cofre: bool, i: int, n: int) -> int:
+	var src: Array = cofre if desde_cofre else espacios
+	var dst: Array = espacios if desde_cofre else cofre
+	var e: Variant = src[i]
+	if e == null:
+		return 0
+	var toma: int = mini(n, int(e["n"]))
+	var resto: int = _agregar_a(dst, str(e["id"]), toma)
+	var movido: int = toma - resto
+	if movido > 0:
+		e["n"] = int(e["n"]) - movido
+		if int(e["n"]) <= 0:
+			src[i] = null
+		cambiado.emit()
+	return movido
 
 func quitar_en(i: int, n: int) -> int:
 	var e: Variant = espacios[i]

@@ -288,3 +288,10 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Luciérnaga guía (sin commit): de noche, siguiéndote, vuela suave (vel 1.6) sobre el recogible 'guia' más cercano a <12 m (meta `guia` puesta en `recogibles_isla.gd`: 'util' = linterna, batería, botella, semilla, tela grande, pala, contaminantes; 'ofrenda' = luz azul suave). No guía comida ni materiales de fabricación. Se quitó el destello billboard de los recogibles. NO visto en juego (hay que vínculo>=15 y noche).
 - Estado de esta sesión SIN commit: objeto en mano + linterna (T), botella/semilla/planta azul, 10 ofrendas, 5 contaminantes + limpieza en cueva, reparto por zona (84), luciérnaga guía, todo lo de arte previo.
 - Dev tools aún a quitar: sky cam, FIXHOUR 22:30, fullscreen temporal, tools/.
+
+## Baúl de la playa (sin commit)
+- `cofre_playa.gd` (CofrePlaya): baúl fijo a ~5 m del desembarco, de frente al mar, con grabado 'Welcome!', tapa que se abre. `main._build_chest()`.
+- `cofre_ui.gd` (CofreUi): 30 celdas (6x5) + mochila, mismo estilo; clic = pasar pila, clic derecho = pasar una; E o botón cierra; el personaje queda quieto (`Castaway.ui_lock`).
+- `Inventario.cofre`, `cofre_agregar`, `mover`. Mochila llena: lo recogido va solo al baúl. El baúl se vacía con la vida (como la mochila).
+- `icon_render.gd`: los objetos sin PNG (todos los nuevos) ahora tienen ícono dibujando su modelo 3D (cache, se apaga tras 4 cuadros). Antes salían en blanco en la barra.
+- NO probado a pie: abrir con E, clics reales, desborde automático al baúl, choque con la plancha de desembarco.

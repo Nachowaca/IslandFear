@@ -50,6 +50,10 @@ static func icon(id: String) -> Texture2D:
 			var img: Image = Image.load_from_file(ProjectSettings.globalize_path(path))
 			if img != null:
 				tex = ImageTexture.create_from_image(img)
+		if tex == null:
+			tex = IconRender.get_icon(id)          # sin PNG: se dibuja el modelo 3D del objeto
+		if tex == null:
+			return null
 		_icons[id] = tex
 	return _icons[id]
 

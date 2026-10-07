@@ -274,7 +274,8 @@ func _build() -> void:
 					var kf: float = smoothstep(0.3, 0.55, 1.0 - ns.y)
 					var cav: float = col.a
 					var va: float = cav if cav < 0.8 else 1.0 - 0.38 * _pond_bed(Vector2(p[idx].x, p[idx].z))
-					st.set_color(Color(col.r, col.g, col.b, va))
+					var ao: float = _terrain_ao(hg, gi, gj)          # oclusión falsa horneada en el vértice: hondonadas más oscuras
+					st.set_color(Color(col.r * ao, col.g * ao, col.b * ao, va))
 					st.set_normal(ns.lerp(nf, kf).normalized())
 					st.add_vertex(p[idx])
 	mesh = st.commit()
@@ -941,6 +942,15 @@ func _build_paths() -> void:
 		mat.set_shader_parameter("path_tex", ImageTexture.create_from_image(img))
 		mat.set_shader_parameter("path_origin", Vector2(-half, -half))
 		mat.set_shader_parameter("path_size", half * 2.0)
+
+## AO de vértice: compara la altura con el promedio de los vecinos a 2 pasos. Cóncavo (valle, pie de loma) oscurece, convexo aclara apenas.
+func _terrain_ao(hg: PackedFloat32Array, gi: int, gj: int) -> float:
+	var c: float = hg[gj * (RES + 1) + gi]
+	var sum: float = 0.0
+	for o: Vector2i in [Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2)]:
+		sum += hg[clampi(gj + o.y, 0, RES) * (RES + 1) + clampi(gi + o.x, 0, RES)]
+	var cav: float = sum * 0.25 - c
+	return clampf(1.0 - cav * 0.22, 0.72, 1.04)
 
 ## Normal suave de la grilla de alturas en el vértice (gi, gj) por diferencias centrales.
 func _grid_normal(hg: PackedFloat32Array, gi: int, gj: int, step: float) -> Vector3:

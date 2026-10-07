@@ -37,6 +37,7 @@ static func mesh_for(id: String) -> ArrayMesh:
 		"huesos": _huesos(acc)
 		"cuerda": _cuerda(acc)
 		_: _sph(acc, Vector3(0.3, 0.3, 0.3), Vector3(0, 0.15, 0), Vector3.ZERO, Color(1, 0, 1))
+	_aplicar_ao(acc)
 	var arr: Array = []
 	arr.resize(Mesh.ARRAY_MAX)
 	arr[Mesh.ARRAY_VERTEX] = acc["v"]
@@ -48,6 +49,19 @@ static func mesh_for(id: String) -> ArrayMesh:
 	am.surface_set_material(0, material())
 	_cache[id] = am
 	return am
+
+## Oclusión falsa en el color de vértice: la base de cada objeto es más oscura (toca el suelo).
+static func _aplicar_ao(acc: Dictionary) -> void:
+	var av: PackedVector3Array = acc["v"]
+	var ac: PackedColorArray = acc["c"]
+	var top: float = 0.01
+	for v: Vector3 in av:
+		top = maxf(top, v.y)
+	for k in av.size():
+		var ao: float = lerpf(0.6, 1.0, smoothstep(0.0, top * 0.55, av[k].y))
+		var c: Color = ac[k]
+		ac[k] = Color(c.r * ao, c.g * ao, c.b * ao, c.a)
+	acc["c"] = ac
 
 # ------------------------------------------------------------------ primitivas
 
