@@ -62,7 +62,7 @@ void fragment() {
 		thickness = max(water_y - texture(height_tex, huv).r, 0.0);
 	}
 	vec2 rip = vec2(vnoise(world_pos.xz * 1.6 + vec2(TIME * 0.5, TIME * 0.2)), vnoise(world_pos.xz * 1.6 + 9.0 - vec2(TIME * 0.3, TIME * 0.45))) - 0.5;
-	NORMAL = normalize(NORMAL + (VIEW_MATRIX * vec4(rip.x * 0.25, 0.0, rip.y * 0.25, 0.0)).xyz);
+	NORMAL = normalize(NORMAL + (VIEW_MATRIX * vec4(rip.x * 0.07, 0.0, rip.y * 0.07, 0.0)).xyz);
 	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
 	float depth_k = clamp(thickness / clear_depth, 0.0, 1.0);
 	vec3 col = mix(shallow_color.rgb, deep_color.rgb, smoothstep(0.0, 1.0, depth_k));
@@ -73,7 +73,7 @@ void fragment() {
 	float n = vnoise(fp + TIME * 0.2) * 0.6 + vnoise(fp * 2.3 - TIME * 0.15) * 0.4;
 	// espuma de orilla: la ola avanza y se retira; borde encaje + bandas que se desprenden hacia el mar
 	float swash = sin(TIME * 0.8 + n * 2.0);
-	float lace = smoothstep(0.3, 0.62, vnoise(world_pos.xz * 6.0 + vec2(TIME * 0.1, -TIME * 0.07)));
+	float lace = 0.75 + 0.25 * vnoise(world_pos.xz * 2.0 + vec2(TIME * 0.1, -TIME * 0.07));
 	float edge = 1.0 - smoothstep(0.0, foam_width, thickness + (n - 0.5) * 0.5 - swash * 0.35);
 	float lapping = 0.5 + 0.5 * sin(TIME * 1.1 + thickness * 5.0);
 	float tail = smoothstep(0.8, 0.98, sin(thickness * 3.2 - TIME * 1.0 + n * 2.5)) * (1.0 - smoothstep(0.7, 1.8, thickness)) * smoothstep(0.25, 0.8, thickness);
@@ -94,11 +94,12 @@ void fragment() {
 
 	// mar abierto: manchas de espuma sucia y algas flotantes
 	float open_k = smoothstep(0.8, 2.5, thickness);
-	float cap = smoothstep(0.55, 0.85, vnoise(world_pos.xz * 0.55 + vec2(TIME * 0.12, 0.0)) * (0.5 + vnoise(world_pos.xz * 2.1 - TIME * 0.12)));
+	float warp = vnoise(world_pos.xz * 0.15 + TIME * 0.03) * 6.0;
+	float cap = smoothstep(0.88, 1.0, sin(world_pos.x * 0.35 + world_pos.z * 0.2 + warp + TIME * 0.5)) * (0.4 + 0.6 * vnoise(world_pos.xz * 0.2));
 	float alg_k = smoothstep(0.62, 0.8, vnoise(world_pos.xz * 0.3 + 55.0 + vec2(TIME * 0.015, 0.0))) * smoothstep(0.0, 1.5, thickness);
-	col = mix(col, vec3(0.12, 0.3, 0.14), alg_k * (0.3 + 0.4 * vnoise(world_pos.xz * 5.0)) * 0.7);
+	col = mix(col, vec3(0.12, 0.3, 0.14), alg_k * 0.3);
 	col = mix(col, vec3(0.1, 0.4, 0.38), vnoise(world_pos.xz * 0.12 + 3.0) * open_k * 0.25);
-	foam = clamp(foam + cap * open_k * 0.3, 0.0, 1.0);
+	foam = clamp(foam + cap * open_k * 0.22, 0.0, 1.0);
 
 	// mini olas: pequeñas crestas que avanzan hacia la orilla
 	float lines = sin(thickness * 4.0 - TIME * 1.3 + n * 3.0);
