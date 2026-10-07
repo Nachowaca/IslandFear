@@ -166,12 +166,13 @@ func _update(refresh_slow: bool) -> void:
 	var dusk: float = clampf(1.0 - absf(e + 0.04) / 0.32, 0.0, 1.0) # amanecer / atardecer
 	var night: float = 1.0 - day
 	night_amount = night
+	var golden: float = (1.0 - smoothstep(0.06, 0.5, e)) * smoothstep(-0.06, 0.1, e)   # hora dorada: sol bajo
 
 	# Sol
 	sun.global_transform = Transform3D(_look_basis(-sun_pos), sun_pos * 80.0)
 	var warm: float = smoothstep(0.0, 0.5, e)
-	sun.light_color = Color(1.0, 0.5, 0.22).lerp(Color(1.0, 0.95, 0.86), warm)
-	sun.light_energy = 1.25 * smoothstep(-0.03, 0.22, e)
+	sun.light_color = Color(1.0, 0.5, 0.22).lerp(Color(1.0, 0.95, 0.86), warm).lerp(Color(1.0, 0.62, 0.26), golden * 0.8)
+	sun.light_energy = (1.25 + golden * 0.55) * smoothstep(-0.03, 0.22, e)
 	sun.visible = sun.light_energy > 0.01
 	var want_sun_shadow: bool = e > 0.02
 	if want_sun_shadow != _sun_shadow_on:
@@ -198,7 +199,11 @@ func _update(refresh_slow: bool) -> void:
 		_water_mat.set_shader_parameter("deep_color", Color(0.02, 0.30, 0.50).lerp(Color(0.01, 0.17, 0.28), night))
 		_water_mat.set_shader_parameter("shallow_color", Color(0.25, 0.88, 0.85).lerp(Color(0.08, 0.42, 0.46), night))
 	# De noche el ojo ve casi sin color: se desatura
+	_env.adjustment_enabled = true
 	_env.adjustment_saturation = lerpf(1.12, 1.2, night)
+	_env.adjustment_contrast = lerpf(1.1, 1.06, night)
+	if _env.adjustment_color_correction == null:
+		_env.adjustment_color_correction = _make_grade_lut()
 	_moon.visible = _moon.light_energy > 0.01
 	var want_moon_shadow: bool = _moon.visible and moon_up > 0.12
 	if want_moon_shadow != _moon_shadow_on:
@@ -213,7 +218,9 @@ func _update(refresh_slow: bool) -> void:
 
 	# Cielo
 	var top: Color = NIGHT_TOP.lerp(DAY_TOP, day).lerp(DUSK_TOP, dusk * 0.5)
+	top = top.lerp(Color(0.2, 0.34, 0.62), golden * 0.55)
 	var horizon: Color = NIGHT_HORIZON.lerp(DAY_HORIZON, day).lerp(DUSK_HORIZON, dusk * 0.85)
+	horizon = horizon.lerp(Color(1.0, 0.7, 0.4), golden * 0.7)
 	_sky_mat.set_shader_parameter("top_color", top)
 	_sky_mat.set_shader_parameter("horizon_color", horizon)
 	_sky_mat.set_shader_parameter("ground_color", horizon.darkened(0.55))
@@ -229,7 +236,7 @@ func _update(refresh_slow: bool) -> void:
 
 	# Ambiente, niebla y exposición
 	_env.ambient_light_energy = lerpf(0.7, 1.7, night) + dusk * 0.6
-	_env.fog_light_color = horizon
+	_env.fog_light_color = horizon.lerp(Color(1.0, 0.72, 0.45), golden * 0.4)
 	_env.fog_density = lerpf(0.0012, 0.0024, night) + dusk * 0.0006 + fog_boost + fog_local
 	_env.tonemap_exposure = lerpf(0.95, 1.1, night)
 
@@ -244,6 +251,16 @@ func _update(refresh_slow: bool) -> void:
 
 	if refresh_slow:
 		_apply_slow(day, night)
+
+## Gradación de color de autor: sombras teal frías, medios neutros, luces ámbar cálidas.
+func _make_grade_lut() -> GradientTexture1D:
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.35, 0.7, 1.0])
+	g.colors = PackedColorArray([Color(0.0, 0.04, 0.07), Color(0.31, 0.37, 0.4), Color(0.74, 0.7, 0.63), Color(1.0, 0.94, 0.82)])
+	var t := GradientTexture1D.new()
+	t.gradient = g
+	t.width = 256
+	return t
 
 func _look_basis(dir: Vector3) -> Basis:
 	var up: Vector3 = Vector3.UP if absf(dir.normalized().y) < 0.99 else Vector3.RIGHT

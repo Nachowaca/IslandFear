@@ -42,6 +42,56 @@ const DEFS: Dictionary = {
 		"hint": "Una rama larga con la cuchilla atada en la punta. Para cazar, cuando haya a quién."},
 	"concha": {"name": "Concha", "color": Color(0.95, 0.78, 0.72), "shape": "shell", "food": false, "offering": true,
 		"hint": "Una concha de nácar. Ya no hay nadie dentro. Es hermosa; a la isla quizás le guste."},
+	"tela_grande": {"name": "Tela grande", "color": Color(0.78, 0.72, 0.58), "shape": "cloth_l", "food": false, "offering": false,
+		"hint": "Un lienzo grande, curtido por el sol y la sal. Cubriría a una persona."},
+	"tela_chica": {"name": "Tela chica", "color": Color(0.7, 0.5, 0.38), "shape": "cloth_s", "food": false, "offering": false,
+		"hint": "Un retazo de tela. Sirve para envolver, vendar o atar."},
+	"linterna": {"name": "Linterna", "color": Color(0.25, 0.27, 0.3), "shape": "flashlight", "food": false, "offering": false,
+		"hint": "Una linterna de metal. Aprieto el botón y no pasa nada: le faltan las pilas."},
+	"bateria": {"name": "Batería", "color": Color(0.2, 0.5, 0.25), "shape": "battery", "food": false, "offering": false,
+		"hint": "Una pila cilíndrica. Todavía guarda carga. Parece de otro mundo."},
+	"botella_vacia": {"name": "Botella vacía", "color": Color(0.5, 0.75, 0.8), "shape": "bottle", "food": false, "offering": false,
+		"hint": "Una botella de vidrio con tapón. Podría llevar agua: con T cerca del estanque la llenás."},
+	"semilla_azul": {"name": "Semilla brillante", "color": Color(0.3, 0.7, 1.0), "shape": "seed", "food": false, "offering": false,
+		"hint": "Una semilla con un brillo azul tenue. Está viva. Con T la plantás en tierra firme. Va a necesitar agua."},
+	"resina": {"name": "Resina", "color": Color(0.8, 0.5, 0.1), "shape": "resin", "food": false, "offering": false,
+		"hint": "Una gota dura de savia ámbar. Pegajosa si se la calienta."},
+	"espina": {"name": "Espina larga", "color": Color(0.9, 0.88, 0.78), "shape": "thorn", "food": false, "offering": false,
+		"hint": "Una espina curva y firme. Atada a una cuerda podría pescar."},
+	"pala_concha": {"name": "Pala de concha", "color": Color(0.85, 0.75, 0.7), "shape": "shovel", "food": false, "offering": false, "tool": "cavar",
+		"hint": "Una concha enorme atada a un palo. Sirve para cavar."},
+	"bateria_gastada": {"name": "Batería gastada", "color": Color(0.35, 0.33, 0.3), "shape": "battery", "food": false, "offering": false, "contaminante": true,
+		"hint": "Una pila vacía y corroída. Huele a metal y a químico. La isla no la querría cerca."},
+	"botella_agua": {"name": "Botella con agua", "color": Color(0.4, 0.65, 0.95), "shape": "bottle", "food": false, "offering": false,
+		"hint": "Una botella llena de agua dulce. Con T bebés, o regás algo que tenga sed."},
+	"fruto_dorado": {"name": "Fruto dorado", "color": Color(1.0, 0.8, 0.25), "shape": "goldfruit", "food": true, "nutrition": 0.35, "hydration": 0.15, "heal": 15.0, "offering": true,
+		"hint": "Un fruto que brilla como una brasa tibia. Nació de una semilla cuidada. Huele a algo vivo."},
+	"caracola": {"name": "Caracola grande", "color": Color(0.95, 0.7, 0.6), "shape": "conch", "food": false, "offering": true,
+		"hint": "Una caracola enorme. Si la acercás al oído, el mar susurra algo largo."},
+	"perla": {"name": "Perla", "color": Color(0.95, 0.95, 1.0), "shape": "pearl", "food": false, "offering": true,
+		"hint": "Una perla lisa y fría. Rara. Alguien la querría."},
+	"vidrio_marino": {"name": "Vidrio marino", "color": Color(0.45, 0.8, 0.65), "shape": "seaglass", "food": false, "offering": true,
+		"hint": "Un trozo de vidrio gastado por el mar hasta ser suave. De lo roto, algo bello."},
+	"pluma": {"name": "Pluma", "color": Color(0.9, 0.9, 0.85), "shape": "feather", "food": false, "offering": true,
+		"hint": "Una pluma larga, ligera. Una de las aves de la isla la dejó caer."},
+	"cristal_cueva": {"name": "Cristal de cueva", "color": Color(0.5, 0.85, 1.0), "shape": "crystal", "food": false, "offering": true,
+		"hint": "Un cristal que guarda una luz fría. Parece parte de la isla."},
+	"flor_luminosa": {"name": "Flor luminosa", "color": Color(0.55, 0.95, 0.8), "shape": "glowflower", "food": false, "offering": true,
+		"hint": "Una flor que brilla sola. Se marchita rápido fuera del suelo, pero ahora da luz."},
+	"moneda_pirata": {"name": "Moneda antigua", "color": Color(0.85, 0.7, 0.25), "shape": "coin", "food": false, "offering": true,
+		"hint": "Una moneda de oro opaco con un rostro gastado. Otros náufragos la perdieron."},
+	"figurilla_barro": {"name": "Figurilla de barro", "color": Color(0.7, 0.45, 0.3), "shape": "figurine", "food": false, "offering": true,
+		"hint": "Una figura tosca, hecha con tus manos. Imperfecta, pero hecha para alguien."},
+	"lata_oxidada": {"name": "Lata oxidada", "color": Color(0.55, 0.3, 0.18), "shape": "can", "food": false, "offering": false, "contaminante": true,
+		"hint": "Una lata roída. Suelta óxido. No pertenece a este lugar."},
+	"botella_plastico": {"name": "Botella de plástico", "color": Color(0.7, 0.85, 0.95), "shape": "pbottle", "food": false, "offering": false, "contaminante": true,
+		"hint": "Plástico del mar. No se pudre. La isla tardará siglos en digerirlo."},
+	"bolsa_plastico": {"name": "Bolsa de plástico", "color": Color(0.9, 0.9, 0.9), "shape": "bag", "food": false, "offering": false, "contaminante": true,
+		"hint": "Una bolsa deshilachada. Los animales la confunden con comida."},
+	"red_enredada": {"name": "Red enredada", "color": Color(0.3, 0.45, 0.35), "shape": "net", "food": false, "offering": false, "contaminante": true,
+		"hint": "Una red de pesca perdida, hecha un nudo. Atrapa a lo que pasa."},
+	"sal": {"name": "Sal marina", "color": Color(0.95, 0.95, 0.92), "shape": "salt", "food": false, "offering": false,
+		"hint": "Cristales blancos que se secaron en la roca. Conservan la comida."},
 }
 
 static func get_def(id: String) -> Dictionary:
@@ -64,6 +114,20 @@ static func _mi(parent: Node3D, mesh: Mesh, c: Color, pos: Vector3, rot: Vector3
 	mi.rotation = rot
 	mi.scale = scl
 	parent.add_child(mi)
+
+static func _glow(parent: Node3D, mesh: Mesh, c: Color, pos: Vector3, energy: float, rot: Vector3 = Vector3.ZERO, scl: Vector3 = Vector3.ONE) -> void:
+	var gm := StandardMaterial3D.new()
+	gm.albedo_color = c
+	gm.emission_enabled = true
+	gm.emission = c
+	gm.emission_energy_multiplier = energy
+	var gi := MeshInstance3D.new()
+	gi.mesh = mesh
+	gi.material_override = gm
+	gi.position = pos
+	gi.rotation = rot
+	gi.scale = scl
+	parent.add_child(gi)
 
 static func _sph(r: float) -> SphereMesh:
 	var s := SphereMesh.new()
@@ -135,6 +199,91 @@ static func make_visual(id: String) -> Node3D:
 			_mi(root, _sph(0.06), Color(0.7, 0.72, 0.78), Vector3(0, 0.06, -0.7), Vector3(0, 0, 0), Vector3(0.5, 0.5, 1.8))
 		"shell":
 			_mi(root, _sph(0.09), c, Vector3(0, 0.03, 0), Vector3.ZERO, Vector3(1.0, 0.45, 0.85))
+		"cloth_l":
+			_mi(root, BoxMesh.new(), c, Vector3(0, 0.02, 0), Vector3(0, 0.2, 0), Vector3(0.5, 0.04, 0.4))
+			_mi(root, BoxMesh.new(), c * 0.9, Vector3(0.03, 0.05, 0.02), Vector3(0, -0.3, 0), Vector3(0.4, 0.04, 0.3))
+		"cloth_s":
+			_mi(root, BoxMesh.new(), c, Vector3(0, 0.015, 0), Vector3(0, 0.4, 0), Vector3(0.26, 0.03, 0.2))
+		"flashlight":
+			_mi(root, _cyl(0.035, 0.035, 0.22), c, Vector3(0, 0.04, 0), Vector3(0, 0, PI / 2.0))
+			_mi(root, _cyl(0.055, 0.04, 0.07), c * 1.3, Vector3(-0.13, 0.04, 0), Vector3(0, 0, PI / 2.0))
+			_mi(root, _sph(0.04), Color(0.9, 0.85, 0.5), Vector3(-0.17, 0.04, 0), Vector3.ZERO, Vector3(0.4, 1.0, 1.0))
+		"battery":
+			_mi(root, _cyl(0.03, 0.03, 0.11), c, Vector3(0, 0.03, 0), Vector3(0, 0, PI / 2.0))
+			_mi(root, _cyl(0.014, 0.014, 0.025), Color(0.85, 0.7, 0.2), Vector3(0.065, 0.03, 0), Vector3(0, 0, PI / 2.0))
+		"bottle":
+			_mi(root, _cyl(0.04, 0.04, 0.17), c, Vector3(0, 0.04, 0), Vector3(0, 0, PI / 2.0))
+			_mi(root, _cyl(0.016, 0.03, 0.1), c, Vector3(0.135, 0.04, 0), Vector3(0, 0, -PI / 2.0))
+			_mi(root, _cyl(0.015, 0.015, 0.02), Color(0.7, 0.6, 0.4), Vector3(0.195, 0.04, 0), Vector3(0, 0, PI / 2.0))
+		"seed":
+			var gm := StandardMaterial3D.new()
+			gm.albedo_color = c
+			gm.emission_enabled = true
+			gm.emission = c
+			gm.emission_energy_multiplier = 3.0
+			var gi := MeshInstance3D.new()
+			gi.mesh = _sph(0.06)
+			gi.material_override = gm
+			gi.position = Vector3(0, 0.07, 0)
+			gi.scale = Vector3(1.0, 1.3, 1.0)
+			root.add_child(gi)
+			var gl := OmniLight3D.new()
+			gl.light_color = c
+			gl.light_energy = 0.7
+			gl.omni_range = 2.2
+			gl.position = Vector3(0, 0.15, 0)
+			root.add_child(gl)
+		"resin":
+			_mi(root, _sph(0.06), c, Vector3(0, 0.03, 0), Vector3.ZERO, Vector3(1.2, 0.7, 1.0))
+			_mi(root, _sph(0.035), c * 1.15, Vector3(0.07, 0.02, 0.03), Vector3.ZERO, Vector3(1.0, 0.7, 1.0))
+		"thorn":
+			_mi(root, _cyl(0.0, 0.02, 0.2), c, Vector3(0, 0.03, 0), Vector3(PI / 2.0, 0, 0.2))
+		"shovel":
+			_mi(root, _cyl(0.02, 0.025, 0.8), Color(0.5, 0.36, 0.2), Vector3(0, 0.04, 0), Vector3(PI / 2.0, 0, 0.1))
+			_mi(root, _sph(0.13), c, Vector3(0, 0.05, -0.4), Vector3.ZERO, Vector3(1.0, 0.25, 0.9))
+		"salt":
+			for k in 3:
+				_mi(root, _sph(0.045), c, Vector3(cos(float(k) * 2.1) * 0.05, 0.02, sin(float(k) * 2.1) * 0.05), Vector3.ZERO, Vector3(1.0, 0.6, 1.0))
+		"goldfruit":
+			_glow(root, _sph(0.09), c, Vector3(0, 0.09, 0), 2.5)
+		"conch":
+			_mi(root, _sph(0.11), c, Vector3(0, 0.06, 0), Vector3(0, 0, 0.3), Vector3(1.3, 0.8, 0.9))
+			_mi(root, _cyl(0.0, 0.07, 0.12), c * 1.1, Vector3(-0.15, 0.08, 0), Vector3(0, 0, PI / 2.0))
+		"pearl":
+			_glow(root, _sph(0.04), c, Vector3(0, 0.04, 0), 1.2)
+		"seaglass":
+			_mi(root, _sph(0.05), c, Vector3(0, 0.02, 0), Vector3(0, 0.6, 0), Vector3(1.2, 0.4, 0.9))
+		"feather":
+			var fp := PrismMesh.new()
+			fp.size = Vector3(0.05, 0.3, 0.008)
+			_mi(root, fp, c, Vector3(0, 0.02, 0), Vector3(PI / 2.0, 0.4, 0))
+		"crystal":
+			for k in 3:
+				var cp := PrismMesh.new()
+				cp.size = Vector3(0.07, 0.2 - float(k) * 0.04, 0.07)
+				_glow(root, cp, c, Vector3(cos(float(k) * 2.1) * 0.05, 0.1, sin(float(k) * 2.1) * 0.05), 2.0, Vector3(sin(float(k)) * 0.3, float(k), cos(float(k)) * 0.3))
+		"glowflower":
+			_mi(root, _cyl(0.008, 0.01, 0.2), Color(0.25, 0.5, 0.3), Vector3(0, 0.1, 0))
+			_glow(root, _sph(0.06), c, Vector3(0, 0.22, 0), 2.5, Vector3.ZERO, Vector3(1, 0.6, 1))
+		"coin":
+			_mi(root, _cyl(0.05, 0.05, 0.008), c, Vector3(0, 0.01, 0))
+		"figurine":
+			_mi(root, _sph(0.06), c, Vector3(0, 0.06, 0), Vector3.ZERO, Vector3(0.9, 1.3, 0.8))
+			_mi(root, _sph(0.035), c, Vector3(0, 0.15, 0))
+		"can":
+			_mi(root, _cyl(0.04, 0.04, 0.11), c, Vector3(0, 0.04, 0), Vector3(0, 0, PI / 2.0))
+		"pbottle":
+			_mi(root, _cyl(0.04, 0.04, 0.2), c, Vector3(0, 0.04, 0), Vector3(0, 0, PI / 2.0))
+			_mi(root, _cyl(0.015, 0.03, 0.06), c, Vector3(0.13, 0.04, 0), Vector3(0, 0, -PI / 2.0))
+		"bag":
+			_mi(root, _sph(0.1), c, Vector3(0, 0.02, 0), Vector3(0, 0.4, 0), Vector3(1.4, 0.2, 1.0))
+		"net":
+			var nt := TorusMesh.new()
+			nt.inner_radius = 0.08
+			nt.outer_radius = 0.2
+			nt.rings = 8
+			nt.ring_segments = 4
+			_mi(root, nt, c, Vector3(0, 0.05, 0), Vector3(0, 0, 0), Vector3(1.0, 0.6, 1.0))
 		_:
 			_mi(root, _sph(0.13), c, Vector3(0, 0.13, 0))
 	return root

@@ -54,6 +54,18 @@ func _ready() -> void:
 	marks.set("terrain", terrain)
 	marks.name = "Marcas"
 	add_child(marks)
+	var decor: Node3D = (load("res://scripts/path_decor.gd") as GDScript).new() as Node3D
+	decor.set("terrain", terrain)
+	decor.name = "CaminosDecor"
+	add_child(decor)
+	var objs: Node3D = (load("res://scripts/objetos/objetos_isla.gd") as GDScript).new() as Node3D
+	objs.set("terrain", terrain)
+	objs.name = "ObjetosDecorativos"
+	add_child(objs)
+	var rec: Node3D = (load("res://scripts/objetos/recogibles_isla.gd") as GDScript).new() as Node3D
+	rec.set("terrain", terrain)
+	rec.name = "RecogiblesUso"
+	add_child(rec)
 	var sea: Node3D = (load("res://scripts/sea_life.gd") as GDScript).new() as Node3D
 	sea.set("terrain", terrain)
 	sea.name = "VidaMarina"
@@ -148,14 +160,54 @@ func _valid(p: Vector3) -> bool:
 
 # ------------------------------------------------------------------ agua dulce
 
+## Superficie del estanque que sigue el terreno: donde la tierra pasa el nivel del agua, la malla se hunde bajo el suelo (orilla limpia, sin picos).
+func _pond_mesh(center: Vector2, level: float, half: float) -> ArrayMesh:
+	var n: int = 150
+	var step: float = half * 2.0 / float(n)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var ys: PackedFloat32Array = PackedFloat32Array()
+	ys.resize((n + 1) * (n + 1))
+	var deps: PackedFloat32Array = PackedFloat32Array()
+	deps.resize((n + 1) * (n + 1))
+	for j in n + 1:
+		for i in n + 1:
+			var wx: float = center.x - half + float(i) * step
+			var wz: float = center.y - half + float(j) * step
+			var h: float = terrain.mesh_height_at(wx, wz)
+			ys[j * (n + 1) + i] = 0.0 if h < level else (h - level) - 0.06
+			deps[j * (n + 1) + i] = maxf(level - h, 0.0)
+	for j in n:
+		for i in n:
+			var v: Array[Vector3] = []
+			for o: Vector2i in [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]:
+				v.append(Vector3(-half + float(i + o.x) * step, ys[(j + o.y) * (n + 1) + i + o.x], -half + float(j + o.y) * step))
+			var cols: Array[Color] = []
+			for o2: Vector2i in [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]:
+				var dd: float = deps[(j + o2.y) * (n + 1) + i + o2.x]
+				cols.append(Color(1, 1, 1, smoothstep(0.0, 0.3, dd)))
+			var uv: Array[Vector2] = []
+			for q in v:
+				uv.append(Vector2(q.x, q.z) * 0.05 + Vector2(0.5, 0.5))
+			for tri: Array in [[0, 1, 2], [1, 3, 2]]:
+				var tmin: float = minf(v[tri[0]].y, minf(v[tri[1]].y, v[tri[2]].y))
+				if tmin > 0.3:
+					continue
+				for k: int in tri:
+					st.set_color(cols[k])
+					st.set_uv(uv[k])
+					st.set_normal(Vector3.UP)
+					st.add_vertex(v[k])
+	return st.commit()
+
 func _build_pond() -> void:
 	var center: Vector2 = terrain.POND_CENTER
 	var radius: float = terrain.POND_RADIUS * 1.6
 	var water := MeshInstance3D.new()
-	var disc := _cyl(radius * 1.35, radius * 1.35, 0.04, 36)
-	water.mesh = disc
+	water.mesh = _pond_mesh(center, terrain.pond_water_level, radius * 1.45)
 	var m := StandardMaterial3D.new()
 	m.albedo_color = Color(0.1, 0.3, 0.17, 0.86)      # agua turbia y verdosa
+	m.vertex_color_use_as_albedo = true
 	var nz := FastNoiseLite.new()
 	nz.frequency = 0.05
 	nz.seed = seed_value + 3

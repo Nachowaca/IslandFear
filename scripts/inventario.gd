@@ -11,6 +11,8 @@ const MAX_PILA: int = 9
 var espacios: Array = []        ## cada uno: null o {"id": String, "n": int}
 var seleccionado: int = 0
 var descubiertos: Dictionary = {}   ## item_id -> true (investigados)
+var linterna_carga: float = 0.0     ## segundos de luz que le quedan a la batería puesta
+var linterna_on: bool = false
 
 func _ready() -> void:
 	vaciar()
@@ -21,6 +23,8 @@ func vaciar() -> void:
 		espacios.append(null)
 	seleccionado = 0
 	descubiertos.clear()
+	linterna_carga = 0.0
+	linterna_on = false
 	cambiado.emit()
 
 ## Devuelve cuántas unidades NO entraron (0 = entró todo).
@@ -81,6 +85,18 @@ func tiene(id: String) -> bool:
 
 func item_seleccionado() -> Variant:
 	return espacios[seleccionado]
+
+## Cambia una unidad del espacio i por otro objeto (la botella vacía pasa a llena, etc.).
+func transformar_en(i: int, nuevo_id: String) -> void:
+	var e: Variant = espacios[i]
+	if e == null:
+		return
+	if int(e["n"]) <= 1:
+		espacios[i] = {"id": nuevo_id, "n": 1}
+		cambiado.emit()
+	else:
+		quitar_en(i, 1)
+		agregar(nuevo_id, 1)
 
 func seleccionar(i: int) -> void:
 	seleccionado = posmod(i, ESPACIOS)

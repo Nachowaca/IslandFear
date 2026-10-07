@@ -1,4 +1,4 @@
-[gd_scene format=4 uid="uid://cobqrjdj8kn0p"]
+[gd_scene format=3 uid="uid://cobqrjdj8kn0p"]
 
 [ext_resource type="PackedScene" path="res://scenes/water3d.tscn" id="1"]
 [ext_resource type="Script" uid="uid://di4o0tqimgbyv" path="res://scripts/island_terrain.gd" id="2"]

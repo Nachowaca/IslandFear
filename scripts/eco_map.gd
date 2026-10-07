@@ -48,7 +48,7 @@ func _ready() -> void:
 		build()
 
 func build() -> void:
-	var half: float = terrain.radius * 1.1
+	var half: float = terrain.radius * 1.35
 	_n = int(ceil(half * 2.0 / params.cell_size)) + 1
 	_origin = -half
 	_build_altura()
@@ -256,9 +256,7 @@ func _build_misterio() -> void:
 	var tries: int = 0
 	while mystery_centers.size() < params.mystery_count and tries < 4000:
 		tries += 1
-		var a: float = rng.randf() * TAU
-		var d: float = sqrt(rng.randf()) * terrain.radius * 0.85
-		var c := Vector3(cos(a) * d, 0.0, sin(a) * d)
+		var c := Vector3(rng.randf_range(-125.0, 125.0), 0.0, rng.randf_range(-185.0, 185.0))
 		c.y = terrain.height_at(c.x, c.z)
 		if c.y < 2.5 or c.y > params.high_height * 0.9 or _slope[_cell(c)] > 18.0:
 			continue

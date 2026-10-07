@@ -142,6 +142,25 @@ func play_action(action: String) -> void:
 	if _rig != null and not dead:
 		_rig.play_action(action)
 
+## Brazo derecho levantado sosteniendo un objeto (0..1).
+func set_hold(w: float) -> void:
+	if _rig != null:
+		_rig.pose.hold = w
+
+## Gesto corto de usar el objeto en mano.
+func pulse_use() -> void:
+	if _rig != null:
+		_rig.pulse_use()
+
+## Posición y orientación de la mano derecha en el mundo.
+func hand_transform() -> Transform3D:
+	if _rig == null or _rig.sk == null:
+		return global_transform
+	var bi: int = _rig.sk.find_bone("MiddleHand.R")
+	if bi < 0:
+		return global_transform
+	return _rig.sk.global_transform * _rig.sk.get_bone_global_pose(bi)
+
 var _yaw: float = 0.0
 var _pitch: float = -0.05
 var _cam_default: Transform3D

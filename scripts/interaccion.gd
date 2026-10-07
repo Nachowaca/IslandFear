@@ -297,10 +297,13 @@ func _dejar(todo: bool) -> void:
 	var it: WorldItem = _spawn_item(id, n, pos)
 	_sonido("step_grass", pos)
 	ui.message("Dejás %d %s" % [n, it.display_name])
-	_ofrenda(id, pos)
+	_ofrenda(id, pos, it)
 
 ## Dejar algo valioso junto a un lugar sagrado es una ofrenda: la isla lo nota.
-func _ofrenda(id: String, pos: Vector3) -> void:
+func _ofrenda(id: String, pos: Vector3, it: WorldItem = null) -> void:
+	if bool(ItemDB.get_def(id).get("contaminante", false)):
+		_contaminante(id, pos, it)
+		return
 	if features == null or not bool(ItemDB.get_def(id).get("offering", false)):
 		return
 	for n: Node in get_tree().get_nodes_in_group("stela"):      # una ofrenda ante una piedra tallada también cuenta
@@ -317,6 +320,22 @@ func _ofrenda(id: String, pos: Vector3) -> void:
 			Isla.registrar_evento("ofrenda", pos, 1.0)
 			ui.message("Dejás una ofrenda en %s. La isla lo siente." % str(sp["name"]).to_lower())
 			return
+
+## Los contaminantes no son de la isla. Llevados a la cueva y dejados allí se retiran; tirados por ahí la molestan un poco.
+func _contaminante(id: String, pos: Vector3, it: WorldItem) -> void:
+	if features != null:
+		for sp: Dictionary in features.sacred_spots:
+			if str(sp["kind"]) != "refuge":
+				continue
+			var p: Vector3 = sp["pos"]
+			if Vector2(pos.x - p.x, pos.z - p.z).length() < float(sp["radius"]) + 1.5:
+				if it != null:
+					it.remove_from_group("dropped_item")
+					it.queue_free()
+				Isla.registrar_evento("limpieza", pos, 1.0)
+				ui.message("Dejás %s en la cueva. Algo en la roca parece aflojarse." % ItemDB.display_name(id).to_lower())
+				return
+	Isla.registrar_evento("contaminacion", pos, 1.0)
 
 # ------------------------------------------------------------------ probar / comer
 
@@ -435,11 +454,18 @@ func _cortar() -> void:
 # ------------------------------------------------------------------ combinar (C)
 
 ## Avisa cuando juntás lo necesario para fabricar algo nuevo.
+var _aviso_init: bool = false
+
 func _avisar_recetas(delta: float) -> void:
 	_aviso_t -= delta
 	if _aviso_t > 0.0:
 		return
 	_aviso_t = 0.5
+	if not _aviso_init:
+		_aviso_init = true
+		for r0: Dictionary in Recipes.LIST:
+			_aviso[str(r0["id"])] = Recipes.can(r0)
+		return
 	for r: Dictionary in Recipes.LIST:
 		var id: String = str(r["id"])
 		var ok: bool = Recipes.can(r)

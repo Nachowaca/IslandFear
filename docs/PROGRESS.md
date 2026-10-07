@@ -208,3 +208,83 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 5. Física de objetos decorativos (después del orden).
 6. Plan OBJETOS (4.5), luego BLOQUE 6, luego bloque 5.
 7. Pendientes: espuma de orilla, chorro de la ballena, volumen del canto de la manta, preguntas de PERSONALITY.md, revertir pantalla completa cuando el usuario diga.
+
+
+## Terreno nuevo: silueta de Sudamérica (sin commit aún)
+- Referencias: docs/ref/islarefe.jpg (vista aérea exacta) e islarefe2.jpg (arte/textura/luz pintada).
+- tools/make_mask.gd y tools/make_heightmap.gd generan assets/terrain/island_height.res (Image RF en metros; 1 px = 0.714 m; mapa 375x550, ±134 x ±196 m) + height_preview.png + mask_clean.png.
+- island_terrain.gd: radius 160, RES 300, _hmap_h() bilineal, _base_height usa el mapa, _cliff_mask por pendiente, _random_spot rectangular. POND_CENTER (-30,-30), CAVE_CENTER (-45,30) en la cordillera oeste. EcoMap y landmarks adaptados.
+- Hora fija 17:30 con línea FIXHOUR en main.gd (quitar cuando el usuario diga).
+- Pendiente: pintado estilo islarefe2 (paleta, texturas, luz), ríos finos, verificar faro/barca/costa, ballena R330.
+
+
+## HERRAMIENTAS DE DESARROLLO (quitar o rediseñar antes de terminar el juego)
+- **Cámara del cielo** (scripts/sky_cam.gd, creada en main.gd como nodo "SkyCam"): tecla O, WASD, Space/E sube, Ctrl/Q baja, Shift rápido, rueda zoom, clic derecho mira. ANTES DE FINALIZAR: borrar esa cámara (script + las 5 líneas de main.gd que la crean) o reemplazarla por algo nuevo.
+- Hora fija 17:30: línea con comentario FIXHOUR en main.gd. Quitar para volver a la hora real.
+- Pantalla completa temporal (display/window/size/mode = 3): revertir cuando el usuario diga.
+- Cámara de mapa M (_overview_cam en main.gd) existía de antes.
+- Carpeta tools/ (make_mask.gd, make_heightmap.gd): solo para generar el terreno.
+- Cambios de esta sesión: estanque que sigue el terreno (_pond_mesh), arena caribeña en el shader, playa grande/médanos/calas en el heightmap.
+
+
+## Estado para retomar (caminos importantes)
+- Referencia del usuario: sendero de bosque nocturno con escalones de piedra, follaje denso en bordes, luces ámbar tipo farol, luciérnagas, bruma teal (imagen en el chat; el usuario buscará más referencia o un glb).
+- Plan propuesto (esperando OK): 1) caminos normales (shader) + caminos importantes (cueva, estanque, claros misteriosos) con escalones de piedra en pendiente, bordes de helechos/arbustos/flores y copa cerrada; 2) luz ámbar con flores brillantes/faroles (de noche); 3) luciérnagas y bruma concentradas; 4) variación por bioma (selva cubierta, árido abierto con piedras, costa con arena y troncos). Prueba inicial: camino a la cueva.
+- Pendientes: revisar texturas triangulares del terreno (facetas en lomas, piedras grises de bordes rectos, bordes de calas), pintado estilo islarefe2, luz artística/HDRI, ríos finos, reducir senderos.
+- Sin commit desde b9092d4/d91b380: faltan terreno Sudamérica, playas/médanos/calas, arena caribeña, estanque, cámara del cielo, hora fija.
+
+
+## Referencias Temple Ruins (.blend)
+- Movidos a docs/ref_blend/ (con .gdignore y en .gitignore: pesan 415 MB y 880 MB, GitHub no los acepta). Previews en docs/ref/temple_library_preview.png y temple_scene_preview.png. Blender 4.0.1 está en /Applications/Blender.app (se usa en modo -b con scripts python).
+- Asset Library: Bridge (puente de piedra), Gate (arco, 240k polis), Stairs, Column (estela), Broken Wall, Building, Cliff, Rocks 1-6, Rubble, ferns, calathea, dry_branches, fir_sapling, tree_small_02, Ivy. Muy alto poly: hay que decimar y texturas <=1K antes de usar.
+- Example Scene: terreno esculpido con ruina; no se usa directo.
+- Pendiente: elegir qué piezas exportar a GLB (escalones, puente, arco, estela, muro, escombros, helechos) y confirmar licencia con el usuario.
+
+
+## Caminos importantes (hecho, sin commit)
+- island_terrain.gd: path_lines (trazado de caminos principales), canal B del mapa de caminos = importante; playa de llegada (125,38) conectada.
+- scripts/path_decor.gd (nodo CaminosDecor, creado en island_life): lajas RockPath (escalones en pendiente, más cerca de destinos), follaje de borde por bioma (tabla _make_table), faroles ámbar con halo (de noche), luciérnagas, árboles que cierran copa. Shader: tierra rojiza oscura en caminos importantes.
+- Verificado solo con capturas; fps/memoria NO medidos. Pendiente: bruma baja, más densidad, ajustar color de tierra, escalones reales en cuestas.
+
+- Estado: el usuario NO está convencido aún de los caminos importantes (se dejan como progreso). Prueba de noche (FIXHOUR en 22:30). Después de la prueba, el usuario pedirá mejoras de luz de amanecer, mediodía, tarde y noche.
+
+## Arte sin luz (en curso)
+- Orden acordado: 1 facetas/rocas/calas, 2 estilo pintado terreno+follaje, 3 suciedad de piso, 4 ríos finos, 5 caminos importantes. Luz (HDRI, amanecer/mediodía/tarde/noche) se retoma DESPUÉS.
+- Hecho 1a: normales suaves en el terreno (`_grid_normal` en island_terrain.gd), facetado solo en pendientes fuertes. Pendiente: rocas grises de bordes rectos, bordes de calas. Esperando que el usuario pruebe a pie.
+- Sueltos hechos sin probar: aviso de recetas (no avisa lo que ya tenías al arrancar), huellas más duraderas (foot_fx.gd).
+- Sin commit todavía.
+
+
+## Pendientes de arte (esperando prueba del usuario)
+- Rocas sueltas del pack (`Rock_1..5`): normales suavizadas 70 % en `nature_kit.gd` (`_soften_rocks`). Sin verificar de cerca.
+- Peña de la cueva: subir resolución del mallado para redondearla (aguardando OK).
+- Bordes de las calas: sin resolver; falta saber cuál cala y vista a pie.
+- Estanque: orilla arreglada (`mesh_height_at`, fondo `_pond_bed`); agua se ve grande y pálida, ajustar si molesta.
+
+- Pendiente (4.5): colisión en objetos estéticos, decidido dejarla para después.
+
+## Bloque 4.5 paso 1 hecho (sin commit)
+- `scripts/objetos/`: `catalogo_objetos.gd` (ITEMS + ZONAS), `objeto_builder.gd` (17 formas low-poly con color por vértice, una malla por id), `objetos_isla.gd` (colocador por semilla, MultiMesh por tipo, sin colisión). Enganchado en `island_life.gd` como `ObjetosDecorativos`.
+- 33 piezas por vida: playa (15), paseo junto a caminos (10), orilla del estanque (8). Probado: sin errores, formas vistas en vitrina de prueba. Fps/memoria NO medidos.
+- Falta: ver cómo quedan colocados de noche y a pie, más ideas del usuario, nivel B (recogibles).
+
+## Bloque 4.5 recogibles paso 1 hecho (sin commit)
+- `item_db.gd`: 10 items de uso nuevos (tela_grande, tela_chica, linterna, bateria, botella_vacia, semilla_azul [brilla + OmniLight], resina, espina, pala_concha, sal) con forma low-poly.
+- `scripts/objetos/recogibles_isla.gd` (nodo RecogiblesUso en island_life): tabla REPARTO por altura y separación; 37 piezas por vida (linterna 1 cerca de la playa, bateria 8, semilla_azul 6...). Arranca sin errores; formas vistas en vitrina. NO probado: recoger en juego a pie, luz de semillas con muchas a la vez, fps.
+- Falta: usos reales (linterna+baterías+batería gastada, botella con agua, semillas->plantar, telas/tienda tras frío/sueño), pistas de la isla para semillas, ofrendas y contaminantes.
+
+
+## Bloque 4.5 OBJETOS: recogibles y usos (sin commit)
+- `held_item.gd` (HeldItem): objeto de mano en la mano derecha + brazo levantado (`CastawayPose.hold/use_w`, `Castaway.set_hold/pulse_use/hand_transform`). **T** usa el objeto elegido.
+- Linterna: SpotLight3D de mano, batería = 300 s, parpadea al final, deja `bateria_gastada` (contaminante).
+- Botella: T cerca del estanque la llena (`botella_agua`); T bebe o riega un brote seco.
+- `semilla_azul`: T planta (`planta_azul.gd`); regada crece 120 s y da 3 `fruto_dorado` (comida + ofrenda).
+- 10 ofrendas (caracola, perla, vidrio marino, pluma, cristal, flor luminosa, moneda, figurilla [receta 2 arcilla], fruto dorado) y 5 contaminantes en `recogibles_isla.gd` (62 piezas por vida).
+- Contaminante dejado en la cueva: evento `limpieza` (+vínculo); tirado fuera: `contaminacion` (leve).
+- NO probado: ver de cerca la mano/linterna, regar+crecer en juego a pie, fps, entrega en cueva a pie. Pendiente: tienda/telas (con frío/sueño), pistas de la isla sobre semillas, baúl de madera en la playa (idea del usuario: ampliar inventario).
+
+- Reparto de recogibles rehecho POR ZONA (playa 24, orilla 7, playa alta 4, caminos 12, estanque 8, cueva 7, bosque 22 = 84), objetos x1.5 y con destello visible a 40 m (antes eran de 5-15 cm tapados por el pasto y muy pocos). Pendiente: probar a pie que se encuentren; ajustar cantidades según el usuario.
+
+- Luciérnaga guía (sin commit): de noche, siguiéndote, vuela suave (vel 1.6) sobre el recogible 'guia' más cercano a <12 m (meta `guia` puesta en `recogibles_isla.gd`: 'util' = linterna, batería, botella, semilla, tela grande, pala, contaminantes; 'ofrenda' = luz azul suave). No guía comida ni materiales de fabricación. Se quitó el destello billboard de los recogibles. NO visto en juego (hay que vínculo>=15 y noche).
+- Estado de esta sesión SIN commit: objeto en mano + linterna (T), botella/semilla/planta azul, 10 ofrendas, 5 contaminantes + limpieza en cueva, reparto por zona (84), luciérnaga guía, todo lo de arte previo.
+- Dev tools aún a quitar: sky cam, FIXHOUR 22:30, fullscreen temporal, tools/.

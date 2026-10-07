@@ -4,7 +4,7 @@ extends MeshInstance3D
 ## Isla grande low-poly con relieve: playa ancha de arena, llanura de pasto, colinas, acantilados en el oeste,
 ## una laguna y una meseta plana para la cueva (ver island_features.gd).
 ## Radio 120 m (4 veces el área de la versión anterior). El aspecto lo da terrain_island.gdshader.
-@export var radius: float = 120.0:
+@export var radius: float = 160.0:
 	set(v):
 		radius = v
 		_build()
@@ -21,19 +21,25 @@ extends MeshInstance3D
 @export var bush_count: int = 600
 @export var rock_count: int = 170
 
-const RES := 240
+const RES := 300
+
+## Mapa de alturas de la isla (silueta de la referencia islarefe.jpg, generado por tools/make_heightmap.gd)
+const HMAP_PATH := "res://assets/terrain/island_height.res"
+const HMAP_M_PER_PX: float = 0.714
+const MAP_HALF := Vector2(134.0, 196.0)   ## mitad del mapa en metros (x, z)
+var _hmap: Image
 const SAND := Color(0.88, 0.8, 0.56)
 const BEACH_W := 0.17          ## ancho de la playa (fracción del radio)
 const CLIFF_DIR := Vector2(-1.0, 0.35)   ## hacia dónde están los acantilados (oeste)
 const TERRAIN_SHADER: Shader = preload("res://shaders/terrain_island.gdshader")
 
 ## Laguna de agua dulce tierra adentro
-const POND_CENTER := Vector2(-32.0, 28.0)
+const POND_CENTER := Vector2(-30.0, -30.0)
 const POND_RADIUS := 9.0
 const POND_DEPTH := 3.2
 
 ## Meseta de la cueva (el suelo se aplana a la altura natural del centro)
-const CAVE_CENTER := Vector2(48.0, -40.0)
+const CAVE_CENTER := Vector2(-45.0, 30.0)
 const CAVE_PLATEAU_R := 16.0
 const PIT_R := 5.5              ## radio del pozo (la "cueva" es un agujero en el terreno)
 const PIT_DEPTH := 8.0          ## profundidad del pozo (m)
@@ -54,6 +60,7 @@ func _cave_bump(_x: float, _z: float) -> float:
 var _noise := FastNoiseLite.new()
 var _flora: Node3D
 var _path_img: Image
+var path_lines: Array[Dictionary] = []   ## caminos importantes: {pts: PackedVector2Array, dest: Vector2}
 var _path_half: float = 162.0
 const PATH_SIZE: int = 768
 var eco: EcoMap                         ## mapa ecológico (biomas, humedad, suelo); lo crea la propia isla
@@ -89,7 +96,9 @@ func _process(delta: float) -> void:
 
 func _setup_noise() -> void:
 	_noise.seed = noise_seed
-	_noise.frequency = 1.5 / radius
+	_noise.frequency = 1.5 / 120.0
+	if _hmap == null and ResourceLoader.exists(HMAP_PATH):
+		_hmap = ResourceLoader.load(HMAP_PATH) as Image
 	_noise_ready = true
 	cave_floor_y = maxf(_base_height(CAVE_CENTER.x, CAVE_CENTER.y), 2.0)   # meseta plana donde se apoya la roca de la cueva
 
@@ -122,13 +131,41 @@ func _height(x: float, z: float) -> float:
 
 ## 0..1: cuánto de acantilado hay en esa dirección (sector oeste con borde irregular).
 func _cliff_mask(x: float, z: float) -> float:
+	if _hmap != null:
+		var gx: float = _hmap_h(x + 2.0, z) - _hmap_h(x - 2.0, z)
+		var gz: float = _hmap_h(x, z + 2.0) - _hmap_h(x, z - 2.0)
+		return smoothstep(0.55, 1.2, Vector2(gx, gz).length() / 4.0 * 1.0)
 	var v := Vector2(x, z)
 	if v.length() < 1.0:
 		return 0.0
 	var c: float = v.normalized().dot(CLIFF_DIR.normalized()) + _noise.get_noise_2d(x * 0.5 + 400.0, z * 0.5) * 0.12
 	return smoothstep(0.5, 0.88, c)
 
+## Altura bilineal del mapa en metros (x, z mundo). Fuera del mapa: fondo marino.
+func _hmap_h(x: float, z: float) -> float:
+	var fx: float = x / HMAP_M_PER_PX + float(_hmap.get_width()) * 0.5 - 0.5
+	var fy: float = z / HMAP_M_PER_PX + float(_hmap.get_height()) * 0.5 - 0.5
+	var ix: int = floori(fx)
+	var iy: int = floori(fy)
+	var tx: float = fx - float(ix)
+	var ty: float = fy - float(iy)
+	var w: int = _hmap.get_width()
+	var h: int = _hmap.get_height()
+	var v: Array[float] = [0.0, 0.0, 0.0, 0.0]
+	for k in 4:
+		var cx: int = clampi(ix + (k % 2), 0, w - 1)
+		var cy: int = clampi(iy + (k >> 1), 0, h - 1)
+		v[k] = _hmap.get_pixel(cx, cy).r
+	var res: float = lerpf(lerpf(v[0], v[1], tx), lerpf(v[2], v[3], tx), ty)
+	var edge: float = maxf(absf(x) - (float(w) * 0.5 * HMAP_M_PER_PX - 10.0), absf(z) - (float(h) * 0.5 * HMAP_M_PER_PX - 10.0))
+	return lerpf(res, -4.5, smoothstep(0.0, 10.0, edge))   # más allá del mapa: fondo marino profundo
+
 func _base_height(x: float, z: float) -> float:
+	if _hmap != null:
+		var hm: float = _hmap_h(x, z)
+		if hm > 0.2:
+			hm += _noise.get_noise_2d(x * 2.0, z * 2.0) * 0.35 * smoothstep(0.5, 2.0, hm)
+		return hm
 	var d: float = 1.0 - Vector2(x, z).length() / radius
 	d += _noise.get_noise_2d(x, z) * 0.28
 	if d < 0.0:
@@ -172,10 +209,14 @@ func _category(h: float, xz: Vector2) -> float:
 	var cd: Vector2 = cave_dir2()
 	var along: float = rel.dot(cd)
 	if along > -5.0 and along < IslandFeatures.CAVE_LEN and absf(rel.dot(Vector2(-cd.y, cd.x))) < 5.0 and h < cave_floor_y + 0.8:
-		return 0.6
-	if xz.distance_to(POND_CENTER) < POND_RADIUS * 1.6 and h < pond_water_level + 0.25:
-		return 0.3
+		return 0.5
 	return 1.0
+
+## Cuánto es fondo de laguna en un punto (0 a 1), continuo: se pinta por vértice y el shader lo funde.
+func _pond_bed(xz: Vector2) -> float:
+	var dpv: float = xz.distance_to(POND_CENTER) / (POND_RADIUS * 1.6)
+	dpv *= 1.0 + _noise.get_noise_2d(xz.x * 2.2 + 300.0, xz.y * 2.2 - 120.0) * 0.32
+	return 1.0 - smoothstep(0.4, 0.88, dpv)
 
 func _build() -> void:
 	if not is_inside_tree():
@@ -196,6 +237,9 @@ func _build() -> void:
 	for j in RES + 1:
 		for i in RES + 1:
 			hg[j * (RES + 1) + i] = _height(-half + i * step, -half + j * step)
+	_hg = hg
+	_hg_half = half
+	_hg_step = step
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for i in RES:
@@ -217,11 +261,22 @@ func _build() -> void:
 				# tinte suave por triángulo (rompe lo plano) y categoría en el alfa
 				var jit: float = _noise.get_noise_2d(cen.x * 4.3 + 91.0, cen.z * 4.3 - 40.0)
 				var tone: float = 1.0 + jit * 0.13
-				st.set_color(Color(tone, tone, tone, _category(cen.y, Vector2(cen.x, cen.z))))
-				st.add_vertex(a)
-				st.add_vertex(b)
-				st.add_vertex(c)
-	st.generate_normals()
+				var col: Color = Color(tone, tone, tone, _category(cen.y, Vector2(cen.x, cen.z)))
+				var nf: Vector3 = (b - a).cross(c - a).normalized()
+				if nf.y < 0.0:
+					nf = -nf
+				for k in 3:
+					var idx: int = tri[k]
+					var gi: int = i + (idx & 1)
+					var gj: int = j + (idx >> 1)
+					var ns: Vector3 = _grid_normal(hg, gi, gj, step)
+					# suave en pasto y lomas, facetado solo donde la pendiente es fuerte (acantilados, rocas)
+					var kf: float = smoothstep(0.3, 0.55, 1.0 - ns.y)
+					var cav: float = col.a
+					var va: float = cav if cav < 0.8 else 1.0 - 0.38 * _pond_bed(Vector2(p[idx].x, p[idx].z))
+					st.set_color(Color(col.r, col.g, col.b, va))
+					st.set_normal(ns.lerp(nf, kf).normalized())
+					st.add_vertex(p[idx])
 	mesh = st.commit()
 	var mat := ShaderMaterial.new()
 	mat.shader = TERRAIN_SHADER
@@ -722,10 +777,8 @@ func moisture_at(x: float, z: float) -> float:
 ## Busca un punto con altura entre min_h y max_h; devuelve y=-100 si falla.
 func _random_spot(rng: RandomNumberGenerator, min_h: float, max_h: float) -> Vector3:
 	for attempt in 40:
-		var a: float = rng.randf() * TAU
-		var d: float = sqrt(rng.randf()) * radius
-		var x: float = cos(a) * d
-		var z: float = sin(a) * d
+		var x: float = rng.randf_range(-MAP_HALF.x, MAP_HALF.x)
+		var z: float = rng.randf_range(-MAP_HALF.y, MAP_HALF.y)
 		var h: float = _height(x, z)
 		if is_in_pond_area(x, z, 1.15) or is_in_cave_area(x, z, 1.0) or is_on_path(x, z, 0.25):
 			continue
@@ -770,12 +823,15 @@ func _path_stamp(img: Image, p: Vector2, width: float, ch: int) -> void:
 			var c: Color = img.get_pixel(ix, iy)
 			if ch == 0:
 				c.r = maxf(c.r, v)
+			elif ch == 2:
+				c.b = maxf(c.b, v)
 			else:
 				c.g = maxf(c.g, v)
 			img.set_pixel(ix, iy, c)
 
 ## Camina de a hacia b buscando terreno suave (evita agua, acantilados y el estanque) y va dejando huella.
-func _path_walk(img: Image, a: Vector2, b: Vector2, rng: RandomNumberGenerator, width: float, ch: int, broken: bool) -> void:
+func _path_walk(img: Image, a: Vector2, b: Vector2, rng: RandomNumberGenerator, width: float, ch: int, broken: bool) -> PackedVector2Array:
+	var trail: PackedVector2Array = PackedVector2Array([a])
 	var pos: Vector2 = a
 	var dir: Vector2 = (b - a).normalized()
 	var max_steps: int = int(a.distance_to(b) * 0.9) + 40
@@ -805,6 +861,7 @@ func _path_walk(img: Image, a: Vector2, b: Vector2, rng: RandomNumberGenerator, 
 		dir = best
 		var prev: Vector2 = pos
 		pos += dir * 2.0
+		trail.append(pos)
 		if broken and rng.randf() < 0.07:
 			on = not on
 		if on:
@@ -812,10 +869,14 @@ func _path_walk(img: Image, a: Vector2, b: Vector2, rng: RandomNumberGenerator, 
 				var sp: Vector2 = prev.lerp(pos, float(sub + 1) / 5.0)
 				if _height(sp.x, sp.y) > 1.0:
 					_path_stamp(img, sp, width, ch)
+					if ch == 0:
+						_path_stamp(img, sp, width * 0.8, 2)
+	return trail
 
 func _build_paths() -> void:
 	var half: float = radius * 1.35
 	_path_half = half
+	path_lines.clear()
 	var img := Image.create(PATH_SIZE, PATH_SIZE, false, Image.FORMAT_RGB8)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = noise_seed * 7 + 3
@@ -823,6 +884,10 @@ func _build_paths() -> void:
 	for c: Vector3 in eco.mystery_centers:
 		nodes.append(Vector2(c.x, c.z))
 	var beaches: Array[Vector2] = []
+	var arrive: Vector2 = Vector2(125.0, 38.0)      # playa de llegada de la barca
+	while arrive.x > 0.0 and _height(arrive.x, arrive.y) < 1.1:
+		arrive.x -= 1.0
+	beaches.append(arrive)
 	for i in 40:
 		if beaches.size() >= 3:
 			break
@@ -849,7 +914,8 @@ func _build_paths() -> void:
 					bd = dd
 					bi = ii
 					bj = jj
-		_path_walk(img, joined[bi], rest[bj], rng, 1.5, 0, false)
+		var tr1: PackedVector2Array = _path_walk(img, joined[bi], rest[bj], rng, 1.9, 0, false)
+		path_lines.append({"pts": tr1, "dest": rest[bj]})
 		joined.append(rest[bj])
 		rest.remove_at(bj)
 	for bp: Vector2 in beaches:
@@ -857,12 +923,14 @@ func _build_paths() -> void:
 		for n: Vector2 in nodes:
 			if n.distance_to(bp) < near.distance_to(bp):
 				near = n
-		_path_walk(img, bp, near, rng, 1.5, 0, false)
+		var tr2: PackedVector2Array = _path_walk(img, bp, near, rng, 1.9, 0, false)
+		path_lines.append({"pts": tr2, "dest": near})
 	for i in 2:
 		var a: Vector2 = nodes[rng.randi() % nodes.size()]
 		var b: Vector2 = nodes[rng.randi() % nodes.size()]
 		if a.distance_to(b) > 15.0:
-			_path_walk(img, a, b, rng, 1.3, 0, false)
+			var tr3: PackedVector2Array = _path_walk(img, a, b, rng, 1.6, 0, false)
+			path_lines.append({"pts": tr3, "dest": b})
 	for i in 10:
 		var st: Vector2 = beaches[rng.randi() % beaches.size()] if not beaches.is_empty() else nodes[0]
 		var tg: Vector2 = nodes[rng.randi() % nodes.size()] + Vector2(rng.randf_range(-14.0, 14.0), rng.randf_range(-14.0, 14.0))
@@ -873,3 +941,41 @@ func _build_paths() -> void:
 		mat.set_shader_parameter("path_tex", ImageTexture.create_from_image(img))
 		mat.set_shader_parameter("path_origin", Vector2(-half, -half))
 		mat.set_shader_parameter("path_size", half * 2.0)
+
+## Normal suave de la grilla de alturas en el vértice (gi, gj) por diferencias centrales.
+func _grid_normal(hg: PackedFloat32Array, gi: int, gj: int, step: float) -> Vector3:
+	var i0: int = maxi(gi - 1, 0)
+	var i1: int = mini(gi + 1, RES)
+	var j0: int = maxi(gj - 1, 0)
+	var j1: int = mini(gj + 1, RES)
+	var dx: float = hg[gj * (RES + 1) + i0] - hg[gj * (RES + 1) + i1]
+	var dz: float = hg[j0 * (RES + 1) + gi] - hg[j1 * (RES + 1) + gi]
+	return Vector3(dx / (float(i1 - i0) * step), 1.0, dz / (float(j1 - j0) * step)).normalized()
+
+var _hg: PackedFloat32Array = PackedFloat32Array()
+var _hg_half: float = 0.0
+var _hg_step: float = 1.0
+
+## Altura de la malla visible (triangulos de la grilla), no de la funcion exacta: sirve para que el agua encaje con el suelo dibujado.
+func mesh_height_at(x: float, z: float) -> float:
+	if _hg.is_empty():
+		return height_at(x, z)
+	var fx: float = (x + _hg_half) / _hg_step
+	var fz: float = (z + _hg_half) / _hg_step
+	var i: int = clampi(floori(fx), 0, RES - 1)
+	var j: int = clampi(floori(fz), 0, RES - 1)
+	var u: float = clampf(fx - float(i), 0.0, 1.0)
+	var v: float = clampf(fz - float(j), 0.0, 1.0)
+	var h00: float = _hg[j * (RES + 1) + i]
+	var h10: float = _hg[j * (RES + 1) + i + 1]
+	var h01: float = _hg[(j + 1) * (RES + 1) + i]
+	var h11: float = _hg[(j + 1) * (RES + 1) + i + 1]
+	if (i + j) % 2 == 0:
+		# triangulos (0,1,2) y (1,3,2): diagonal de 10 a 01
+		if u + v <= 1.0:
+			return h00 + (h10 - h00) * u + (h01 - h00) * v
+		return h11 + (h01 - h11) * (1.0 - u) + (h10 - h11) * (1.0 - v)
+	# triangulos (0,1,3) y (0,3,2): diagonal de 00 a 11
+	if u >= v:
+		return h00 + (h10 - h00) * u + (h11 - h10) * v
+	return h00 + (h11 - h01) * u + (h01 - h00) * v

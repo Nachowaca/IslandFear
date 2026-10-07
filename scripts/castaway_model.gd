@@ -22,6 +22,7 @@ var _air: bool = false
 var _action: String = ""
 var _action_t: float = 0.0
 var _action_len: float = 0.0
+var _use_t: float = 0.0                ## cuenta atrás del gesto de uso del objeto en mano
 var _lock: float = 0.0                 ## tiempo restante de una animación completa (tajo)
 
 func build() -> void:
@@ -70,7 +71,13 @@ func _start_pose_action(a: String, length: float) -> void:
 	_action_t = 0.0
 	_action_len = length
 
+## Gesto corto de usar el objeto en mano (apretar el botón de la linterna, etc.).
+func pulse_use() -> void:
+	_use_t = 0.4
+
 func update(dt: float, h_speed: float, air: bool, dead: bool, crouch_target: float) -> void:
+	_use_t = maxf(_use_t - dt, 0.0)
+	pose.use_w = sin(PI * (1.0 - _use_t / 0.4)) if _use_t > 0.0 else 0.0
 	pose.crouch = lerpf(pose.crouch, crouch_target, 1.0 - exp(-9.0 * dt))
 	if _action != "":
 		_action_t += dt

@@ -68,18 +68,22 @@ void fragment() {
 	float w_rock = smoothstep(0.26, 0.46, slope + (n_mid - 0.5) * 0.16);
 	float w_dirt = smoothstep(0.56, 0.74, n_mid * 0.6 + n_lo * 0.55) * (1.0 - w_sand);
 	// categorías pintadas en el vértice: 0.6 suelo de la cueva, 0.3 fondo de laguna
-	if (vcol.a < 0.8) {
-		if (vcol.a > 0.45) {
-			w_rock = 1.0; w_sand = 0.0;
-		} else {
-			w_sand = 0.65; w_dirt = 0.35; w_rock = 0.0;
-		}
+	if (vcol.a < 0.55) {
+		w_rock = 1.0; w_sand = 0.0;
+	} else {
+		float pw = smoothstep(0.0, 1.0, clamp((1.0 - vcol.a) / 0.38, 0.0, 1.0));
+		w_sand = mix(w_sand, 0.15, pw); w_dirt = mix(w_dirt, 0.85, pw); w_rock = mix(w_rock, 0.0, pw);
 	}
 
 	// color
 	vec3 c_grass = tex2(grass_c, uv, 0.22);
 	vec3 c_dirt = tex2(forest_c, uv, 0.2);
 	vec3 c_sand = tex2(sand_c, uv, 0.2);
+	// arena caribeña: beige claro con el grano de la textura, sin el tono arcilloso
+	float s_g = dot(c_sand, vec3(0.333));
+	float rip_n = vnoise(uv * 0.35) * 3.0;
+	float ripple = sin(dot(uv, normalize(vec2(0.8, 0.6))) * 2.4 + rip_n * 2.0) * 0.5 + 0.5;
+	c_sand = vec3(0.92, 0.91, 0.7) * (0.82 + s_g * 0.45) * (0.95 + ripple * 0.07);
 	// roca triplanar
 	vec3 bw = pow(abs(wn), vec3(4.0));
 	bw /= (bw.x + bw.y + bw.z);
@@ -100,13 +104,17 @@ void fragment() {
 	col = mix(col, c_sand, w_sand * (1.0 - w_rock));
 	// arena mojada cerca del agua
 	float wet = 1.0 - smoothstep(water_y + 0.05, water_y + 0.75, h);
-	col *= mix(1.0, 0.55, wet * w_sand);
+	col = mix(col, col * vec3(0.7, 0.66, 0.58), wet * w_sand);
+	// suciedad cerca del agua: algas secas, barro y restos
+	float dirt_band = (1.0 - smoothstep(water_y + 0.1, water_y + 1.3, h)) * w_sand;
+	float dirt_n = smoothstep(0.45, 0.8, fbm(uv * 0.9 + 5.0) * 0.7 + vnoise(uv * 6.0) * 0.3);
+	col = mix(col, vec3(0.36, 0.31, 0.22), dirt_band * dirt_n * 0.55);
 	// tinte por vértice (variación por triángulo, estilo low-poly)
 	col *= vcol.rgb;
 
 	// color más vivo y menos plano (referencias: arena amarilla cálida, pasto saturado con parches, roca clara)
 	float lum = dot(col, vec3(0.299, 0.587, 0.114));
-	col = mix(vec3(lum), col, 1.3);                                         // más saturación
+	col = mix(vec3(lum), col, mix(1.3, 0.92, w_sand * (1.0 - w_rock)));     // más saturación (menos en la arena)
 	// pintado irregular y desprolijo del pasto: doble domain warp + varias escalas, transiciones blandas
 		vec2 w1 = vec2(fbm(uv * 0.09 + 3.0), fbm(uv * 0.09 - 9.0)) * 2.0 - 1.0;
 		vec2 wp = uv + w1 * 22.0;
@@ -129,7 +137,7 @@ void fragment() {
 		// tierra pisada: manchas sueltas y rotas, no círculos
 		float bare = smoothstep(0.58, 0.8, fbm(wp * 0.12 + 40.0) * 0.7 + vnoise(wp * 0.9) * 0.3) * g_only;
 		col = mix(col, c_dirt * vec3(1.2, 1.05, 0.82), bare * 0.5);
-		col = mix(col, col * vec3(1.18, 1.05, 0.72), w_sand * (1.0 - w_rock) * 0.7);   // arena amarilla cálida
+		col = mix(col, col * vec3(1.04, 1.02, 0.95), w_sand * (1.0 - w_rock) * 0.5);   // arena beige clara
 	// caminos de tierra: senderos principales (R) y sendas chicas cortadas (G), con borde irregular
 	vec3 pt = textureLod(path_tex, clamp((wpos.xz - path_origin) / path_size, 0.0, 1.0), 0.0).rgb;
 	float edge_n = fbm(uv * 1.4) * 0.55 + vnoise(uv * 5.0) * 0.45;
@@ -138,6 +146,9 @@ void fragment() {
 	float path = max(pm, pm2) * (1.0 - w_rock) * smoothstep(0.7, 1.1, h);
 	vec3 path_col = c_dirt * vec3(1.3, 1.1, 0.85) * (0.8 + 0.4 * vnoise(uv * 3.0));
 	path_col *= 0.9 + 0.2 * step(0.82, vnoise(uv * 17.0));        // guijarros sueltos
+	// caminos importantes: tierra más oscura y rojiza, húmeda (referencia: sendero nocturno)
+	float imp = smoothstep(0.25, 0.6, pt.b + (edge_n - 0.5) * 0.3) * (1.0 - w_sand);
+	path_col = mix(path_col, vec3(0.78, 0.34, 0.17) * (0.8 + 0.5 * vnoise(uv * 4.0)), imp * 0.9);
 	col = mix(col, path_col, path * 0.92);
 	col = mix(col, col * vec3(1.35, 1.35, 1.42), w_rock * 0.6);             // roca más clara
 	col *= 1.0 + clamp((h - 6.0) * 0.02, 0.0, 0.15);                        // las cumbres, algo más claras
@@ -152,7 +163,7 @@ void fragment() {
 	vec3 p_rock = vec3(0.0, nrx.y, nrx.x) * bw.x + vec3(nry.x, 0.0, nry.y) * bw.y + vec3(nrz.x, nrz.y, 0.0) * bw.z;
 	vec3 p_g = vec3(n_g.x, 0.0, n_g.y);
 	vec3 p_d = vec3(n_d.x, 0.0, n_d.y);
-	vec3 p_s = vec3(n_s.x, 0.0, n_s.y);
+	vec3 p_s = vec3(n_s.x, 0.0, n_s.y) * 0.6 + vec3(0.12, 0.0, 0.08) * (ripple - 0.5);
 	vec3 p = p_g;
 	p = mix(p, p_d, max(w_dirt, path));
 	p = mix(p, p_rock, w_rock);

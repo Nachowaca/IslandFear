@@ -8,6 +8,8 @@ extends SkeletonModifier3D
 var crouch: float = 0.0     ## 0..1
 var act: String = ""        ## "pickup", "eat", "drink" o ""
 var act_w: float = 0.0      ## intensidad 0..1 de la acción
+var hold: float = 0.0          ## 0..1: brazo derecho levantado sosteniendo un objeto
+var use_w: float = 0.0        ## 0..1: pulso de uso del objeto en mano (un gesto corto)
 
 var _idx: Dictionary = {}
 var record_idle: bool = false     ## true mientras suena Idle: guarda la pose de los brazos en reposo
@@ -56,9 +58,15 @@ func _process_modification() -> void:
 			continue
 		if record_idle:
 			_arm_rest[ab] = sk.get_bone_pose_rotation(bi)
-		elif arm_damp > 0.001 and _arm_rest.has(ab) and act == "":
-			var k: float = arm_damp * (1.0 if ab.begins_with("Upper") else 0.8)
+		elif (arm_damp > 0.001 or (hold > 0.001 and ab.ends_with(".R"))) and _arm_rest.has(ab) and act == "":
+			var dm: float = arm_damp
+			if hold > 0.001 and ab.ends_with(".R"):
+				dm = maxf(dm, 0.9 * hold)
+			var k: float = dm * (1.0 if ab.begins_with("Upper") else 0.8)
 			sk.set_bone_pose_rotation(bi, sk.get_bone_pose_rotation(bi).slerp(_arm_rest[ab], k))
+	if hold > 0.001 and act == "":
+		_rot(sk, "UpperArm.R", -0.55 * hold - 0.15 * use_w)
+		_rot(sk, "LowerArm.R", -1.0 * hold - 0.4 * use_w)
 	var pw: float = act_w if act == "pickup" else 0.0
 	var c: float = maxf(crouch, pw * 0.8)
 	if c > 0.001:

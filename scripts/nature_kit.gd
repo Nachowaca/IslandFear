@@ -164,8 +164,45 @@ static func make_uq(model: String, tint: Color = Color.WHITE, vis_end: float = 0
 		ps = load(UQ_DIR + ("FBX/" + model + ".fbx" if fbx else "glTF/" + model + ".gltf")) as PackedScene
 		_scenes["uq:" + model] = ps
 	var n: Node3D = ps.instantiate() as Node3D
+	if model.begins_with("Rock_"):
+		_soften_rocks(n, model)
 	_uq_fix(n, tint, vis_end, fbx, _kind(model))
 	return n
+
+static var _soft_meshes: Dictionary = {}
+
+## Redondea las rocas del pack: promedia las normales de los vértices que comparten posición (queda facetado leve, no cristal).
+static func _soften_rocks(n: Node, model: String) -> void:
+	if n is MeshInstance3D:
+		var mi: MeshInstance3D = n as MeshInstance3D
+		if mi.mesh != null:
+			var key: String = model + "|" + str(mi.mesh.get_rid().get_id())
+			if not _soft_meshes.has(key):
+				_soft_meshes[key] = _smooth_mesh(mi.mesh, 0.7)
+			mi.mesh = _soft_meshes[key]
+	for c in n.get_children():
+		_soften_rocks(c, model)
+
+static func _smooth_mesh(src: Mesh, amount: float) -> Mesh:
+	var out := ArrayMesh.new()
+	var q: float = maxf(src.get_aabb().size.length() * 0.002, 0.00001)
+	for si in src.get_surface_count():
+		var arr: Array = src.surface_get_arrays(si)
+		var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+		var nrm: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+		if nrm.size() == verts.size() and verts.size() > 0:
+			var sums: Dictionary = {}
+			for i in verts.size():
+				var k: Vector3i = Vector3i(roundi(verts[i].x / q), roundi(verts[i].y / q), roundi(verts[i].z / q))
+				sums[k] = (sums[k] as Vector3 if sums.has(k) else Vector3.ZERO) + nrm[i]
+			var nn: PackedVector3Array = nrm.duplicate()
+			for i in verts.size():
+				var k2: Vector3i = Vector3i(roundi(verts[i].x / q), roundi(verts[i].y / q), roundi(verts[i].z / q))
+				nn[i] = nrm[i].lerp((sums[k2] as Vector3).normalized(), amount).normalized()
+			arr[Mesh.ARRAY_NORMAL] = nn
+		out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		out.surface_set_material(si, src.surface_get_material(si))
+	return out
 
 static func _uq_fix(n: Node, tint: Color, vis_end: float, fbx: bool, kind: String) -> void:
 	if n is MeshInstance3D:

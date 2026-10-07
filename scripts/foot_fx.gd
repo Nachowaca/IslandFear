@@ -6,8 +6,8 @@ extends Node3D
 ## - huellas en la arena (decals que se borran despacio; más marcadas en arena mojada)
 ## - puñados de hojas y briznas al pisar pasto, y nubes de arena al correr por la playa
 
-const MAX_PRINTS := 56
-const PRINT_LIFE := 110.0          ## segundos hasta que una huella se borra del todo
+const MAX_PRINTS := 120
+const PRINT_LIFE := 240.0          ## segundos hasta que una huella se borra del todo
 const SAND_MAX_H := 1.7            ## por encima de esto ya no es arena (coincide con el shader)
 const DECAL_LAYER := 1 << 19
 
@@ -35,7 +35,7 @@ func _ready() -> void:
 	_print_tex_l = ImageTexture.create_from_image(flipped)
 	for i in MAX_PRINTS:
 		var d := Decal.new()
-		d.size = Vector3(0.3, 0.8, 0.52)
+		d.size = Vector3(0.38, 0.8, 0.62)
 		d.texture_albedo = _print_tex
 		d.cull_mask = DECAL_LAYER
 		d.upper_fade = 0.2

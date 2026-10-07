@@ -114,6 +114,12 @@ func _ready() -> void:
 	inter.features = features
 	inter.ui = inv_ui
 	add_child(inter)
+	var mano := HeldItem.new()
+	mano.name = "ObjetoEnMano"
+	mano.player = _castaway
+	mano.ui = inv_ui
+	mano.terrain = _island
+	add_child(mano)
 	var eco: EcoMap = _island.eco      # lo crea la isla antes de plantar
 	Isla.eco = eco
 	brain.eco = eco
@@ -147,6 +153,12 @@ func _ready() -> void:
 	_overview_cam.far = 3000.0
 	add_child(_overview_cam)
 	_update_overview()
+	var sky_cam := SkyCam.new()
+	sky_cam.name = "SkyCam"
+	sky_cam.player = _castaway
+	sky_cam.player_cam = _castaway.get_camera()
+	add_child(sky_cam)
+	daynight._offset_hours = fposmod(22.5 - daynight._current_hour(), 24.0)  # FIXHOUR
 	_boat_target = _find_landing_point()
 	if skip_voyage:
 		var back: Vector3 = _boat.global_position - _boat_target
@@ -177,11 +189,15 @@ func _build_bridge(shore: Vector2, dir: Vector2, light_r: float) -> void:
 ## Roca flotante misteriosa tierra adentro (en un claro llano, lejos de la cueva y la laguna).
 func _build_landmarks(features: IslandFeatures) -> void:
 	var best: Vector3 = Vector3(0, -100, 0)
-	for ring: float in [0.55, 0.45, 0.65, 0.35]:
-		for k in 24:
-			var ang: float = 0.2 + TAU * k / 24.0
-			var x: float = cos(ang) * _island.radius * ring
-			var z: float = sin(ang) * _island.radius * ring
+	var cands: Array[Vector2] = []
+	for gx in range(-120, 121, 15):
+		for gz in range(-180, 181, 15):
+			cands.append(Vector2(gx, gz))
+	cands.sort_custom(func(u: Vector2, v: Vector2) -> bool: return u.length() < v.length())
+	for ring: float in [1.0]:
+		for cv: Vector2 in cands:
+			var x: float = cv.x
+			var z: float = cv.y
 			var h: float = _island.height_at(x, z)
 			if h < 2.0 or h > 6.0:
 				continue

@@ -15,6 +15,8 @@ const LIST: Array[Dictionary] = [
 		"in": {"rama": 1, "piedra_afilada": 1}, "consume": {"rama": 1, "piedra_afilada": 1}, "out": {"hacha": 1}},
 	{"id": "lanza", "name": "Lanza", "desc": "Atás la cuchilla en la punta de una rama, con cuerda.",
 		"in": {"rama": 1, "piedra_afilada": 1, "cuerda": 1}, "consume": {"rama": 1, "piedra_afilada": 1, "cuerda": 1}, "out": {"lanza": 1}},
+	{"id": "figurilla_barro", "name": "Figurilla de barro", "desc": "Modelás arcilla con las manos, con paciencia.",
+		"in": {"arcilla": 2}, "consume": {"arcilla": 2}, "out": {"figurilla_barro": 1}},
 	{"id": "fuego", "name": "Encender fuego", "desc": "Chocás dos piedras junto a paja seca o leña.",
 		"in": {"piedra": 2}, "any": ["paja", "rama", "madera"], "consume": {}, "out": {}, "special": "fuego"},
 ]

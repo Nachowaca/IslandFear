@@ -6,7 +6,7 @@ extends Node3D
 const WATER_Y: float = 0.35
 const SCHOOLS: int = 9
 const FISH_PER_SCHOOL: int = 6
-const WHALE_R: float = 205.0
+const WHALE_R: float = 330.0
 const WHALE_SPEED: float = 0.012        ## rad/s: una vuelta cada ~8 min
 const DIVE_PERIOD: float = 38.0         ## cada tanto sube a respirar
 
@@ -54,7 +54,7 @@ func _shallow_point(ang: float) -> Vector3:
 	var r: float = terrain.radius * 0.55
 	var dir: Vector2 = Vector2(cos(ang), sin(ang))
 	var best: Vector3 = Vector3(0, -999.0, 0)
-	while r < terrain.radius * 1.3:
+	while r < terrain.radius * 1.5:
 		var h: float = terrain.height_at(dir.x * r, dir.y * r)
 		if h < WATER_Y - 1.2:
 			best = Vector3(dir.x * r, h, dir.y * r)

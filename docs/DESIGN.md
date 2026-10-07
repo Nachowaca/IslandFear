@@ -215,3 +215,36 @@ Hecho en esta sesión: agua del mar (fondo sucio, mini olas, motas, peces, balle
 Prioridad alta del usuario. Objetivo: que la isla tenga una identidad visual propia y luz de autor, no solo realista.
 Ideas a definir mañana con el usuario: paleta por hora del día (amanecer, mediodía, atardecer, noche teal con luces ámbar), luz cálida del sol bajo con sombras frías, rayos de luz entre árboles (falsos, sin volumétrica), luces puntuales ámbar en claros misteriosos y cueva, color grading/tonemap, contraste y saturación por bioma, niebla de color, reflejos cálidos en el agua, brillo de flores y bioluminiscencia.
 Reglas: Mobile, sin SDFGI ni niebla volumétrica; referencias en res://docs/ref/. Proponer, esperar OK, un cambio a la vez.
+
+
+### Recordatorio de desarrollo
+Antes de finalizar el juego: borrar la cámara del cielo (sky_cam.gd) o inventar algo nuevo; quitar la hora fija FIXHOUR; revertir pantalla completa temporal.
+
+
+### Bloque 4.5 OBJETOS: diseño acordado (sin implementar)
+- Catálogo por datos (.tres/.json): id, categoría, modelo, escala, rareza, biomas/zonas (EcoMap), efecto, peso en el vínculo. Sumar objeto = sumar fila.
+- Un solo `ObjectSpawner` por semilla de vida, por chunks (~64 m) y solo cerca del jugador.
+- Tres niveles: A estético (MultiMesh, sin script ni colisión), B recogible (nodo liviano que se activa por cercanía), C especial (escena propia: ofrendas, altares, diario).
+- Categorías: herramientas (se enganchan al bloque 6), útiles, estéticos inanimados, contaminantes (marea/otros náufragos; llevarlos a la cueva; suben contaminación de zona; el jugador no ve el vínculo).
+- Cada vida cambia la distribución; algunos objetos solo en ciertas vidas (restos de náufragos previos).
+- Decisiones del usuario: modelos de los packs que ya hay, coherentes con el estilo del juego; solo raros y ofrendas con más libertad. Cantidad inicial: estéticos ~30 en playa, paseo y cerca del estanque; ~20 recogibles; se suman ideas luego. Estéticos SIN colisión por ahora (colisión queda pendiente para después).
+- Orden: 1) catálogo + colocador nivel A (~30 piezas, medir fps), 2) recogibles + contaminantes + entrega en la cueva, 3) herramientas con bloque 6, 4) ofrendas/especiales.
+
+### Bloque 4.5 RECOGIBLES: diseño acordado (sin implementar)
+- ~20 recogibles: 10 de uso + 10 de ofrenda; contaminantes aparte (5 tipos).
+- USO: tela grande y chica (tienda para dormir / abrigo del frío; manta, vendaje, antorcha), linterna sin baterías, batería (8 repartidas; al gastarse queda 'batería gastada' = contaminante), botella vacía->con agua (beber y regar), semilla brillante azul (planta árbol o flor; árbol con frutos se riega con botella), resina (pega, antorcha), espina anzuelo (caña/red), pala de concha (cavar, arcilla), sal marina (cocina/conserva). Cuerda ya existe; red de pesca = varias cuerdas.
+- OFRENDA (valor oculto para el jugador): concha (ya existe), caracola grande, perla, vidrio marino, pluma, cristal de la cueva, flor luminosa, moneda pirata (del cofre), figurilla de barro, fruto dorado (del árbol regado).
+- CONTAMINANTES: batería gastada, lata oxidada, botella de plástico, bolsa de plástico, red enredada. Se llevan a la cueva.
+- Respuestas del usuario: frío/sueño/calor NO existen aún, pero habrá (se verán después; la tienda depende de eso). Semillas brillantes azules repartidas random cada vida; la isla puede dar pistas. La linterna se esconde random cada vida, en lugares cercanos a la playa.
+- Orden: 1) entradas ItemDB + colocador por zona de recogibles (usar world_item.gd), 2) linterna + baterías + ciclo batería gastada, 3) telas y tienda (tras frío/sueño), 4) botella con agua, semillas, árbol con frutos, 5) ofrendas y contaminantes.
+
+- NOTA (usuario): la linterna servirá para ver de noche cuando la luciérnaga se va. Los objetos de mano (linterna, antorcha, cuchillo, hacha, pala, botella...) deben poder adherirse a las manos del personaje, con animaciones simples de uso (se une al bloque 6).
+
+
+## Bloque 4.5: implementado (resumen de decisiones)
+- **Objeto en mano:** el objeto elegido aparece en la mano derecha con el brazo levantado; **T** lo usa (gesto corto). Linterna: foco de mano independiente de la luciérnaga, batería 300 s, parpadea al final y deja batería gastada (contaminante).
+- **Agua y plantas:** T llena la botella en el estanque; con agua, T bebe o riega. La semilla azul se planta con T; regada crece 120 s y da 3 frutos dorados (comida + ofrenda). Cuidar suma gesto a la isla.
+- **Ofrendas (10)** y **contaminantes (5):** dejados en la cueva = evento `limpieza` (a favor); tirados fuera = `contaminacion` (leve, no ataque). El jugador no ve números.
+- **Reparto por zona** (playa, orilla, playa alta, caminos, estanque, cueva, bosque), ~84 por vida, objetos x1.5, sin destello propio.
+- **Luciérnaga guía:** de noche ofrece (solo a ~3 m) sutilmente útiles (luz cálida) y ofrendas (luz azul suave); no comida ni materiales de fabricación.
+- **Pendiente / ideas:** baúl de madera en la playa para guardar más objetos (decidir tamaño, si la isla lo toma como propio, y si sobrevive a la muerte); tienda y telas (con frío/sueño); pistas de la isla sobre semillas; usos de herramientas (bloque 6).
