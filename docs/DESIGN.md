@@ -179,3 +179,28 @@ Orden acordado: 1) pulir lo hecho, 2) isla viva, 3) isla que te estudia, 4) orde
 - Orden sugerido: 5.1 -> 5.2 -> 5.4 -> 5.3 -> 5.5 -> 5.6 -> 5.7 -> 5.8 (las frases van repartidas: se agregan las de cada fase al hacerla, y 5.7 completa hasta 200).
 
 **4. Orden técnico (después):** (la hora fija 14:00 TEMPTEST ya se quitó); limpiar `main.tscn`/`world.tscn` y duplicados OBJ/FBX del MegaKit; actualizar PROGRESS.md; commit/push solo al cerrar la sesión.
+
+
+## Planes nuevos guardados (pedido del usuario; SOLO DISEÑO, nada implementado)
+Orden acordado: primero organizar el plan de OBJETOS (llamémoslo bloque 4.5 / "Objetos"), luego el BLOQUE 6 (mecánicas nuevas) y recién después el bloque 5. El usuario dirá con cuál seguir.
+
+### Plan de objetos (a organizar con el usuario)
+Categorías pedidas:
+- Objetos nuevos (crafteo/uso).
+- Objetos raros encontrados en la isla.
+- Objetos ofrenda de la isla (la isla te da cosas; encaja con el vínculo oculto).
+- Objetos de naufragios (restos de barcos en costa/fondo).
+- Basura química (contaminante: la isla la odia; ver PERSONALITY.md, llevarla a la cueva).
+- Residuos que llegan con la marea a la playa (cambian con la marea y el ciclo).
+- Estatuas escondidas para dejar ofrendas (posible vínculo con altares/templos de PERSONALITY.md).
+Por definir: lista concreta de objetos, rareza, dónde aparecen (bioma/marea/claros misteriosos), qué hace cada uno, si afectan al vínculo/salud por zona, modelos (kits disponibles o a descargar), UI de inventario.
+Ideas extra a proponer mañana: diario/notas halladas, botellas con mensajes, restos de anteriores náufragos (las 7 vidas), objetos que "vuelven" tras un ciclo, ofrendas que cambian según el ciclo.
+
+### Bloque 6: mecánicas nuevas (a organizar)
+- Cuchillo en mano, hacha en mano, antorcha en mano (modelos en la mano, uso, luz de la antorcha).
+- Animación de caminar con objeto en la mano.
+- Sentarse a admirar algo con la isla (quieto, la isla reacciona; sube calma/vínculo oculto).
+- Observar con zoom desde la visión de los ojos (zoom a lo que queramos; posible registro/diario de lo observado).
+Ideas extra a proponer mañana: pescar, encender/apagar antorcha según clima, silbar/llamar, dejar ofrenda, inspeccionar objetos en mano, cámara fotográfica/diario.
+
+Recordar: los pendientes sueltos (cueva a pie, fogata, clima, huellas, volver de pantalla completa) siguen abiertos.

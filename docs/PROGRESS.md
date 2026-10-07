@@ -185,3 +185,8 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 ## Bloque 4 cerrado: memoria
 - Texturas de 2K del MegaKit (Textures/ y glTF/) con process/size_limit=1024 en su .import (24 archivos). ultimate_nature ya lo tenía.
 - Sin medir RAM/fps reales; solo verificado que arranca.
+
+## Estado al cierre de sesión
+- Bloques 1-4 cerrados y subidos (84733a7). Kits integrados, memoria revisada.
+- Siguiente: el usuario quiere primero planificar OBJETOS, luego BLOQUE 6 (mecánicas), y después el bloque 5. Ver DESIGN.md, "Planes nuevos guardados". Mañana: proponer ideas y organizar; el usuario elige por dónde seguir.
+- Pendiente: que mire árboles retorcidos y senderos de piedras; 4 preguntas de PERSONALITY.md.
