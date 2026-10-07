@@ -174,3 +174,10 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Movidos a ~/islander-fear-backup (fuera del proyecto): main.tscn, world.tscn, addons simplex_terrain/terrain_3d/lowpolyterrain/FoliageFlow, demo/, OBJ/, FBX/, FBX (Unity)/, Sound FX Starter Pack, Biolumina.flac, __MACOSX, previews.
 - Se mantienen assets/ultimate_nature/glTF (usado) y addons/simplegrasstextured (una textura).
 - Pendiente: revisar memoria (texturas >1K).
+
+## Integración de kits (hecho)
+- Bush_Small(+Flowers) de ultimate_nature en 25% de arbustos del matorral.
+- TwistedTree_1..5 (MegaKit): selva y bordes de claros misteriosos (island_terrain.gd).
+- Clover_2, Petals_4, Flower_3/4_Single en GROUND_KIT/GROUND_RULES (island_life.gd).
+- RockPath_*: senderos fijos de piedras planas desde cada claro hacia el centro (island_marks.gd `_make_stone_path`).
+- Verificado solo: arranca sin errores; senderos y retorcidos no inspeccionados de cerca.

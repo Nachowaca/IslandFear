@@ -34,6 +34,7 @@ func _ready() -> void:
 	_foot_mesh.material = _foot_mat
 	for c: Vector3 in terrain.eco.mystery_centers:
 		_make_clearing(c)
+		_make_stone_path(c)
 
 func _blob(edge: float) -> GradientTexture2D:
 	var gt := GradientTexture2D.new()
@@ -157,3 +158,28 @@ func _apply_feet(cl: Dictionary) -> void:
 			if ok:
 				mi.global_position = Vector3(pos2.x, y + 0.06, pos2.y)
 				mi.rotation = Vector3(0.0, yaw + sin(float(i * 2 + k)) * 0.15, 0.0)
+
+## Senderos de piedras planas que salen de cada claro hacia el centro de la isla (fijos, no dependen del jugador).
+func _make_stone_path(c: Vector3) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(absf(c.x) * 131.0 + absf(c.z) * 71.0) + 5
+	var dir: Vector2 = (Vector2.ZERO - Vector2(c.x, c.z)).normalized()
+	dir = dir.rotated(rng.randf_range(-0.5, 0.5))
+	var side: Vector2 = Vector2(-dir.y, dir.x)
+	var names: Array[String] = ["RockPath_Round_Small_1", "RockPath_Round_Small_2", "RockPath_Round_Small_3", "RockPath_Square_Small_1", "RockPath_Square_Small_2", "RockPath_Square_Small_3", "RockPath_Round_Thin", "RockPath_Square_Thin"]
+	var d: float = 5.5
+	while d < 30.0:
+		var wob: float = sin(d * 0.35 + c.x) * 1.2
+		var pos2: Vector2 = Vector2(c.x, c.z) + dir * d + side * wob
+		d += rng.randf_range(1.6, 2.6)
+		var y: float = terrain.height_at(pos2.x, pos2.y)
+		if y < 1.6 or terrain.is_in_pond_area(pos2.x, pos2.y, 1.5) or terrain.is_in_cave_area(pos2.x, pos2.y, 1.5):
+			continue
+		var nm: String = names[rng.randi() % names.size()]
+		if not NatureKit.exists(nm):
+			continue
+		var st: Node3D = NatureKit.make(nm, Color(0.85, 0.88, 0.9), 80.0)
+		st.position = Vector3(pos2.x, y - 0.03, pos2.y)
+		st.rotation.y = rng.randf() * TAU
+		st.scale = Vector3.ONE * rng.randf_range(0.9, 1.4)
+		add_child(st)

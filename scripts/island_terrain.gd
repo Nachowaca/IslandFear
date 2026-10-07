@@ -497,6 +497,10 @@ func _scatter_flora() -> void:
 		elif mix < birch_t * 2.0:
 			kit_name = "MapleTree_%d" % rng.randi_range(1, 5)
 			sc = rng.randf_range(0.8, 1.2)
+		var mys: float = eco.get_misterio(pos2)
+		if rng.randf() < 0.05 + 0.12 * bw[2] + 0.6 * mys:
+			kit_name = "TwistedTree_%d" % rng.randi_range(1, 5)      # árboles retorcidos: selva y bordes de los claros misteriosos
+			sc = rng.randf_range(0.9, 1.3)
 		if pos2.y > 7.0 and rng.randf() < 0.9:
 			kit_name = "PineTree_%d" % rng.randi_range(1, 5)
 			sc = rng.randf_range(1.5, 2.1)
@@ -571,7 +575,12 @@ func _scatter_flora() -> void:
 					mname = "Flower_3_Group" if rng.randf() < 0.5 else "Flower_4_Group"
 			if gi > 0 and rng.randf() < 0.2:
 				mname = "Fern_1" if sp != 1 else "Plant_1"      # algún vecino distinto
-			var b: Node3D = NatureKit.make(mname, bt, 110.0)
+			var b: Node3D
+			if sp == 0 and rng.randf() < 0.25:
+				var ub: String = "Bush_Small_Flowers" if has_flowers else "Bush_Small"
+				b = NatureKit.make_uq(ub, bt * Color(0.7, 0.8, 0.7), 110.0)
+			else:
+				b = NatureKit.make(mname, bt, 110.0)
 			b.position = gp - Vector3(0, 0.1, 0)
 			b.rotation.y = rng.randf() * TAU
 			var gsc: float = rng.randf_range(0.8, 1.4) * (1.0 if gi == 0 else rng.randf_range(0.7, 1.0))   # el del centro es el más grande
