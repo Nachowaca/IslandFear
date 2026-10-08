@@ -16,6 +16,8 @@ var _tint: Dictionary = {}               # modelo -> Color
 var _lamps: Array[Transform3D] = []
 var _halos: Array[Transform3D] = []
 var _fly_spots: Array[Vector3] = []
+var _mist_spots: Array[Vector3] = []
+var _mists: Array[CPUParticles3D] = []
 var _bulb_mat: StandardMaterial3D
 var _halo_mat: StandardMaterial3D
 var _flies: Array[CPUParticles3D] = []
@@ -41,6 +43,7 @@ func _ready() -> void:
 	_build_instances()
 	_build_lamps()
 	_build_flies()
+	_build_mist()
 	_player = get_tree().get_first_node_in_group("player") as Node3D
 
 func _make_table() -> Array:
@@ -130,6 +133,7 @@ func _decorate(pts: PackedVector2Array) -> void:
 		_tint[s] = Color(1.15, 1.0, 0.88)
 	var lamp_acc: float = _rng.randf() * 8.0
 	var fly_acc: float = _rng.randf() * 12.0
+	var mist_acc: float = _rng.randf() * 10.0
 	var tree_acc: float = _rng.randf() * 10.0
 	var side_flip: float = 1.0
 	for i in range(1, samples.size() - 1):
@@ -149,7 +153,7 @@ func _decorate(pts: PackedVector2Array) -> void:
 		# --- piedras: escalones en pendiente, laja suelta cerca de los destinos y en roca/árido
 		var stone_p: float = 0.0
 		if slope > 0.2:
-			stone_p = 0.75
+			stone_p = 0.95
 		elif dd < 28.0:
 			stone_p = 0.45
 		elif biome == 1 or biome == 5:
@@ -161,8 +165,12 @@ func _decorate(pts: PackedVector2Array) -> void:
 			var off: Vector2 = nrm * _rng.randf_range(-0.35, 0.35)
 			var sc: float = _rng.randf_range(1.0, 1.5)
 			_add(nm, Vector3(p.x + off.x, y - 0.03, p.y + off.y), yaw + _rng.randf_range(-0.2, 0.2), sc)
+			if slope > 0.2:                      # escalón real: segunda laja a un costado, a la misma altura
+				var nm2: String = stones[_rng.randi() % stones.size()]
+				var off2: Vector2 = nrm * _rng.randf_range(-0.9, 0.9) + tan2 * 0.5
+				_add(nm2, Vector3(p.x + off2.x, terrain.height_at(p.x + off2.x, p.y + off2.y) - 0.03, p.y + off2.y), yaw + _rng.randf_range(-0.25, 0.25), _rng.randf_range(1.0, 1.4))
 		# --- follaje a los costados (más denso cerca de los destinos)
-		var dens: float = 1.6 if dd < 30.0 else 1.0
+		var dens: float = 2.3 if dd < 30.0 else 1.5
 		if biome == 2:
 			dens *= 1.3
 		elif biome == 5 or biome == 0:
@@ -195,6 +203,11 @@ func _decorate(pts: PackedVector2Array) -> void:
 		if fly_acc <= 0.0:
 			fly_acc = 20.0 + _rng.randf_range(0.0, 8.0)
 			_fly_spots.append(Vector3(p.x, y + 1.3, p.y))
+		# --- bruma baja a ras del suelo
+		mist_acc -= STEP
+		if mist_acc <= 0.0:
+			mist_acc = 14.0 + _rng.randf_range(0.0, 8.0)
+			_mist_spots.append(Vector3(p.x, y + 0.25, p.y))
 		# --- algún árbol que cierra la copa (selva y bosque)
 		tree_acc -= STEP
 		if tree_acc <= 0.0:
@@ -345,6 +358,45 @@ func _build_flies() -> void:
 		root.add_child(pr)
 		_flies.append(pr)
 
+## Bruma baja: jirones suaves de niebla a ras del suelo a lo largo de los senderos.
+func _build_mist() -> void:
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	mat.albedo_texture = _radial(0.1)
+	mat.vertex_color_use_as_albedo = true
+	mat.disable_receive_shadows = true
+	var q := QuadMesh.new()
+	q.size = Vector2(4.0, 1.6)
+	q.material = mat
+	var root := Node3D.new()
+	root.name = "Bruma"
+	add_child(root)
+	for sp: Vector3 in _mist_spots:
+		var pr := CPUParticles3D.new()
+		pr.mesh = q
+		pr.amount = 5
+		pr.lifetime = 9.0
+		pr.preprocess = 9.0
+		pr.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+		pr.emission_sphere_radius = 2.6
+		pr.direction = Vector3(1, 0, 0)
+		pr.spread = 180.0
+		pr.gravity = Vector3.ZERO
+		pr.initial_velocity_min = 0.03
+		pr.initial_velocity_max = 0.15
+		pr.color = Color(0.85, 0.9, 0.95)
+		var ramp := Gradient.new()
+		ramp.colors = PackedColorArray([Color(1, 1, 1, 0.0), Color(1, 1, 1, 0.2), Color(1, 1, 1, 0.0)])
+		ramp.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+		pr.color_ramp = ramp
+		pr.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		pr.emitting = false
+		pr.position = sp
+		root.add_child(pr)
+		_mists.append(pr)
+
 func _process(delta: float) -> void:
 	_time += delta
 	if _bulb_mat == null and _flies.is_empty():
@@ -365,6 +417,8 @@ func _process(delta: float) -> void:
 		for pr: CPUParticles3D in _flies:
 			var near: bool = _player != null and pr.global_position.distance_to(_player.global_position) < 70.0
 			pr.emitting = near and night > 0.45
+		for ms: CPUParticles3D in _mists:
+			ms.emitting = _player != null and ms.global_position.distance_to(_player.global_position) < 60.0
 
 ## Las lajas del pack vienen azuladas: se les da un tono de piedra cálida con musgo.
 func _warm_stone(mmi: MultiMeshInstance3D) -> void:

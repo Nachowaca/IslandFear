@@ -12,9 +12,10 @@ const LEAF_TEX: Dictionary = {
 
 const LEAF_SHADER: Shader = preload("res://shaders/wind_leaf.gdshader")
 const WIND_PARAMS: Dictionary = {
-	"tree": {"sway": 0.16, "base_y": 2.2, "height_ref": 5.5, "flutter": 0.025, "speed": 1.1, "push": 0.0},
-	"bush": {"sway": 0.05, "base_y": 0.1, "height_ref": 1.5, "flutter": 0.02, "speed": 1.5, "push": 0.8},
-	"grass": {"sway": 0.07, "base_y": 0.05, "height_ref": 1.5, "flutter": 0.012, "speed": 1.8, "push": 1.0},
+	"tree": {"sway": 0.16, "base_y": 2.2, "height_ref": 5.5, "flutter": 0.025, "speed": 1.1, "push": 0.0, "near_fade": 3.0},
+	"bush": {"sway": 0.05, "base_y": 0.1, "height_ref": 1.5, "flutter": 0.02, "speed": 1.5, "push": 1.0, "reach": 1.1, "tall": 1.8},
+	"flower": {"sway": 0.06, "base_y": 0.05, "height_ref": 1.2, "flutter": 0.01, "speed": 1.5, "push": 1.0, "reach": 1.2, "tall": 1.4},
+	"grass": {"sway": 0.08, "base_y": 0.05, "height_ref": 1.5, "flutter": 0.012, "speed": 1.6, "push": 1.0, "reach": 1.1, "tall": 1.8},
 }
 
 static var _scenes: Dictionary = {}
@@ -108,12 +109,12 @@ static func _fixed(m: Material, tint: Color, kind: String = "") -> Material:
 			sm.albedo_color = _bark_tone(tint, false)
 		out = sm
 		# follaje con viento: mismo aspecto pero con balanceo (solo hojas y pastos, no flores ni corteza)
-		var is_foliage: bool = LEAF_TEX.has(m.resource_name) or m.resource_name == "Grass" or m.resource_name == "Leaves"
+		var is_foliage: bool = LEAF_TEX.has(m.resource_name) or m.resource_name == "Grass" or m.resource_name == "Leaves" or m.resource_name == "Flowers"
 		if is_foliage and kind != "" and sm.albedo_texture != null:
 			var sh: ShaderMaterial = ShaderMaterial.new()
 			sh.shader = LEAF_SHADER
 			sh.set_shader_parameter("albedo_tex", sm.albedo_texture)
-			sh.set_shader_parameter("tint", tint)
+			sh.set_shader_parameter("tint", tint if m.resource_name != "Flowers" else Color.WHITE)
 			var pr: Dictionary = WIND_PARAMS[kind]
 			for k: String in pr.keys():
 				sh.set_shader_parameter(k, pr[k])
@@ -128,6 +129,8 @@ static func _kind(model: String) -> String:
 		return "tree"
 	if model.begins_with("Bush"):
 		return "bush"
+	if model.begins_with("Flower"):
+		return "flower"
 	if model.begins_with("Grass") or model.begins_with("Fern") or model.begins_with("Plant") or model.begins_with("Clover"):
 		return "grass"
 	return ""
@@ -157,7 +160,8 @@ static func _bark_tone(tint: Color, birch: bool) -> Color:
 ## Instancia un modelo del pack Ultimate Stylized Nature. Los de `FBX/` (palmeras, rocas…) están en centímetros
 ## (el nodo ya trae escala 100); los de `glTF/` (abedul, arce, arbustos, flores…) en metros.
 ## Texturas y viento se asignan acá porque el FBX no las enlaza.
-static func make_uq(model: String, tint: Color = Color.WHITE, vis_end: float = 0.0) -> Node3D:
+## `shape` solo para rocas: 0 = redondeada, 1 = normal, 2 = de pico fino (alta y afilada).
+static func make_uq(model: String, tint: Color = Color.WHITE, vis_end: float = 0.0, shape: int = 1) -> Node3D:
 	var ps: PackedScene = _scenes.get("uq:" + model)
 	var fbx: bool = ResourceLoader.exists(UQ_DIR + "FBX/" + model + ".fbx")
 	if ps == null:
@@ -165,31 +169,51 @@ static func make_uq(model: String, tint: Color = Color.WHITE, vis_end: float = 0
 		_scenes["uq:" + model] = ps
 	var n: Node3D = ps.instantiate() as Node3D
 	if model.begins_with("Rock_"):
-		_soften_rocks(n, model)
+		_soften_rocks(n, model, shape)
 	_uq_fix(n, tint, vis_end, fbx, _kind(model))
 	return n
 
 static var _soft_meshes: Dictionary = {}
 
-## Redondea las rocas del pack: promedia las normales de los vértices que comparten posición (queda facetado leve, no cristal).
-static func _soften_rocks(n: Node, model: String) -> void:
+## Da forma a las rocas del pack: redondeadas (normales promediadas, algo achatadas), normales (suavizado leve)
+## o de pico fino (alargadas y afiladas hacia arriba, casi facetadas).
+static func _soften_rocks(n: Node, model: String, shape: int = 1) -> void:
 	if n is MeshInstance3D:
 		var mi: MeshInstance3D = n as MeshInstance3D
 		if mi.mesh != null:
-			var key: String = model + "|" + str(mi.mesh.get_rid().get_id())
+			var key: String = model + "|" + str(mi.mesh.get_rid().get_id()) + "|" + str(shape)
 			if not _soft_meshes.has(key):
-				_soft_meshes[key] = _smooth_mesh(mi.mesh, 0.7)
+				var am: float = 1.0 if shape == 0 else (0.15 if shape == 2 else 0.7)
+				_soft_meshes[key] = _smooth_mesh(mi.mesh, am, shape)
 			mi.mesh = _soft_meshes[key]
 	for c in n.get_children():
-		_soften_rocks(c, model)
+		_soften_rocks(c, model, shape)
 
-static func _smooth_mesh(src: Mesh, amount: float) -> Mesh:
+static func _smooth_mesh(src: Mesh, amount: float, shape: int = 1) -> Mesh:
 	var out := ArrayMesh.new()
 	var q: float = maxf(src.get_aabb().size.length() * 0.002, 0.00001)
 	for si in src.get_surface_count():
 		var arr: Array = src.surface_get_arrays(si)
 		var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
 		var nrm: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+		if shape != 1 and verts.size() > 0:
+			var bb: AABB = src.get_aabb()
+			var hh: float = maxf(bb.size.y, 0.0001)
+			for vi in verts.size():
+				var v: Vector3 = verts[vi]
+				var t: float = clampf((v.y - bb.position.y) / hh, 0.0, 1.0)
+				if shape == 2:
+					var pin: float = lerpf(1.0, 0.12, pow(t, 1.4))     # se afina hacia la punta
+					v.x = (v.x - bb.get_center().x) * pin * 0.8 + bb.get_center().x
+					v.z = (v.z - bb.get_center().z) * pin * 0.8 + bb.get_center().z
+					v.y = bb.position.y + (v.y - bb.position.y) * 1.9
+				else:
+					var sq: float = lerpf(1.0, 0.82, t)               # coronilla redonda y baja
+					v.x = (v.x - bb.get_center().x) * 1.12 * sq + bb.get_center().x
+					v.z = (v.z - bb.get_center().z) * 1.12 * sq + bb.get_center().z
+					v.y = bb.position.y + (v.y - bb.position.y) * 0.78
+				verts[vi] = v
+			arr[Mesh.ARRAY_VERTEX] = verts
 		if nrm.size() == verts.size() and verts.size() > 0:
 			var sums: Dictionary = {}
 			for i in verts.size():
@@ -244,6 +268,9 @@ static func _uq_mat(nm: String, tint: Color, fbx: bool, kind: String) -> Materia
 		sh.set_shader_parameter("flutter", pr["flutter"])
 		sh.set_shader_parameter("speed", pr["speed"])
 		sh.set_shader_parameter("push", pr["push"])
+		sh.set_shader_parameter("reach", pr.get("reach", 1.0))
+		sh.set_shader_parameter("tall", pr.get("tall", 1.0))
+		sh.set_shader_parameter("near_fade", pr.get("near_fade", 0.0))
 		Wind.register(sh)
 		out = sh
 	elif nm == "Flowers":
@@ -253,6 +280,15 @@ static func _uq_mat(nm: String, tint: Color, fbx: bool, kind: String) -> Materia
 		sf.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 		sf.roughness = 1.0
 		out = sf
+		if kind == "flower":
+			var sh2 := ShaderMaterial.new()
+			sh2.shader = LEAF_SHADER
+			sh2.set_shader_parameter("albedo_tex", sf.albedo_texture)
+			var pf: Dictionary = WIND_PARAMS["flower"]
+			for k2: String in pf.keys():
+				sh2.set_shader_parameter(k2, pf[k2])
+			Wind.register(sh2)
+			out = sh2
 	elif nm == "Rock":
 		var sr := ShaderMaterial.new()
 		sr.shader = ROCK_SHADER

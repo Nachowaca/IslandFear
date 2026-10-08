@@ -13,13 +13,16 @@ uniform float flutter = 0.0;
 uniform vec2 wind_dir = vec2(1.0, 0.4);
 uniform float gust_strength = 1.0;
 uniform float push = 1.0;          // reacción al roce del jugador (0 = árboles)
+uniform float reach = 1.0;         // alcance del roce (plantas altas o anchas > 1)
+uniform float tall = 1.0;          // cuanto sigue creciendo el balanceo por encima de height_ref (plantas altas)
+uniform float near_fade = 0.0;     // follaje que desaparece (con trama) cerca de la cámara; 0 = apagado
 uniform float mood = 0.0;          // ánimo de la isla: -1 tensa/enojada … +1 serena (muy sutil)
 
 void vertex() {
 	vec3 wp = MODEL_MATRIX[3].xyz;
-	float h = clamp((VERTEX.y - base_y) / height_ref, 0.0, 1.0);
+	float h = clamp((VERTEX.y - base_y) / height_ref, 0.0, tall);
 	h *= h;
-	float phase = dot(wp.xz, normalize(wind_dir)) * 0.18;
+	float phase = dot(wp.xz, normalize(wind_dir)) * 0.18 + fract(sin(dot(wp.xz, vec2(12.9898, 78.233))) * 43758.5453) * 1.6;
 	float gust = 0.55 + 0.45 * sin(TIME * 0.35 + phase * 0.5);
 	float tension = max(-mood, 0.0);
 	float calm = max(mood, 0.0);
@@ -29,12 +32,20 @@ void vertex() {
 	vec3 off = vec3(wind_dir.x, 0.0, wind_dir.y) * g * sway * h * gust * gust_strength * expo * (1.0 + tension * 0.7 - calm * 0.2);
 	off += vec3(sin(TIME * 5.0 + wp.x * 3.0 + VERTEX.x * 6.0), 0.3 * sin(TIME * 4.0 + wp.z * 3.0), cos(TIME * 6.0 + wp.z * 3.0 + VERTEX.z * 6.0)) * (flutter + tension * 0.018) * h;
 	float hk = clamp((VERTEX.y - base_y) / max(height_ref, 0.01), 0.0, 1.0);
-	off += foliage_push(wp, sqrt(hk), push);
+	vec3 vwp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	off += foliage_push_v(wp, vwp, sqrt(hk), push, reach);
 	VERTEX += (inverse(mat3(MODEL_MATRIX)) * off);
 }
 
 void fragment() {
 	vec4 t = texture(albedo_tex, UV);
+	if (near_fade > 0.0) {
+		float fd = smoothstep(near_fade * 0.35, near_fade, length(VERTEX));
+		float nz = fract(52.9829189 * fract(dot(FRAGCOORD.xy, vec2(0.06711056, 0.00583715))));
+		if (fd < nz) {
+			discard;
+		}
+	}
 	vec3 c = t.rgb * tint.rgb;
 	float tn = max(-mood, 0.0);
 	float cm = max(mood, 0.0);

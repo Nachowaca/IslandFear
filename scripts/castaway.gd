@@ -225,7 +225,7 @@ func _emit_step(power: float) -> void:
 	_step_fx.emitting = true
 
 func _ready() -> void:
-	_cam_shape.radius = 0.35
+	_cam_shape.radius = 0.55
 	_camera.near = 0.2      # near/far más cerrados: los clusters de luces se parten mejor (evita bloques con luces cercanas)
 	_camera.far = 1200.0
 	add_to_group("player")

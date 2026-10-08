@@ -25,8 +25,8 @@ Inventario="*res://scripts/inventario.gd"
 window/size/viewport_width=1920.0
 window/size/viewport_height=1080.0
 window/size/mode=3.0
-window/size/window_width_override=1280.0
-window/size/window_height_override=720.0
+window/size/window_width_override=1920.0
+window/size/window_height_override=1080.0
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 

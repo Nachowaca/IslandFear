@@ -602,7 +602,7 @@ func _avivar() -> void:
 	Inventario.quitar_en(Inventario.seleccionado, 1)
 	_fire.add_fuel(float(FUEL_SECONDS[id]))
 	_sonido("crack", _fire.global_position, -8.0)
-	ui.message("Echás %s al fuego." % ItemDB.display_name(id).to_lower())
+	ui.message("Echás %s al fuego. Fogata al %d %%." % [ItemDB.display_name(id).to_lower(), roundi(_fire.durability())])
 
 # ------------------------------------------------------------------ investigar
 
@@ -622,7 +622,7 @@ func _investigar() -> void:
 		texto = ("Una tumba tallada. " if _stela.is_tomb else "Una piedra con marcas talladas por alguien que llegó antes que vos. ") + "Dice: «%s»" % linea
 		pos = _stela.global_position
 	elif _fire != null:
-		texto = "Una fogata. Da luz y calor, y se apaga si no le echás leña." + (" Todavía arde." if _fire.is_burning() else " Ya no arde: solo quedan brasas.")
+		texto = "Una fogata. Da luz y calor, y se apaga si no le echás leña." + (" Todavía arde (durabilidad %d %%)." % roundi(_fire.durability()) if _fire.is_burning() else " Ya no arde: solo quedan brasas.")
 	elif _plant != null:
 		var es_palma: bool = terrain.palm_nodes.has(_plant)
 		if es_palma:

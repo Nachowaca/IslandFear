@@ -40,6 +40,7 @@ var _shroom_mats: Array[StandardMaterial3D] = []
 var _night: float = 0.0
 var _time: float = 0.0
 var heart_pos: Vector3 = Vector3.ZERO
+var wreck_pos: Vector3 = Vector3(0, -100, 0)
 
 func _ready() -> void:
 	_rng.seed = 4242
@@ -47,6 +48,7 @@ func _ready() -> void:
 	_build_standing_stones()
 	_build_giant_tree()
 	_build_shipwreck()
+	_build_wreck_trail()
 	_build_cairns()
 	_build_mushroom_rings()
 
@@ -211,11 +213,11 @@ func _build_cave_rock(c2: Vector2, d2: Vector2) -> void:
 	nz2.seed = 77
 	nz2.frequency = 0.7
 	var side: Vector2 = Vector2(-d2.y, d2.x)
-	var seg: int = 32
+	var seg: int = 64
 	var L: float = CAVE_LEN
 	var inner: Array = []
 	var outer: Array = []
-	var n_in: int = 48
+	var n_in: int = 72
 	for k in n_in + 1:
 		var a: float = lerpf(-4.8, L, float(k) / float(n_in))
 		var wi: float
@@ -241,7 +243,7 @@ func _build_cave_rock(c2: Vector2, d2: Vector2) -> void:
 			pt += Vector3(nz.get_noise_3d(pt.x, pt.y, pt.z), nz.get_noise_3d(pt.x + 50.0, pt.y, pt.z), nz.get_noise_3d(pt.x, pt.y, pt.z + 50.0)) * amp
 			ring.append(pt)
 		inner.append(ring)
-	var n_out: int = 50
+	var n_out: int = 100
 	for k in n_out + 1:
 		var a2: float = lerpf(-8.0, L, float(k) / float(n_out))
 		var wo: float
@@ -267,8 +269,8 @@ func _build_cave_rock(c2: Vector2, d2: Vector2) -> void:
 			var yb: float = lerpf(yl, yr, float(j) / float(seg))
 			var pt2: Vector3 = Vector3(q2.x, yb + ho * pow(sn2, 0.8), q2.y)
 			var amp2: float = 0.4 + 1.3 * sn2
-			pt2 += Vector3(nz.get_noise_3d(pt2.x, pt2.y, pt2.z), nz.get_noise_3d(pt2.x + 50.0, pt2.y, pt2.z), nz.get_noise_3d(pt2.x, pt2.y, pt2.z + 50.0)) * amp2 * 2.0
-			pt2 += Vector3(nz2.get_noise_3d(pt2.x, pt2.y, pt2.z), 0.0, nz2.get_noise_3d(pt2.x, pt2.y + 9.0, pt2.z)) * 0.5 * sn2
+			pt2 += Vector3(nz.get_noise_3d(pt2.x, pt2.y, pt2.z), nz.get_noise_3d(pt2.x + 50.0, pt2.y, pt2.z), nz.get_noise_3d(pt2.x, pt2.y, pt2.z + 50.0)) * amp2 * 1.3
+			pt2 += Vector3(nz2.get_noise_3d(pt2.x, pt2.y, pt2.z), 0.0, nz2.get_noise_3d(pt2.x, pt2.y + 9.0, pt2.z)) * 0.2 * sn2
 			ring2.append(pt2)
 		outer.append(ring2)
 
@@ -333,7 +335,7 @@ func _cave_quad(cd: Dictionary, p0: Vector3, p1: Vector3, p2: Vector3, p3: Vecto
 			var out_dir: Vector3 = Vector3(cen.x - c2.x, cen.y - cave_center.y - 2.0, cen.z - c2.y)
 			if nn.dot(out_dir) < 0.0:
 				nn = -nn
-			colr = Color(0.27, 0.27, 0.30) * (0.93 + hv * 0.14)
+			colr = Color(0.20, 0.19, 0.19) * (0.93 + hv * 0.14)
 			var moss: float = smoothstep(0.62, 0.85, nn.y) * smoothstep(cave_center.y + 1.5, cave_center.y + 4.5, cen.y)
 			colr = colr.lerp(Color(0.18, 0.30, 0.12), moss * 0.85)
 		else:
@@ -522,6 +524,22 @@ func _build_shipwreck() -> void:
 	var chest := BoxMesh.new()
 	chest.size = Vector3(0.9, 0.55, 0.6)
 	_mi(holder, chest, _mat(Color(0.35, 0.22, 0.12)), Vector3(1.6, 0.28, -1.8), Vector3(0, 0.5, 0.08))
+	# tablas del casco que quedan paradas, una vela rota colgando del mástil y musgo
+	for i in 5:
+		var up := BoxMesh.new()
+		up.size = Vector3(0.14, _rng.randf_range(0.8, 1.7), 0.5)
+		var sgn: float = -1.0 if i % 2 == 0 else 1.0
+		_mi(holder, up, wood, Vector3(sgn * _rng.randf_range(0.9, 1.3), 0.5, -2.2 + float(i) * 1.1), Vector3(_rng.randf_range(-0.2, 0.2), _rng.randf_range(-0.15, 0.15), sgn * _rng.randf_range(0.1, 0.35)))
+	var sail := QuadMesh.new()
+	sail.size = Vector2(1.6, 1.9)
+	var sail_mat: StandardMaterial3D = _mat(Color(0.72, 0.66, 0.52))
+	_mi(holder, sail, sail_mat, Vector3(2.3, 0.7, 1.0), Vector3(0.2, 0.5, 0.15))
+	var moss: StandardMaterial3D = _mat(Color(0.2, 0.34, 0.14))
+	for i in 6:
+		var mp := BoxMesh.new()
+		mp.size = Vector3(_rng.randf_range(0.4, 0.8), 0.04, _rng.randf_range(0.3, 0.6))
+		_mi(holder, mp, moss, Vector3(_rng.randf_range(-1.2, 1.2), 0.62, _rng.randf_range(-2.5, 2.5)), Vector3(0, _rng.randf() * TAU, 0))
+	wreck_pos = p
 	_solid(_sphere_shape(0.9), p + Vector3(0, 0.6, 0))
 	for i in 2:
 		var it := WorldItem.new()
@@ -532,6 +550,48 @@ func _build_shipwreck() -> void:
 		it.position = p + Vector3(_rng.randf_range(-2.0, 2.0), 0.2, _rng.randf_range(-2.0, 2.0))
 		add_child(it)
 	sacred_spots.append({"name": "Naufragio", "pos": p, "radius": 5.0, "kind": "wreck"})
+
+## Senda de lajas de piedra desde el naufragio hasta el árbol corazón: los que llegaron antes caminaron hacia él.
+func _build_wreck_trail() -> void:
+	var life: Node = terrain.get_node_or_null("Life")
+	if life == null or wreck_pos.y < -90.0:
+		return
+	var hp: Vector3 = life.get("heart_tree_pos")
+	if hp.y < -90.0:
+		return
+	var a: Vector2 = Vector2(wreck_pos.x, wreck_pos.z)
+	var b: Vector2 = Vector2(hp.x, hp.z)
+	var total: float = a.distance_to(b)
+	if total < 6.0:
+		return
+	var dir: Vector2 = (b - a) / total
+	var side: Vector2 = Vector2(-dir.y, dir.x)
+	var stones: Array[String] = ["RockPath_Round_Small_1", "RockPath_Round_Small_2", "RockPath_Square_Small_1", "RockPath_Square_Small_2", "RockPath_Round_Wide", "RockPath_Square_Wide"]
+	var xf: Dictionary = {}
+	var d: float = 3.0
+	var phase: float = _rng.randf() * TAU
+	var placed: int = 0
+	while d < total - 4.0:
+		var q: Vector2 = a + dir * d + side * sin(d * 0.07 + phase) * 4.0
+		var y: float = terrain.height_at(q.x, q.y)
+		d += _rng.randf_range(1.5, 2.4)
+		if y < 1.2 or y > 14.0 or terrain.is_in_pond_area(q.x, q.y, 1.1) or terrain.is_in_cave_area(q.x, q.y, 1.0):
+			continue
+		var nm: String = stones[_rng.randi() % stones.size()]
+		if not xf.has(nm):
+			xf[nm] = [] as Array[Transform3D]
+		var off: Vector2 = side * _rng.randf_range(-0.3, 0.3)
+		var bs: Basis = Basis(Vector3.UP, _rng.randf() * TAU).scaled(Vector3.ONE * _rng.randf_range(1.0, 1.5))
+		(xf[nm] as Array[Transform3D]).append(Transform3D(bs, Vector3(q.x + off.x, y - 0.03, q.y + off.y)))
+		placed += 1
+	for nm: String in xf.keys():
+		if not NatureKit.exists(nm):
+			continue
+		var arr: Array[Transform3D] = xf[nm]
+		var mmi: MultiMeshInstance3D = NatureKit.multi(nm, arr, 90.0, Color(1.55, 1.2, 0.85), false)
+		if mmi != null:
+			mmi.name = "SendaNaufragio"
+			add_child(mmi)
 
 # ------------------------------------------------------------------ elementos aleatorios
 

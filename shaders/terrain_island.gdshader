@@ -158,6 +158,25 @@ void fragment() {
 	float litter = smoothstep(0.62, 0.8, lit_n) * (1.0 - w_sand) * (1.0 - w_rock) * (0.35 + w_dirt * 0.65);
 	vec3 litter_col = mix(vec3(0.34, 0.24, 0.12), vec3(0.5, 0.36, 0.14), vnoise(uv * 3.1));
 	col = mix(col, litter_col, litter * 0.38);
+	// hojas caídas: motas sueltas de colores otoñales, una por celda, más en bosque y tierra
+	vec2 lc = uv * 9.0;
+	vec2 li = floor(lc);
+	vec2 lf = fract(lc) - 0.5;
+	float lh = hash(li);
+	vec2 loff = (vec2(hash(li + 7.1), hash(li + 13.7)) - 0.5) * 0.5;
+	float la = lh * 6.2832;
+	vec2 lr = vec2(cos(la) * (lf.x - loff.x) + sin(la) * (lf.y - loff.y), -sin(la) * (lf.x - loff.x) + cos(la) * (lf.y - loff.y));
+	float leaf = (1.0 - smoothstep(0.5, 1.0, length(lr * vec2(1.0, 2.6)) / 0.2)) * step(0.55, hash(li + 3.3));
+	leaf *= (1.0 - w_sand) * (1.0 - w_rock) * (0.3 + w_dirt * 0.5 + (1.0 - g_only) * 0.4);
+	vec3 leaf_col = mix(vec3(0.55, 0.3, 0.08), vec3(0.42, 0.42, 0.1), step(0.5, hash(li + 9.9)));
+	leaf_col = mix(leaf_col, vec3(0.5, 0.14, 0.07), step(0.8, hash(li + 21.0)));
+	col = mix(col, leaf_col * (0.8 + 0.4 * hash(li + 5.0)), leaf * 0.75);
+	// barro: charcos oscuros y húmedos en las partes bajas y cerca de senderos
+	float mud_n = fbm(uv * 0.5 + 200.0) * 0.65 + vnoise(uv * 2.5) * 0.35;
+	float mud = smoothstep(0.6, 0.72, mud_n) * (1.0 - w_sand) * (1.0 - w_rock) * (1.0 - smoothstep(1.5, 5.0, h)) * (0.4 + path * 0.6);
+	col = mix(col, vec3(0.2, 0.14, 0.09) * (0.85 + 0.3 * vnoise(uv * 8.0)), mud * 0.8);
+	// manchas oscuras de humedad/humus
+	col *= 1.0 - smoothstep(0.55, 0.8, vnoise(uv * 1.3 + 60.0)) * 0.12 * (1.0 - w_sand);
 	float grime = smoothstep(0.5, 0.85, fbm(uv * 0.35 + 90.0)) * (1.0 - w_sand) * (1.0 - w_rock);
 	col *= 1.0 - grime * 0.14;
 	// estilo pintado: pinceladas anchas que aplanan levemente el tono (sin posterizar duro)
@@ -185,6 +204,6 @@ void fragment() {
 	NORMAL = normalize((VIEW_MATRIX * vec4(pn, 0.0)).xyz);
 
 	ALBEDO = col;
-	ROUGHNESS = mix(0.95, 0.55, wet * w_sand);
+	ROUGHNESS = mix(mix(0.95, 0.55, wet * w_sand), 0.4, mud);
 	SPECULAR = 0.25;
 }

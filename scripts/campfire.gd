@@ -15,8 +15,11 @@ var _smoke: CPUParticles3D
 var _embers: MeshInstance3D
 var _model: Node3D                     ## fogata con llama animada (encendida)
 var _dead: Array[Node3D] = []          ## piedras y leños simples (apagada)
-const FIRE_SCALE: float = 0.2
-const FIRE_SCENE: PackedScene = preload("res://assets/cozy_campfire/cozy_campfire.glb")
+const LOWPOLY_SCENE: PackedScene = preload("res://assets/campfire/low_poly_campfire.glb")
+const LOWPOLY_SCALE: float = 0.15
+var _flame_nodes: Array[Node3D] = []
+var _fk: float = 0.0                   ## nivel de la llama 0..1 (animación de encendido y de apagado)
+const FLAME_H: float = 0.8             ## altura de las llamas respecto del modelo (más recogidas)
 var _t: float = 0.0
 var _ember_left: float = EMBER_TIME
 var _crackle: float = 2.0
@@ -66,15 +69,24 @@ func _build() -> void:
 		mi2.rotation = Vector3(PI / 2.0 - 0.25, float(i) * 1.05, 0)
 		add_child(mi2)
 		_dead.append(mi2)
-	# modelo con llama animada
-	_model = FIRE_SCENE.instantiate() as Node3D
-	_model.scale = Vector3.ONE * FIRE_SCALE
+	_model = LOWPOLY_SCENE.instantiate() as Node3D
+	var dirt: Node = _model.find_child("polySurface7", true, false)
+	if dirt != null:
+		dirt.get_parent().remove_child(dirt)
+		dirt.free()
+	var stone_mat := StandardMaterial3D.new()          # piedras más claras: el original se ve casi negro sobre el pasto
+	stone_mat.albedo_color = Color(0.5, 0.48, 0.45)
+	stone_mat.roughness = 1.0
+	for rk: Node in _model.find_children("*_rock_*", "MeshInstance3D", true, false):
+		(rk as MeshInstance3D).material_override = stone_mat
+	for mi3: Node in _model.find_children("*fire*", "MeshInstance3D", true, false):
+		_flame_nodes.append(mi3.get_parent() as Node3D)
+	_model.scale = Vector3.ONE * LOWPOLY_SCALE
+	_model.position = Vector3(0, 0.11, 0)
 	add_child(_model)
-	var ap: AnimationPlayer = _model.find_child("AnimationPlayer", true, false) as AnimationPlayer
-	if ap != null and ap.has_animation("MorphBake"):
-		ap.get_animation("MorphBake").loop_mode = Animation.LOOP_LINEAR
-		ap.play("MorphBake")
-		ap.speed_scale = _rng.randf_range(0.9, 1.1)
+	_build_rest()
+
+func _build_rest() -> void:
 	# brasas (brillan cuando queda poco fuego)
 	var e := SphereMesh.new()
 	e.radius = 0.28
@@ -209,39 +221,53 @@ func add_fuel(seconds: float) -> void:
 func is_burning() -> bool:
 	return fuel > 0.0
 
+## Durabilidad del fuego de 0 a 100 (100 = tanque lleno de leña).
+func durability() -> float:
+	return clampf(fuel / MAX_FUEL * 100.0, 0.0, 100.0)
+
 func _process(delta: float) -> void:
 	_t += delta
 	var burning: bool = fuel > 0.0
+	var target: float = 0.0
 	if burning:
 		fuel = maxf(fuel - delta, 0.0)
-		var k: float = clampf(fuel / 25.0, 0.25, 1.0)              # se achica al final
-		_flames.emitting = true
-		_flames.scale_amount_min = 0.5 * k
-		_flames.scale_amount_max = 1.2 * k
-		_smoke.emitting = true
-		_light.light_energy = (1.4 + 0.35 * sin(_t * 17.0) + 0.2 * sin(_t * 31.0 + 1.3)) * k
-		_light.omni_range = 14.0 * (0.6 + 0.4 * k)
-		_halo.visible = true
-		_halo.scale = Vector3.ONE * k * (1.0 + 0.06 * sin(_t * 13.0))
-		_embers.visible = false
-		_model.visible = true
-		for d: Node3D in _dead:
-			d.visible = false
+		var dk: float = lerpf(0.4, 1.0, durability() / 100.0)      # más leña, llama más alta
+		target = dk * clampf(fuel / 25.0, 0.3, 1.0)               # se achica al final
 		_crackle -= delta
 		if _crackle <= 0.0:
 			_crackle = _rng.randf_range(1.5, 5.0)
 			AudioManager.play(get_tree(), "crack", global_position, -16.0)
-	else:
-		_flames.emitting = false
-		_smoke.emitting = _ember_left > 0.0 and _smoke.emitting
+	# la llama crece al encender o echar leña (rápido) y se apaga despacio (animación de consumirse)
+	var rate: float = 0.9 if target > _fk else 0.45
+	var was: float = _fk
+	_fk = move_toward(_fk, target, rate * delta)
+	var dying: bool = not burning and _fk > 0.02
+	if dying and was > _fk and not _smoke.emitting:
+		_smoke.emitting = true
+	_smoke.speed_scale = 1.8 if dying else 1.0
+	_flames.emitting = false
+	_smoke.emitting = _fk > 0.03 or (_ember_left > 0.0 and not burning and _smoke.emitting)
+	if not burning and _fk <= 0.02:
 		_ember_left = maxf(_ember_left - delta, 0.0)
-		var glow: float = clampf(_ember_left / EMBER_TIME, 0.0, 1.0)
-		_light.light_energy = 0.5 * glow * (0.8 + 0.2 * sin(_t * 5.0))
-		_halo.visible = false
-		_model.visible = false
-		for d2: Node3D in _dead:
-			d2.visible = true
-		_embers.visible = glow > 0.02
-		(_embers.material_override as StandardMaterial3D).albedo_color = Color(0.9 * glow + 0.1, 0.2 * glow, 0.04)
-		if glow <= 0.0:
-			_smoke.emitting = false
+	var glow: float = clampf(_ember_left / EMBER_TIME, 0.0, 1.0) if not burning else 0.0
+	var fl: float = 1.4 + 0.35 * sin(_t * 17.0) + 0.2 * sin(_t * 31.0 + 1.3)
+	if dying:
+		fl *= 0.8 + 0.2 * sin(_t * 33.0)                         # titila al morir
+	_light.light_energy = maxf(fl * _fk, 0.5 * glow * (0.8 + 0.2 * sin(_t * 5.0)))
+	_light.omni_range = 14.0 * (0.6 + 0.4 * _fk)
+	_halo.visible = _fk > 0.02
+	_halo.scale = Vector3.ONE * maxf(_fk, 0.01) * (1.0 + 0.06 * sin(_t * 13.0))
+	_embers.visible = glow > 0.02 or (dying and _fk < 0.5)
+	var eg: float = maxf(glow, 1.0 - _fk * 2.0 if dying else 0.0)
+	(_embers.material_override as StandardMaterial3D).albedo_color = Color(0.9 * eg + 0.1, 0.2 * eg, 0.04)
+	for d: Node3D in _dead:
+		d.visible = false
+	for i in _flame_nodes.size():
+		var fn: Node3D = _flame_nodes[i]
+		fn.visible = _fk > 0.03
+		var ph: float = float(i) * 1.7
+		var wob: float = 1.0 + 0.1 * sin(_t * 7.0 + ph * 1.3) + 0.05 * sin(_t * 19.0 + ph)
+		if dying:
+			wob *= 0.85 + 0.15 * sin(_t * 30.0 + ph)
+		var wd: float = lerpf(0.5, 1.0, _fk)
+		fn.scale = Vector3((1.0 + 0.05 * sin(_t * 9.0 + ph)) * wd, wob * _fk * FLAME_H, (1.0 + 0.05 * cos(_t * 8.0 + ph)) * wd)

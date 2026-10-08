@@ -715,19 +715,29 @@ func _scatter_flora() -> void:
 				continue
 		var uq_rock: bool = true
 		var ridx: int = rng.randi_range(1, 5)
-		var r: Node3D = NatureKit.make_uq("Rock_%d" % ridx, NatureKit.rock_tint(rng), 140.0)
+		var rshape: int = _rock_shape(rng, 0.25)
+		var r: Node3D = NatureKit.make_uq("Rock_%d" % ridx, NatureKit.rock_tint(rng), 140.0, rshape)
 		if _near_path(pos4.x, pos4.z, 1.0):
 			r.free()
 			continue
 		r.position = pos4 - Vector3(0, 0.15, 0)
 		r.rotation.y = rng.randf() * TAU
-		r.scale = Vector3.ONE * (rng.randf_range(0.3, 0.8) if talus else rng.randf_range(0.25, 0.6))
+		r.rotation = Vector3(rng.randf_range(-0.2, 0.2) if rshape != 2 else rng.randf_range(-0.1, 0.1), r.rotation.y, rng.randf_range(-0.2, 0.2) if rshape != 2 else rng.randf_range(-0.1, 0.1))
+		var rs: float = rng.randf_range(0.3, 0.8) if talus else rng.randf_range(0.25, 0.6)
+		r.scale = Vector3(rs * rng.randf_range(0.7, 1.4), rs * rng.randf_range(0.7, 1.35), rs * rng.randf_range(0.7, 1.4))
 		if uq_rock:
 			r.scale *= 3.0
 		_flora.add_child(r)
-		_add_rock_body(r, ridx)
+		_add_rock_body(r, ridx * 10 + rshape)
 		made += 1
 	_add_rock_clusters(rng)
+
+## Forma de una roca: 0 redondeada, 1 normal, 2 de pico fino. `spike` = probabilidad de pico.
+func _rock_shape(rng: RandomNumberGenerator, spike: float) -> int:
+	var roll: float = rng.randf()
+	if roll < spike:
+		return 2
+	return 0 if roll < spike + (1.0 - spike) * 0.5 else 1
 
 ## Grupos de rocas grandes (una peña + satélites): en la costa y en las lomas, como en las referencias.
 func _add_rock_clusters(rng: RandomNumberGenerator) -> void:
@@ -751,7 +761,8 @@ func _add_rock_clusters(rng: RandomNumberGenerator) -> void:
 			if gy < 0.3:
 				continue
 			var cidx: int = rng.randi_range(1, 5)
-			var r: Node3D = NatureKit.make_uq("Rock_%d" % cidx, NatureKit.rock_tint(rng), 200.0)
+			var cshape: int = _rock_shape(rng, 0.1 if big else 0.4)
+			var r: Node3D = NatureKit.make_uq("Rock_%d" % cidx, NatureKit.rock_tint(rng), 200.0, cshape)
 			r.position = Vector3(gx, gy - 0.3, gz)
 			r.rotation = Vector3(rng.randf_range(-0.12, 0.12), rng.randf() * TAU, rng.randf_range(-0.12, 0.12))
 			var sc: float = rng.randf_range(1.7, 2.7) if big else rng.randf_range(0.5, 1.2)
@@ -760,7 +771,7 @@ func _add_rock_clusters(rng: RandomNumberGenerator) -> void:
 				r.free()
 				continue
 			_flora.add_child(r)
-			_add_rock_body(r, cidx)
+			_add_rock_body(r, cidx * 10 + cshape)
 		clusters += 1
 
 ## Árbol individual (talable): visual, colisión, lianas (solo los vivos) y registro en las listas.

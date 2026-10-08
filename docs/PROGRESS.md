@@ -323,3 +323,15 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - BIOME_PLANTS: plantas medianas por bioma (~3000, MultiMesh). RIVER_PLANTS: juncos/helechos/treboles en las orillas del rio (_spawn_river_banks).
 - Fogatas del mapa usan cozy_campfire.glb. Pendiente: campfire.gd (la del jugador) con ese modelo.
 - No medido: fps con estas capas, de noche, a pie.
+
+
+## Retoques visuales (sesión reciente)
+- Roca de la cueva: menos rugosidad y más oscura.
+- Estanque: agua más oscura/profunda.
+- Terreno (shader): hojas caídas, barro y manchas de humus.
+- Fogata única low poly con durabilidad 0-100 y apagado animado; fogatas del mapa desactivadas.
+- Pendiente: caminos importantes (bruma baja, densidad, escalones), calas, espuma de cerca.
+
+- Caminos importantes: más lajas/escalones, más follaje, bruma baja (path_decor.gd).
+- Naufragio: tablas paradas, vela rota, musgo + senda de lajas hacia el árbol corazón (island_features.gd). Sin verificar a pie.
+- Glow (Media+) y DOF (solo Alta, apagado por defecto) ya existían en look_director.gd; no se cambió nada.

@@ -217,7 +217,7 @@ func _build_pond() -> void:
 	var water := MeshInstance3D.new()
 	water.mesh = _pond_mesh(center, terrain.pond_water_level, radius * 1.45)
 	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(0.12, 0.4, 0.36, 0.8)      # agua turbia y verdosa
+	m.albedo_color = Color(0.07, 0.26, 0.24, 0.9)      # agua turbia, verdosa y más profunda
 	m.vertex_color_use_as_albedo = true
 	var nz := FastNoiseLite.new()
 	nz.frequency = 0.05
@@ -228,7 +228,7 @@ func _build_pond() -> void:
 	nt.height = 128
 	nt.seamless = true
 	var gr := Gradient.new()
-	gr.colors = PackedColorArray([Color(0.55, 0.7, 0.45), Color(1.15, 1.1, 0.9)])
+	gr.colors = PackedColorArray([Color(0.45, 0.6, 0.4), Color(0.85, 0.9, 0.75)])
 	nt.color_ramp = gr
 	m.albedo_texture = nt
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA

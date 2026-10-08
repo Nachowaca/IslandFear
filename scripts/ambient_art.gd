@@ -8,8 +8,8 @@ extends Node3D
 var terrain: IslandTerrain
 
 const MAX_REAL_LIGHTS: int = 3
-const FIRE_SCALE: float = 0.2
-var _fire_scene: PackedScene = load("res://assets/cozy_campfire/cozy_campfire.glb") as PackedScene
+const FIRE_SCALE: float = 0.15
+var _fire_scene: PackedScene = load("res://assets/campfire/low_poly_campfire.glb") as PackedScene
 const LIGHT_RANGE: float = 38.0
 
 var _rng := RandomNumberGenerator.new()
@@ -46,7 +46,7 @@ func _ready() -> void:
 	_halo_mat.albedo_texture = _radial()
 	_halo_mat.albedo_color = Color(1.0, 0.6, 0.2, 0.0)
 	_halo_mat.no_depth_test = false
-	_build_campfires()
+	# _build_campfires()   # desactivadas por ahora (fogatas solas del mapa); la función sigue disponible
 	_build_flowers_and_spots()
 	_player = get_tree().get_first_node_in_group("player") as Node3D
 	_dn = get_tree().get_first_node_in_group("daynight")
@@ -95,18 +95,16 @@ func _build_campfires() -> void:
 		root.rotation.y = _rng.randf() * TAU
 		add_child(root)
 		var inst: Node3D = _fire_scene.instantiate() as Node3D
-		var gnd: Node = inst.find_child("Ground_8", true, false)
-		if gnd != null:
-			gnd.get_parent().remove_child(gnd)
-			gnd.free()
+		var dirt: Node = inst.find_child("polySurface7", true, false)
+		if dirt != null:
+			dirt.get_parent().remove_child(dirt)
+			dirt.free()
 		inst.scale = Vector3.ONE * FIRE_SCALE
+		inst.position = Vector3(0, 0.11, 0)
 		root.add_child(inst)
-		var ap: AnimationPlayer = inst.find_child("AnimationPlayer", true, false) as AnimationPlayer
-		if ap != null and ap.has_animation("MorphBake"):
-			ap.get_animation("MorphBake").loop_mode = Animation.LOOP_LINEAR
-			ap.play("MorphBake")
-			ap.speed_scale = _rng.randf_range(0.85, 1.15)
-		var flame: Node3D = inst
+		var flame_nodes: Array[Node3D] = []
+		for fm: Node in inst.find_children("*fire*", "MeshInstance3D", true, false):
+			flame_nodes.append(fm.get_parent() as Node3D)
 		var hm := QuadMesh.new()
 		hm.size = Vector2(5.0, 5.0)
 		var hal: MeshInstance3D = _mi(root, hm, _halo_mat.duplicate() as Material, Vector3(0, 0.6, 0))
@@ -118,7 +116,7 @@ func _build_campfires() -> void:
 		l.position = Vector3(0, 0.7, 0)
 		l.visible = false
 		root.add_child(l)
-		_fires.append({"pos": p, "flame": flame, "light": l, "halo": hal, "ph": _rng.randf() * TAU})
+		_fires.append({"pos": p, "flames": flame_nodes, "light": l, "halo": hal, "ph": _rng.randf() * TAU})
 
 func _build_flowers_and_spots() -> void:
 	var anchors: Array[Vector3] = []
@@ -194,6 +192,10 @@ func _process(delta: float) -> void:
 		var ph: float = float(f["ph"])
 		var fl: float = 0.8 + 0.2 * sin(_time * 11.0 + ph) + 0.12 * sin(_time * 23.0 + ph * 2.0)
 		var lamp_on: float = 0.35 + 0.65 * _night
+		var fns: Array = f["flames"]
+		for i in fns.size():
+			var ph2: float = ph + float(i) * 1.7
+			(fns[i] as Node3D).scale = Vector3(1.0 + 0.05 * sin(_time * 9.0 + ph2), 1.0 + 0.1 * sin(_time * 7.0 + ph2 * 1.3) + 0.05 * sin(_time * 19.0 + ph2), 1.0 + 0.05 * cos(_time * 8.0 + ph2))
 		(f["halo"] as MeshInstance3D).visible = true
 		((f["halo"] as MeshInstance3D).material_override as StandardMaterial3D).albedo_color.a = 0.16 * lamp_on * fl
 		var l: OmniLight3D = f["light"] as OmniLight3D
