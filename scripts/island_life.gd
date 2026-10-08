@@ -50,6 +50,10 @@ func _ready() -> void:
 	_spawn_kit_ground()
 	_spawn_heart_tree()
 	_spawn_stelas()
+	var river_w := RiverWater.new()
+	river_w.terrain = terrain
+	river_w.name = "Rio"
+	add_child(river_w)
 	var marks: Node3D = (load("res://scripts/island_marks.gd") as GDScript).new() as Node3D
 	marks.set("terrain", terrain)
 	marks.name = "Marcas"

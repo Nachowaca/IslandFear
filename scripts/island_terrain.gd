@@ -99,8 +99,49 @@ func _setup_noise() -> void:
 	_noise.frequency = 1.5 / 120.0
 	if _hmap == null and ResourceLoader.exists(HMAP_PATH):
 		_hmap = ResourceLoader.load(HMAP_PATH) as Image
+		_smooth_shore()
 	_noise_ready = true
 	cave_floor_y = maxf(_base_height(CAVE_CENTER.x, CAVE_CENTER.y), 2.0)   # meseta plana donde se apoya la roca de la cueva
+	if river == null:
+		pond_wl0 = _pond_ring_level()
+		river = IslandRiver.new()
+		river.build(self, pond_wl0)
+
+## Redondea las orillas del mapa de alturas (calas y puntas): promedia solo cerca del nivel del mar, sin tocar acantilados ni el interior.
+func _smooth_shore() -> void:
+	var w: int = _hmap.get_width()
+	var hh: int = _hmap.get_height()
+	var cur: PackedFloat32Array = _hmap.get_data().to_float32_array()
+	for pass_i in 3:
+		var nxt: PackedFloat32Array = cur.duplicate()
+		for y in range(1, hh - 1):
+			for x in range(1, w - 1):
+				var k: int = y * w + x
+				var v: float = cur[k]
+				if v < -1.2 or v > 1.8:
+					continue
+				var sm: float = 0.0
+				for oy in range(-1, 2):
+					for ox in range(-1, 2):
+						sm += clampf(cur[k + oy * w + ox], -1.2, 1.8)
+				nxt[k] = lerpf(v, sm / 9.0, 0.8)
+		cur = nxt
+	_hmap = Image.create_from_data(w, hh, false, Image.FORMAT_RF, cur.to_byte_array())
+
+var river: IslandRiver
+var pond_wl0: float = 2.0
+
+## Nivel del agua del estanque: un poco bajo el borde más bajo del anillo exterior (sin contar el río).
+func _pond_ring_level() -> float:
+	var lowest: float = 1000.0
+	for i in 16:
+		var ang: float = TAU * i / 16.0
+		var rp: Vector2 = POND_CENTER + Vector2(cos(ang), sin(ang)) * POND_RADIUS * 1.5
+		lowest = minf(lowest, _height_base(rp.x, rp.y))
+	return lowest - 0.1
+
+func base_height_public(x: float, z: float) -> float:
+	return _base_height(x, z)
 
 ## Altura del terreno en (x, z) — pública para el jugador, la barca y el resto del juego.
 func height_at(x: float, z: float) -> float:
@@ -109,12 +150,20 @@ func height_at(x: float, z: float) -> float:
 	return _height(x, z)
 
 func is_in_pond_area(x: float, z: float, margin: float = 1.0) -> bool:
+	if river != null and river.dist_at(x, z) < 2.6 * margin:     # el río también aparta árboles, pasto y objetos
+		return true
 	return Vector2(x, z).distance_to(POND_CENTER) < POND_RADIUS * 1.6 * margin
 
 func is_in_cave_area(x: float, z: float, margin: float = 1.0) -> bool:
 	return Vector2(x, z).distance_to(CAVE_CENTER) < CAVE_PLATEAU_R * 1.2 * margin
 
 func _height(x: float, z: float) -> float:
+	var h: float = _height_base(x, z)
+	if river != null:
+		h = river.carve(x, z, h)
+	return h
+
+func _height_base(x: float, z: float) -> float:
 	var h: float = _base_height(x, z)
 	var dp: float = Vector2(x, z).distance_to(POND_CENTER) / (POND_RADIUS * 1.6)
 	dp *= 1.0 + _noise.get_noise_2d(x * 2.2 + 300.0, z * 2.2 - 120.0) * 0.32   # orilla irregular
@@ -223,12 +272,7 @@ func _build() -> void:
 		return
 	_setup_noise()
 	# nivel del agua de la laguna: un poco bajo el borde más bajo del anillo exterior
-	var lowest: float = 1000.0
-	for i in 16:
-		var ang: float = TAU * i / 16.0
-		var rp: Vector2 = POND_CENTER + Vector2(cos(ang), sin(ang)) * POND_RADIUS * 1.5
-		lowest = minf(lowest, _height(rp.x, rp.y))
-	pond_water_level = lowest - 0.1
+	pond_water_level = pond_wl0
 	var half: float = radius * 1.35
 	var step: float = half * 2.0 / RES
 	# alturas de la grilla (una sola vez)
