@@ -570,7 +570,6 @@ func _build_wreck_trail() -> void:
 	var xf: Dictionary = {}
 	var d: float = 3.0
 	var phase: float = _rng.randf() * TAU
-	var placed: int = 0
 	while d < total - 4.0:
 		var q: Vector2 = a + dir * d + side * sin(d * 0.07 + phase) * 4.0
 		var y: float = terrain.height_at(q.x, q.y)
@@ -583,7 +582,6 @@ func _build_wreck_trail() -> void:
 		var off: Vector2 = side * _rng.randf_range(-0.3, 0.3)
 		var bs: Basis = Basis(Vector3.UP, _rng.randf() * TAU).scaled(Vector3.ONE * _rng.randf_range(1.0, 1.5))
 		(xf[nm] as Array[Transform3D]).append(Transform3D(bs, Vector3(q.x + off.x, y - 0.03, q.y + off.y)))
-		placed += 1
 	for nm: String in xf.keys():
 		if not NatureKit.exists(nm):
 			continue

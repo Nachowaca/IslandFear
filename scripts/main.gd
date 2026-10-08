@@ -74,6 +74,7 @@ func _ready() -> void:
 	lighthouse.water_level = $Water3D.position.y
 	add_child(lighthouse)
 	_build_bridge(shore, shore_dir, light_r)
+	_build_old_ship(-shore_dir)
 	# puntos de interés, mente de la isla e interfaz
 	var features := IslandFeatures.new()
 	features.name = "Features"
@@ -194,6 +195,21 @@ func _build_chest() -> void:
 	add_child(chest)
 	chest.global_position = Vector3(p.x, h - 0.04, p.z)
 	chest.rotation.y = atan2(-inland.x, -inland.z)
+
+## Barco pirata semi hundido, ~200 m mar adentro frente a la costa opuesta a la llegada.
+const OLD_SHIP: PackedScene = preload("res://assets/coral_water/cartoonic_pirates_ship.glb")
+func _build_old_ship(dir: Vector2) -> void:
+	var r: float = _island.radius * 1.7
+	while r > 10.0 and _island.height_at(dir.x * r, dir.y * r) < 0.95:
+		r -= 0.5
+	r += 200.0
+	var wy: float = $Water3D.position.y
+	var ship: Node3D = OLD_SHIP.instantiate() as Node3D
+	ship.name = "BarcoHundido"
+	ship.scale = Vector3.ONE * 0.8
+	ship.position = Vector3(dir.x * r, wy - 1.3, dir.y * r)
+	ship.rotation = Vector3(0.1, atan2(dir.x, dir.y) + 1.1, 0.32)
+	add_child(ship)
 
 ## Puente (roto) desde la costa hasta el faro.
 func _build_bridge(shore: Vector2, dir: Vector2, light_r: float) -> void:
