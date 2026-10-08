@@ -319,7 +319,7 @@ func world_to_cell_f(pos: Vector3) -> Vector2:
 
 ## Nombres de las capas disponibles (el overlay las recorre).
 func layer_names() -> PackedStringArray:
-	return PackedStringArray(["Altura", "Pendiente", "Distancia a la costa", "Distancia al agua", "Humedad", "Suelo", "Bioma", "Zonas misteriosas"])
+	return PackedStringArray(["Altura", "Pendiente", "Distancia a la costa", "Distancia al agua", "Humedad", "Suelo", "Bioma", "Zonas misteriosas", "Densidad de follaje"])
 
 ## Color de la celda (i, j) para la capa `layer`.
 func layer_color(layer: int, i: int, j: int) -> Color:
@@ -366,6 +366,13 @@ func layer_color(layer: int, i: int, j: int) -> Color:
 			if h < params.land_height:
 				return Color(0.1, 0.2, 0.4)
 			return Color(0.15, 0.3, 0.15).lerp(Color(0.8, 0.3, 0.95), _mist[k])
+		8:
+			if h < params.land_height:
+				return Color(0.1, 0.2, 0.4)
+			var dens: Array = [0.25, 0.1, 1.0, 0.8, 0.5, 0.15]
+			var bi: int = clampi(int(_bioma[k]), 0, 5)
+			var dv: float = clampf(float(dens[bi]) * (0.4 + 0.6 * _hum[k]) * (1.0 - clampf(_slope[k] / 70.0, 0.0, 1.0)), 0.0, 1.0)
+			return Color(0.25, 0.1, 0.05).lerp(Color(1.0, 0.85, 0.2), clampf(dv * 2.0, 0.0, 1.0)).lerp(Color(0.1, 0.8, 0.25), clampf(dv * 2.0 - 1.0, 0.0, 1.0))
 	return Color.MAGENTA
 
 func layer_legend(layer: int) -> String:
@@ -377,5 +384,6 @@ func layer_legend(layer: int) -> String:
 		4: return "Humedad: azul = húmedo, marrón = seco"
 		5: return "Suelo: amarillo = arena, gris = roca, verde = fértil, marrón = seco"
 		7: return "Zonas misteriosas: violeta = claro misterioso (%d zonas)" % mystery_centers.size()
+		8: return "Densidad de follaje: marrón = casi sin plantas, amarillo = media, verde = denso (bioma x humedad x pendiente)"
 		6: return "Bioma: amarillo = costa, gris = roquedal, verde oscuro = selva, verde = bosque, lima = matorral, naranja = árido"
 	return ""

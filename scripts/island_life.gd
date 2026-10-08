@@ -54,6 +54,10 @@ func _ready() -> void:
 	river_w.terrain = terrain
 	river_w.name = "Rio"
 	add_child(river_w)
+	var amb := AmbientArt.new()
+	amb.terrain = terrain
+	amb.name = "Ambiente"
+	add_child(amb)
 	var marks: Node3D = (load("res://scripts/island_marks.gd") as GDScript).new() as Node3D
 	marks.set("terrain", terrain)
 	marks.name = "Marcas"
@@ -210,7 +214,7 @@ func _build_pond() -> void:
 	var water := MeshInstance3D.new()
 	water.mesh = _pond_mesh(center, terrain.pond_water_level, radius * 1.45)
 	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(0.1, 0.3, 0.17, 0.86)      # agua turbia y verdosa
+	m.albedo_color = Color(0.12, 0.4, 0.36, 0.8)      # agua turbia y verdosa
 	m.vertex_color_use_as_albedo = true
 	var nz := FastNoiseLite.new()
 	nz.frequency = 0.05

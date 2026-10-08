@@ -153,6 +153,19 @@ void fragment() {
 	col = mix(col, col * vec3(1.35, 1.35, 1.42), w_rock * 0.6);             // roca más clara
 	col *= 1.0 + clamp((h - 6.0) * 0.02, 0.0, 0.15);                        // las cumbres, algo más claras
 
+	// suciedad de piso: hojarasca, ramitas y tierra suelta bajo el follaje (más en suelo de bosque y senderos)
+	float lit_n = vnoise(uv * 7.0) * 0.6 + vnoise(uv * 19.0) * 0.4;
+	float litter = smoothstep(0.62, 0.8, lit_n) * (1.0 - w_sand) * (1.0 - w_rock) * (0.35 + w_dirt * 0.65);
+	vec3 litter_col = mix(vec3(0.34, 0.24, 0.12), vec3(0.5, 0.36, 0.14), vnoise(uv * 3.1));
+	col = mix(col, litter_col, litter * 0.38);
+	float grime = smoothstep(0.5, 0.85, fbm(uv * 0.35 + 90.0)) * (1.0 - w_sand) * (1.0 - w_rock);
+	col *= 1.0 - grime * 0.14;
+	// estilo pintado: pinceladas anchas que aplanan levemente el tono (sin posterizar duro)
+	float brush = vnoise(vec2(dot(uv, vec2(0.8, 0.6)) * 0.9, dot(uv, vec2(-0.6, 0.8)) * 0.18));
+	float bl = dot(col, vec3(0.299, 0.587, 0.114));
+	float qb = floor(bl * 7.0 + brush * 0.8) / 7.0;
+	col *= mix(1.0, clamp(qb / max(bl, 0.02), 0.85, 1.15), 0.4 * (1.0 - w_sand));
+
 	// relieve: perturba la normal plana con los mapas de normales
 	vec3 n_g = tex2(grass_n, uv, 0.22) * 2.0 - 1.0;
 	vec3 n_d = tex2(forest_n, uv, 0.2) * 2.0 - 1.0;

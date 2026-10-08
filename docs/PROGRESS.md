@@ -304,3 +304,15 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Agua: reflejo suave de luna, noctilucas (shader), luz y brillo de la mantaraya, mar turquesa con algas, espuma de orilla en bandas, más oleaje.
 - Niebla: sin capas de bruma; niebla de altura con humedad variable por día (35%-180%).
 - Pendiente: noctilucas en rompiente a pie, ajustes finos de espuma, commit de cada ajuste.
+
+
+## Arte: costa, rio y ambiente (sesion posterior)
+- Costa suavizada (island_terrain._smooth_shore).
+- Rio fino estanque->mar: island_river.gd, river_water.gd, shaders/river_island.gdshader.
+- Terreno: hojarasca/suciedad de piso y pinceladas (terrain_island.gdshader).
+- Roca de la cueva con mas resolucion (seg 32, anillos 48/50).
+- EcoMap: capa 8 'Densidad de follaje' (F6/F7).
+- ambient_art.gd: 4 fogatas abandonadas, flores/luces ambar en la cueva y claros (max 3 luces reales cerca del jugador).
+- Estanque con agua turquesa-verdosa acorde al rio.
+- No hecho: bruma baja en caminos (contradice la decision de no usar capas de niebla); escalones y faroles ya existian en path_decor.gd; vegetacion de orilla del rio; revision de coherencia de assets; mas follaje por bioma (solo mapa de calor).
+- Sin medir fps ni memoria.

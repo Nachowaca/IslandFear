@@ -211,11 +211,11 @@ func _build_cave_rock(c2: Vector2, d2: Vector2) -> void:
 	nz2.seed = 77
 	nz2.frequency = 0.7
 	var side: Vector2 = Vector2(-d2.y, d2.x)
-	var seg: int = 20
+	var seg: int = 32
 	var L: float = CAVE_LEN
 	var inner: Array = []
 	var outer: Array = []
-	var n_in: int = 34
+	var n_in: int = 48
 	for k in n_in + 1:
 		var a: float = lerpf(-4.8, L, float(k) / float(n_in))
 		var wi: float
@@ -241,7 +241,7 @@ func _build_cave_rock(c2: Vector2, d2: Vector2) -> void:
 			pt += Vector3(nz.get_noise_3d(pt.x, pt.y, pt.z), nz.get_noise_3d(pt.x + 50.0, pt.y, pt.z), nz.get_noise_3d(pt.x, pt.y, pt.z + 50.0)) * amp
 			ring.append(pt)
 		inner.append(ring)
-	var n_out: int = 36
+	var n_out: int = 50
 	for k in n_out + 1:
 		var a2: float = lerpf(-8.0, L, float(k) / float(n_out))
 		var wo: float
