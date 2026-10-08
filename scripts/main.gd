@@ -75,6 +75,7 @@ func _ready() -> void:
 	add_child(lighthouse)
 	_build_bridge(shore, shore_dir, light_r)
 	_build_old_ship(-shore_dir)
+	_build_sea_decor(shore_dir, shore_r, light_r)
 	# puntos de interés, mente de la isla e interfaz
 	var features := IslandFeatures.new()
 	features.name = "Features"
@@ -195,6 +196,21 @@ func _build_chest() -> void:
 	add_child(chest)
 	chest.global_position = Vector3(p.x, h - 0.04, p.z)
 	chest.rotation.y = atan2(-inland.x, -inland.z)
+
+## Corales, cardúmenes y dos boyas (una frente al desembarco, otra junto al faro).
+func _build_sea_decor(shore_dir: Vector2, shore_r: float, light_r: float) -> void:
+	var sd: Node3D = (load("res://scripts/sea_decor.gd") as GDScript).new() as Node3D
+	sd.name = "SeaDecor"
+	sd.set("terrain", _island)
+	sd.set("water_y", $Water3D.position.y)
+	var side: Vector2 = Vector2(-shore_dir.y, shore_dir.x)
+	var spots: Array[Vector3] = []
+	var p1: Vector2 = shore_dir * (shore_r + 22.0) + side * 20.0
+	var p2: Vector2 = shore_dir * (light_r + 4.0) - side * 16.0
+	spots.append(Vector3(p1.x, 0.0, p1.y))
+	spots.append(Vector3(p2.x, 0.0, p2.y))
+	sd.set("buoy_spots", spots)
+	add_child(sd)
 
 ## Barco pirata semi hundido, ~200 m mar adentro frente a la costa opuesta a la llegada.
 const OLD_SHIP: PackedScene = preload("res://assets/coral_water/cartoonic_pirates_ship.glb")
