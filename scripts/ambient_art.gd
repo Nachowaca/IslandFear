@@ -8,6 +8,8 @@ extends Node3D
 var terrain: IslandTerrain
 
 const MAX_REAL_LIGHTS: int = 3
+const FIRE_SCALE: float = 0.2
+var _fire_scene: PackedScene = load("res://assets/cozy_campfire/cozy_campfire.glb") as PackedScene
 const LIGHT_RANGE: float = 38.0
 
 var _rng := RandomNumberGenerator.new()
@@ -83,14 +85,6 @@ func _mi(parent: Node3D, mesh: Mesh, mat: Material, pos: Vector3, rot: Vector3 =
 	return m
 
 func _build_campfires() -> void:
-	var stone := StandardMaterial3D.new()
-	stone.albedo_color = Color(0.45, 0.45, 0.47)
-	stone.roughness = 1.0
-	var wood := StandardMaterial3D.new()
-	wood.albedo_color = Color(0.3, 0.19, 0.1)
-	wood.roughness = 1.0
-	var ash := StandardMaterial3D.new()
-	ash.albedo_color = Color(0.1, 0.09, 0.08)
 	var centers: Array[Vector2] = [Vector2(-5, 40), Vector2(30, -5), Vector2(-60, 5), Vector2(10, 70)]
 	for c: Vector2 in centers:
 		var p: Vector3 = _find_land(c, 22.0)
@@ -100,33 +94,19 @@ func _build_campfires() -> void:
 		root.position = p
 		root.rotation.y = _rng.randf() * TAU
 		add_child(root)
-		var sph := SphereMesh.new()
-		sph.radius = 0.16
-		sph.height = 0.26
-		sph.radial_segments = 6
-		sph.rings = 3
-		for k in 8:
-			var a: float = TAU * float(k) / 8.0
-			_mi(root, sph, stone, Vector3(cos(a) * 0.55, 0.08, sin(a) * 0.55), Vector3.ZERO, Vector3(1.0, 0.7, 1.0) * _rng.randf_range(0.8, 1.2))
-		var disc := CylinderMesh.new()
-		disc.top_radius = 0.45
-		disc.bottom_radius = 0.45
-		disc.height = 0.04
-		disc.radial_segments = 8
-		_mi(root, disc, ash, Vector3(0, 0.03, 0))
-		var log_m := CylinderMesh.new()
-		log_m.top_radius = 0.06
-		log_m.bottom_radius = 0.07
-		log_m.height = 0.8
-		log_m.radial_segments = 6
-		_mi(root, log_m, wood, Vector3(0, 0.12, 0), Vector3(0, 0.5, PI * 0.5 - 0.15))
-		_mi(root, log_m, wood, Vector3(0, 0.14, 0), Vector3(0, -0.9, PI * 0.5 + 0.2))
-		var cone := CylinderMesh.new()
-		cone.top_radius = 0.0
-		cone.bottom_radius = 0.2
-		cone.height = 0.6
-		cone.radial_segments = 6
-		var flame: MeshInstance3D = _mi(root, cone, _flame_mat, Vector3(0, 0.36, 0))
+		var inst: Node3D = _fire_scene.instantiate() as Node3D
+		var gnd: Node = inst.find_child("Ground_8", true, false)
+		if gnd != null:
+			gnd.get_parent().remove_child(gnd)
+			gnd.free()
+		inst.scale = Vector3.ONE * FIRE_SCALE
+		root.add_child(inst)
+		var ap: AnimationPlayer = inst.find_child("AnimationPlayer", true, false) as AnimationPlayer
+		if ap != null and ap.has_animation("MorphBake"):
+			ap.get_animation("MorphBake").loop_mode = Animation.LOOP_LINEAR
+			ap.play("MorphBake")
+			ap.speed_scale = _rng.randf_range(0.85, 1.15)
+		var flame: Node3D = inst
 		var hm := QuadMesh.new()
 		hm.size = Vector2(5.0, 5.0)
 		var hal: MeshInstance3D = _mi(root, hm, _halo_mat.duplicate() as Material, Vector3(0, 0.6, 0))
@@ -213,8 +193,6 @@ func _process(delta: float) -> void:
 	for f: Dictionary in _fires:
 		var ph: float = float(f["ph"])
 		var fl: float = 0.8 + 0.2 * sin(_time * 11.0 + ph) + 0.12 * sin(_time * 23.0 + ph * 2.0)
-		var node: MeshInstance3D = f["flame"] as MeshInstance3D
-		node.scale = Vector3(0.9 + 0.1 * fl, fl, 0.9 + 0.1 * fl)
 		var lamp_on: float = 0.35 + 0.65 * _night
 		(f["halo"] as MeshInstance3D).visible = true
 		((f["halo"] as MeshInstance3D).material_override as StandardMaterial3D).albedo_color.a = 0.16 * lamp_on * fl
