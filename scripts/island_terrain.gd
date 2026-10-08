@@ -538,7 +538,7 @@ func _scatter_flora() -> void:
 	while made < dead_target and tries < dead_target * 14:
 		tries += 1
 		var dpos: Vector3 = _random_spot(rng, 1.05, 1.7)
-		if dpos.y < -90.0 or _cliff_mask(dpos.x, dpos.z) > 0.2:
+		if dpos.y < -90.0 or _cliff_mask(dpos.x, dpos.z) > 0.2 or _near_path(dpos.x, dpos.z, 1.0):
 			continue
 		if forest_value(dpos.x, dpos.z) < 0.05 and rng.randf() < 0.7:
 			continue   # se agrupan en las zonas más arboladas
@@ -551,7 +551,7 @@ func _scatter_flora() -> void:
 	while made < palm_target and tries < palm_target * 14:
 		tries += 1
 		var pos: Vector3 = _random_spot(rng, 1.3, 3.2)
-		if pos.y < -90.0 or _cliff_mask(pos.x, pos.z) > 0.25:
+		if pos.y < -90.0 or _cliff_mask(pos.x, pos.z) > 0.25 or _near_path(pos.x, pos.z, 0.8):
 			continue
 		if rng.randf() > smoothstep(-0.3, 0.2, forest_value(pos.x, pos.z)) + 0.15:
 			continue
@@ -588,6 +588,8 @@ func _scatter_flora() -> void:
 			p_tree = 0.0                                              # al pie del acantilado solo hay derrumbe
 		p_tree *= 1.0 - 0.9 * eco.get_misterio(pos2)          # los claros misteriosos casi no tienen árboles
 		if rng.randf() > p_tree:
+			continue
+		if _near_path(pos2.x, pos2.z, 1.3):
 			continue
 		if _too_close(pos2, 2.6):
 			continue                                                  # separación mínima entre árboles
@@ -712,21 +714,18 @@ func _scatter_flora() -> void:
 			if rng.randf() > 0.06 + bw4[1] * 0.9 + bw4[5] * 0.3 + bw4[4] * 0.15 + eco.get_misterio(pos4) * 0.9:
 				continue
 		var uq_rock: bool = true
-		var r: Node3D = NatureKit.make_uq("Rock_%d" % rng.randi_range(1, 5), NatureKit.rock_tint(rng), 140.0) if uq_rock else NatureKit.make("Rock_Medium_%d" % rng.randi_range(1, 3), Color.WHITE, 140.0)
+		var ridx: int = rng.randi_range(1, 5)
+		var r: Node3D = NatureKit.make_uq("Rock_%d" % ridx, NatureKit.rock_tint(rng), 140.0)
+		if _near_path(pos4.x, pos4.z, 1.0):
+			r.free()
+			continue
 		r.position = pos4 - Vector3(0, 0.15, 0)
 		r.rotation.y = rng.randf() * TAU
 		r.scale = Vector3.ONE * (rng.randf_range(0.3, 0.8) if talus else rng.randf_range(0.25, 0.6))
 		if uq_rock:
 			r.scale *= 3.0
 		_flora.add_child(r)
-		var rock_body := StaticBody3D.new()
-		var rock_cs := CollisionShape3D.new()
-		var rs := SphereShape3D.new()
-		rs.radius = (0.5 if uq_rock else 1.1) * r.scale.x
-		rock_cs.shape = rs
-		rock_body.position = r.position + Vector3(0, 0.5 * r.scale.x, 0)
-		rock_body.add_child(rock_cs)
-		_flora.add_child(rock_body)
+		_add_rock_body(r, ridx)
 		made += 1
 	_add_rock_clusters(rng)
 
@@ -751,20 +750,17 @@ func _add_rock_clusters(rng: RandomNumberGenerator) -> void:
 			var gy: float = height_at(gx, gz)
 			if gy < 0.3:
 				continue
-			var r: Node3D = NatureKit.make_uq("Rock_%d" % rng.randi_range(1, 5), NatureKit.rock_tint(rng), 200.0)
+			var cidx: int = rng.randi_range(1, 5)
+			var r: Node3D = NatureKit.make_uq("Rock_%d" % cidx, NatureKit.rock_tint(rng), 200.0)
 			r.position = Vector3(gx, gy - 0.3, gz)
 			r.rotation = Vector3(rng.randf_range(-0.12, 0.12), rng.randf() * TAU, rng.randf_range(-0.12, 0.12))
 			var sc: float = rng.randf_range(1.7, 2.7) if big else rng.randf_range(0.5, 1.2)
 			r.scale = Vector3(sc * rng.randf_range(0.9, 1.3), sc * rng.randf_range(0.8, 1.2), sc * rng.randf_range(0.9, 1.3)) * 3.0
+			if _near_path(gx, gz, minf(sc * 3.0 * 0.6, 4.0)):
+				r.free()
+				continue
 			_flora.add_child(r)
-			var body := StaticBody3D.new()
-			var cs := CollisionShape3D.new()
-			var sh := SphereShape3D.new()
-			sh.radius = 0.5 * sc * 3.0 * 0.85
-			cs.shape = sh
-			body.position = r.position + Vector3(0, sh.radius * 0.7, 0)
-			body.add_child(cs)
-			_flora.add_child(body)
+			_add_rock_body(r, cidx)
 		clusters += 1
 
 ## Árbol individual (talable): visual, colisión, lianas (solo los vivos) y registro en las listas.
@@ -776,7 +772,7 @@ func _add_tree(rng: RandomNumberGenerator, pos: Vector3, kit_name: String, sc: f
 	var visual: Node3D = NatureKit.make_uq(kit_name, tint.lerp(Color.WHITE, 0.5), 160.0) if (kit_name.begins_with("Birch") or kit_name.begins_with("Maple") or kit_name.begins_with("NormalTree") or kit_name.begins_with("PineTree") or dead) else NatureKit.make(kit_name, tint, 160.0)
 	tree.add_child(visual)
 	_flora.add_child(tree)
-	_add_solid(tree, shape, Vector3(0, 1.5, 0))
+	_add_solid(tree, _trunk_shape_for(kit_name, visual, shape), Vector3(0, 1.5, 0))
 	var lr := RandomNumberGenerator.new()
 	lr.seed = hash(pos)
 	var nl: int = 0
@@ -795,6 +791,107 @@ func _add_tree(rng: RandomNumberGenerator, pos: Vector3, kit_name: String, sc: f
 	tree_nodes.append(tree)
 	tree_positions.append(pos)
 	tree_scales.append(tree.scale.x)
+
+var _trunk_r_cache: Dictionary = {}
+var _trunk_shape_cache: Dictionary = {}
+var _rock_hull_cache: Dictionary = {}
+
+## Colisión del tronco según el modelo: radio = 0.45 del ancho medido entre 0.1 y 0.8 m (se escala con el árbol).
+func _trunk_shape_for(kit_name: String, visual: Node3D, _fallback: Shape3D) -> Shape3D:
+	if not _trunk_r_cache.has(kit_name):
+		var pts: PackedVector3Array = _mesh_points(visual)
+		var mn: Vector2 = Vector2(1e9, 1e9)
+		var mx: Vector2 = Vector2(-1e9, -1e9)
+		var any: bool = false
+		for q: Vector3 in pts:
+			if q.y > 0.1 and q.y < 0.8:
+				mn = mn.min(Vector2(q.x, q.z))
+				mx = mx.max(Vector2(q.x, q.z))
+				any = true
+		var r: float = 0.35
+		if any:
+			r = clampf(0.45 * 0.5 * ((mx.x - mn.x) + (mx.y - mn.y)), 0.3, 1.1)
+		_trunk_r_cache[kit_name] = snappedf(r, 0.05)
+	var rr: float = _trunk_r_cache[kit_name]
+	if not _trunk_shape_cache.has(rr):
+		var cyl := CylinderShape3D.new()
+		cyl.radius = rr
+		cyl.height = 3.0
+		_trunk_shape_cache[rr] = cyl
+	return _trunk_shape_cache[rr]
+
+## Puntos de todas las mallas de un visual, en coordenadas del visual.
+func _mesh_points(v: Node3D) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	var st: Array = [v]
+	while st.size() > 0:
+		var c: Node = st.pop_back()
+		if c is MeshInstance3D and (c as MeshInstance3D).mesh != null:
+			var mi: MeshInstance3D = c as MeshInstance3D
+			var xf: Transform3D = mi.transform
+			var pp: Node = mi.get_parent()
+			while pp != null and pp != v and pp is Node3D:
+				xf = (pp as Node3D).transform * xf
+				pp = pp.get_parent()
+			for si in mi.mesh.get_surface_count():
+				var arr: Array = mi.mesh.surface_get_arrays(si)
+				var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+				for vv: Vector3 in verts:
+					out.append(xf * vv)
+		for k in c.get_children():
+			st.append(k)
+	return out
+
+## Puntos del casco convexo simplificado de cada malla del visual, en coordenadas del visual.
+func _hull_points(v: Node3D) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	var st: Array = [v]
+	while st.size() > 0:
+		var c: Node = st.pop_back()
+		if c is MeshInstance3D and (c as MeshInstance3D).mesh != null:
+			var mi: MeshInstance3D = c as MeshInstance3D
+			var xf: Transform3D = mi.transform
+			var pp: Node = mi.get_parent()
+			while pp != null and pp != v and pp is Node3D:
+				xf = (pp as Node3D).transform * xf
+				pp = pp.get_parent()
+			var hs: ConvexPolygonShape3D = mi.mesh.create_convex_shape(true, false)
+			if hs != null:
+				for q: Vector3 in hs.points:
+					out.append(xf * q)
+		for k in c.get_children():
+			st.append(k)
+	return out
+
+## Colisión de roca = casco convexo de su malla real, con la escala de cada roca.
+func _add_rock_body(r: Node3D, ridx: int) -> void:
+	if Engine.is_editor_hint():
+		return
+	if not _rock_hull_cache.has(ridx):
+		_rock_hull_cache[ridx] = _hull_points(r)
+	var base: PackedVector3Array = _rock_hull_cache[ridx]
+	var scaled := PackedVector3Array()
+	for q: Vector3 in base:
+		scaled.append(q * r.scale)
+	var sh := ConvexPolygonShape3D.new()
+	sh.points = scaled
+	var body := StaticBody3D.new()
+	body.position = r.position
+	body.rotation = r.rotation
+	var cs := CollisionShape3D.new()
+	cs.shape = sh
+	body.add_child(cs)
+	_flora.add_child(body)
+
+## ¿Hay camino en (x, z) o a `rad` metros alrededor? Para no poner troncos ni rocas sobre los senderos.
+func _near_path(x: float, z: float, rad: float) -> bool:
+	if is_on_path(x, z, 0.12):
+		return true
+	for i in 6:
+		var a: float = TAU * float(i) / 6.0
+		if is_on_path(x + cos(a) * rad, z + sin(a) * rad, 0.2):
+			return true
+	return false
 
 ## ¿Hay otro árbol o palmera a menos de `min_d` metros?
 func _too_close(pos: Vector3, min_d: float) -> bool:

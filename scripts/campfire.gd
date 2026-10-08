@@ -13,6 +13,10 @@ var _halo: Sprite3D
 var _flames: CPUParticles3D
 var _smoke: CPUParticles3D
 var _embers: MeshInstance3D
+var _model: Node3D                     ## fogata con llama animada (encendida)
+var _dead: Array[Node3D] = []          ## piedras y leños simples (apagada)
+const FIRE_SCALE: float = 0.2
+const FIRE_SCENE: PackedScene = preload("res://assets/cozy_campfire/cozy_campfire.glb")
 var _t: float = 0.0
 var _ember_left: float = EMBER_TIME
 var _crackle: float = 2.0
@@ -47,6 +51,7 @@ func _build() -> void:
 		mi.material_override = _mat(Color(0.42, 0.42, 0.45))
 		mi.position = Vector3(cos(a) * 0.42, 0.06, sin(a) * 0.42)
 		add_child(mi)
+		_dead.append(mi)
 	# leños cruzados
 	for i in 3:
 		var c := CylinderMesh.new()
@@ -60,6 +65,16 @@ func _build() -> void:
 		mi2.position = Vector3(0, 0.1, 0)
 		mi2.rotation = Vector3(PI / 2.0 - 0.25, float(i) * 1.05, 0)
 		add_child(mi2)
+		_dead.append(mi2)
+	# modelo con llama animada
+	_model = FIRE_SCENE.instantiate() as Node3D
+	_model.scale = Vector3.ONE * FIRE_SCALE
+	add_child(_model)
+	var ap: AnimationPlayer = _model.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	if ap != null and ap.has_animation("MorphBake"):
+		ap.get_animation("MorphBake").loop_mode = Animation.LOOP_LINEAR
+		ap.play("MorphBake")
+		ap.speed_scale = _rng.randf_range(0.9, 1.1)
 	# brasas (brillan cuando queda poco fuego)
 	var e := SphereMesh.new()
 	e.radius = 0.28
@@ -74,8 +89,8 @@ func _build() -> void:
 	add_child(_embers)
 	# llama
 	_flames = CPUParticles3D.new()
-	_flames.mesh = _soft_quad(0.55, true)
-	_flames.amount = 26
+	_flames.mesh = _soft_quad(0.3, true)
+	_flames.amount = 10
 	_flames.lifetime = 0.8
 	_flames.direction = Vector3.UP
 	_flames.spread = 14.0
@@ -87,7 +102,7 @@ func _build() -> void:
 	_flames.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 	_flames.emission_sphere_radius = 0.2
 	var g := Gradient.new()
-	g.colors = PackedColorArray([Color(1.0, 0.9, 0.3, 1.0), Color(1.0, 0.45, 0.08, 0.9), Color(0.5, 0.1, 0.02, 0.0)])
+	g.colors = PackedColorArray([Color(1.0, 0.9, 0.3, 0.5), Color(1.0, 0.45, 0.08, 0.4), Color(0.5, 0.1, 0.02, 0.0)])
 	g.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
 	_flames.color_ramp = g
 	var sc := Curve.new()
@@ -142,13 +157,13 @@ func _build() -> void:
 	_halo.shaded = false
 	_halo.double_sided = true
 	_halo.transparent = true
-	_halo.pixel_size = 0.05
-	_halo.position = Vector3(0, 0.7, 0)
+	_halo.pixel_size = 0.02
+	_halo.position = Vector3(0, 0.6, 0)
 	_halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_halo.material_override = _halo_mat()
 	add_child(_halo)
 	_light.shadow_enabled = false
-	_light.position = Vector3(0, 0.8, 0)
+	_light.position = Vector3(0, 1.3, 0)
 	add_child(_light)
 
 ## Quad con textura radial suave (sin facetas): llama aditiva o humo translúcido.
@@ -204,12 +219,14 @@ func _process(delta: float) -> void:
 		_flames.scale_amount_min = 0.5 * k
 		_flames.scale_amount_max = 1.2 * k
 		_smoke.emitting = true
-		_light.light_energy = (2.8 + 0.7 * sin(_t * 17.0) + 0.4 * sin(_t * 31.0 + 1.3)) * k
+		_light.light_energy = (1.4 + 0.35 * sin(_t * 17.0) + 0.2 * sin(_t * 31.0 + 1.3)) * k
 		_light.omni_range = 14.0 * (0.6 + 0.4 * k)
 		_halo.visible = true
 		_halo.scale = Vector3.ONE * k * (1.0 + 0.06 * sin(_t * 13.0))
-		_embers.visible = true
-		(_embers.material_override as StandardMaterial3D).albedo_color = Color(1.0, 0.35 + 0.1 * sin(_t * 9.0), 0.08)
+		_embers.visible = false
+		_model.visible = true
+		for d: Node3D in _dead:
+			d.visible = false
 		_crackle -= delta
 		if _crackle <= 0.0:
 			_crackle = _rng.randf_range(1.5, 5.0)
@@ -221,6 +238,9 @@ func _process(delta: float) -> void:
 		var glow: float = clampf(_ember_left / EMBER_TIME, 0.0, 1.0)
 		_light.light_energy = 0.5 * glow * (0.8 + 0.2 * sin(_t * 5.0))
 		_halo.visible = false
+		_model.visible = false
+		for d2: Node3D in _dead:
+			d2.visible = true
 		_embers.visible = glow > 0.02
 		(_embers.material_override as StandardMaterial3D).albedo_color = Color(0.9 * glow + 0.1, 0.2 * glow, 0.04)
 		if glow <= 0.0:
