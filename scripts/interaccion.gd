@@ -35,7 +35,7 @@ const SPOT_INFO: Dictionary = {
 	"refuge": ["Una cueva de piedra fría. De día parece un refugio; de noche, quién sabe.", "El techo gotea. Adentro la isla parece contener el aliento."],
 	"wreck": ["Maderas de otro naufragio. Otros llegaron antes que vos.", "Cuadernas rotas y tablas grises de sal. Nadie volvió a buscar esto."],
 }
-const FUEL_SECONDS: Dictionary = {"madera": 120.0, "rama": 50.0, "paja": 18.0}
+const FUEL_SECONDS: Dictionary = {"madera": 1200.0, "rama": 500.0, "paja": 180.0}
 
 func _ready() -> void:
 	_rng.randomize()

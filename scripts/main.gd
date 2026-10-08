@@ -198,6 +198,7 @@ func _build_chest() -> void:
 	chest.rotation.y = atan2(-inland.x, -inland.z)
 
 ## Corales, cardúmenes y dos boyas (una frente al desembarco, otra junto al faro).
+
 func _build_sea_decor(shore_dir: Vector2, shore_r: float, light_r: float) -> void:
 	var sd: Node3D = (load("res://scripts/sea_decor.gd") as GDScript).new() as Node3D
 	sd.name = "SeaDecor"

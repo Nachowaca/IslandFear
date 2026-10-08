@@ -5,7 +5,12 @@ extends Node3D
 ## Se le puede echar más leña (add_fuel). Cuando se apaga quedan brasas y luego cenizas.
 
 var fuel: float = 60.0                 ## segundos de fuego que quedan
-const MAX_FUEL: float = 360.0
+const MAX_FUEL: float = 6000.0       ## 100 min: la barra baja 10 % cada 10 min
+const BAR_SHOW_DIST: float = 7.0
+const BAR_SHADER: String = "shader_type spatial;\nrender_mode unshaded, cull_disabled, depth_draw_never;\nuniform float fill = 1.0;\nuniform float alpha = 1.0;\nvoid vertex() {\n\tMODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);\n}\nvoid fragment() {\n\tvec2 e = min(UV, 1.0 - UV);\n\tfloat border = step(min(e.x * 5.0, e.y), 0.14);\n\tvec3 c = mix(vec3(0.95, 0.5, 0.1), vec3(0.12, 0.07, 0.04), step(fill, UV.x));\n\tc = mix(c, vec3(0.05, 0.03, 0.02), border);\n\tALBEDO = c;\n\tALPHA = alpha;\n}\n"
+var _bar: MeshInstance3D
+var _bar_mat: ShaderMaterial
+var _player_ref: Node3D
 const EMBER_TIME: float = 25.0
 
 var _light: OmniLight3D
@@ -30,6 +35,23 @@ func _ready() -> void:
 	_rng.randomize()
 	_t = _rng.randf() * 10.0
 	_build()
+	_build_bar()
+
+## Barrita naranja de combustible sobre la fogata (visible solo cerca del jugador y mientras arde).
+func _build_bar() -> void:
+	var q := QuadMesh.new()
+	q.size = Vector2(0.9, 0.12)
+	var sh := Shader.new()
+	sh.code = BAR_SHADER
+	_bar_mat = ShaderMaterial.new()
+	_bar_mat.shader = sh
+	_bar = MeshInstance3D.new()
+	_bar.mesh = q
+	_bar.material_override = _bar_mat
+	_bar.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_bar.position = Vector3(0, 1.6, 0)
+	_bar.visible = false
+	add_child(_bar)
 
 func _mat(c: Color, unshaded: bool = false) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -214,6 +236,15 @@ func _halo_mat() -> StandardMaterial3D:
 	m.no_depth_test = false
 	return m
 
+func _update_bar() -> void:
+	if _player_ref == null:
+		_player_ref = get_tree().get_first_node_in_group("player") as Node3D
+	var near: bool = _player_ref != null and _player_ref.global_position.distance_to(global_position) < BAR_SHOW_DIST
+	_bar.visible = near and fuel > 0.0
+	if _bar.visible:
+		# baja en escalones de 10 %
+		_bar_mat.set_shader_parameter("fill", ceilf(fuel / MAX_FUEL * 10.0) / 10.0)
+
 func add_fuel(seconds: float) -> void:
 	fuel = minf(fuel + seconds, MAX_FUEL)
 	_ember_left = EMBER_TIME
@@ -256,6 +287,7 @@ func _process(delta: float) -> void:
 	_light.light_energy = maxf(fl * _fk, 0.5 * glow * (0.8 + 0.2 * sin(_t * 5.0)))
 	_light.omni_range = 14.0 * (0.6 + 0.4 * _fk)
 	_halo.visible = _fk > 0.02
+	_update_bar()
 	_halo.scale = Vector3.ONE * maxf(_fk, 0.01) * (1.0 + 0.06 * sin(_t * 13.0))
 	_embers.visible = glow > 0.02 or (dying and _fk < 0.5)
 	var eg: float = maxf(glow, 1.0 - _fk * 2.0 if dying else 0.0)
