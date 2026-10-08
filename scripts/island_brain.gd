@@ -1033,6 +1033,9 @@ func _on_evento(tipo: String, _zona: Vector3, intensidad: float) -> void:
 			topic = "react_fire"
 		"ofrenda":
 			topic = "react_offering"
+		"cofre":
+			if _rng.randf() < 0.35:
+				topic = "react_chest"
 	if topic == "" or now - _t_react < 6.0:
 		return
 	_t_react = now
@@ -1096,6 +1099,7 @@ func status_lines() -> Array[String]:
 	lines.append("Aciertos: %s" % (", ".join(parts) if not parts.is_empty() else "ninguno aún"))
 	lines.append("Anticipación (puntería): %.2f" % s_lead)
 	lines.append("Muertes que recuerda: %d" % s_deaths)
+	lines.append("Baúl de la playa: guarda %d objetos" % Inventario.cofre_cantidad())
 	lines.append("Última acción: %s" % last_action)
 	for i in range(maxi(decision_log.size() - 3, 0), decision_log.size()):
 		lines.append("· " + decision_log[i].left(110))

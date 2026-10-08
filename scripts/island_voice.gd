@@ -53,6 +53,7 @@ const POOLS: Dictionary = {
 	"warn_generic": ["Estás cruzando una línea que no ves.", "Mi paciencia tiene fondo.", "Esta es mi advertencia, {who}."],
 	"react_trees": ["Un árbol menos. Lo sentí caer hasta las raíces.", "Cada tronco que derribás me arranca algo.", "Ese árbol tenía más años que tu nombre.", "¿Cuántos más, {who}?", "Hacha en mi carne. Lo recuerdo."],
 	"react_fire": ["Fuego. En mi piel seca. Qué valiente.", "Tu fuego huele a hogar. No es tu hogar.", "Una chispa mía te mira arder.", "La llama te da luz. A mí, miedo.", "Cuidá ese fuego, {who}. Yo también tengo sed de él."],
+	"react_chest": ["Esa caja guarda tus cosas. Lo sé.", "Dejás tus cosas ahí. Las veo.", "Una caja de madera, y todo lo que no querés perder.", "Guardás. Como si fueras a quedarte."],
 	"react_offering": ["¿Es para mí? Qué raro.", "Una ofrenda. Nadie dejaba nada hacía mucho.", "Lo acepto. No creas que cambia todo.", "Eso estuvo bien, {who}.", "Lo guardo. Me gusta cuando devolvés."],
 	"warn_trees": ["Basta de talar, {who}. Esos árboles son míos.", "Un árbol más y dejo de ser paciente.", "Tu hacha ya me dolió. Última vez que lo digo."],
 	"warn_fire": ["Ese fuego puede salirse de control, {who}.", "Apagalo, o lo apago yo.", "Mi paciencia con tu fuego se está acabando."],

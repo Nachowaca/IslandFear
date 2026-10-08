@@ -47,6 +47,7 @@ func _on_player_died() -> void:
 		_hud.show_ending(str(fin["titulo"]), str(fin["cuerpo"]))
 		await get_tree().create_timer(22.0).timeout
 		Isla.nuevo_ciclo(str(fin["tipo"]))
+		Inventario.vaciar_cofre()                      # mundo nuevo: el baúl empieza vacío
 		IslandBrain.olvidar_todo()
 	else:
 		var n: int = int(res["vidas_restantes"])

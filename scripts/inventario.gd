@@ -16,14 +16,15 @@ var descubiertos: Dictionary = {}   ## item_id -> true (investigados)
 var linterna_carga: float = 0.0     ## segundos de luz que le quedan a la batería puesta
 var linterna_on: bool = false
 
+const COFRE_PATH: String = "user://cofre.json"
+
 func _ready() -> void:
 	vaciar()
+	_cofre_cargar()
 
+## Vacía la mochila (al morir). El baúl NO se toca: guarda su contenido entre vidas.
 func vaciar() -> void:
 	espacios.clear()
-	cofre.clear()
-	for k in COFRE_ESPACIOS:
-		cofre.append(null)
 	for i in ESPACIOS:
 		espacios.append(null)
 	seleccionado = 0
@@ -31,6 +32,46 @@ func vaciar() -> void:
 	linterna_carga = 0.0
 	linterna_on = false
 	cambiado.emit()
+
+## Vacía el baúl (solo al empezar un ciclo nuevo de 7 vidas).
+func vaciar_cofre() -> void:
+	cofre.clear()
+	for k in COFRE_ESPACIOS:
+		cofre.append(null)
+	_cofre_guardar()
+	cambiado.emit()
+
+func cofre_cantidad() -> int:
+	var t: int = 0
+	for e: Variant in cofre:
+		if e != null:
+			t += int(e["n"])
+	return t
+
+func _cofre_cargar() -> void:
+	cofre.clear()
+	for k in COFRE_ESPACIOS:
+		cofre.append(null)
+	if not FileAccess.file_exists(COFRE_PATH):
+		return
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(COFRE_PATH))
+	if parsed is Array:
+		var arr: Array = parsed
+		for i in mini(arr.size(), COFRE_ESPACIOS):
+			var e: Variant = arr[i]
+			if e is Dictionary and e.has("id") and e.has("n"):
+				cofre[i] = {"id": str(e["id"]), "n": int(e["n"])}
+
+func _cofre_guardar() -> void:
+	var f: FileAccess = FileAccess.open(COFRE_PATH, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(cofre))
+
+## La isla se entera de que guardás cosas en el baúl.
+func _avisar_isla(n: int) -> void:
+	var c: Node = get_tree().get_first_node_in_group("cofre") if is_inside_tree() else null
+	var pos: Vector3 = (c as Node3D).global_position if c is Node3D else Vector3.ZERO
+	Isla.registrar_evento("cofre", pos, float(n))
 
 ## Devuelve cuántas unidades NO entraron (0 = entró todo).
 func agregar(id: String, n: int) -> int:
@@ -79,6 +120,8 @@ func _agregar_a(arr: Array, id: String, n: int) -> int:
 func cofre_agregar(id: String, n: int) -> int:
 	var resto: int = _agregar_a(cofre, id, n)
 	if resto < n:
+		_cofre_guardar()
+		_avisar_isla(n - resto)
 		cambiado.emit()
 	return resto
 
@@ -96,6 +139,9 @@ func mover(desde_cofre: bool, i: int, n: int) -> int:
 		e["n"] = int(e["n"]) - movido
 		if int(e["n"]) <= 0:
 			src[i] = null
+		_cofre_guardar()
+		if not desde_cofre:
+			_avisar_isla(movido)
 		cambiado.emit()
 	return movido
 

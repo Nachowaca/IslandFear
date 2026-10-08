@@ -72,6 +72,7 @@ const EVENTOS: Dictionary = {
 	"contaminacion": {"cont": "", "fx": {"enojo": 0.04, "confianza": -0.02}, "dano": false},
 	"explorar": {"cont": "", "fx": {"curiosidad": 0.05, "miedo": -0.01}, "dano": false},
 	"cuidado": {"cont": "", "fx": {"confianza": 0.05, "enojo": -0.03}, "dano": false},
+	"cofre": {"cont": "", "fx": {"curiosidad": 0.02}, "dano": false},
 	"muerte_jugador": {"cont": "muertes", "fx": {"curiosidad": 0.15, "enojo": -0.12, "miedo": 0.05}, "dano": false},
 }
 
