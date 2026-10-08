@@ -45,6 +45,9 @@ func _ready() -> void:
 	_spawn_shells()
 	_spawn_materials()
 	_spawn_grass_tufts()
+	_spawn_grass_ground()
+	_spawn_biome_plants()
+	_spawn_river_banks()
 	_spawn_glow_flowers()
 	_spawn_wildlife()
 	_spawn_kit_ground()
@@ -553,7 +556,7 @@ func _spawn_grass() -> void:
 
 ## Pasto en manchas por bioma: mechones del MegaKit agrupados en celdas de 32 m (instancias múltiples),
 ## así cada celda se descarta entera cuando está lejos. Mucho pasto corto y pequeño, con zonas de pasto largo por ruido.
-const GRASS_PATCHES: int = 2600
+const GRASS_PATCHES: int = 3600
 const GRASS_CELL: float = 24.0
 const GRASS_VIS: float = 48.0
 
@@ -568,15 +571,16 @@ func _spawn_grass_tufts() -> void:
 	var tries: int = 0
 	while made < GRASS_PATCHES and tries < GRASS_PATCHES * 8:
 		tries += 1
-		var c: Vector3 = terrain.find_spot(rng, 1.25, 9.0)
+		var c: Vector3 = terrain.find_spot(rng, 1.25, 12.5)
 		if not _valid(c):
 			continue
 		var bw: PackedFloat32Array = terrain.eco.get_bioma_pesos(c)   # [costa, roquedal, selva, bosque, matorral, árido]
 		var dens: float = bw[0] * 0.3 + bw[1] * 0.06 + bw[2] * 0.4 + bw[3] * 0.65 + bw[4] * 1.0 + bw[5] * 0.35
 		dens *= clampf(0.85 - terrain.forest_value(c.x, c.z) * 0.9, 0.25, 1.1)    # más en claros que bajo arboleda cerrada
 		dens = maxf(dens, terrain.eco.get_misterio(c) * 0.9)
-		if terrain._cliff_mask(c.x, c.z) > 0.3:
-			continue
+		var cliffm: float = terrain._cliff_mask(c.x, c.z)
+		if cliffm > 0.7 or (cliffm > 0.3 and rng.randf() < 0.5):
+			continue      # en laderas empinadas, pasto más ralo (no desnudas)
 		if rng.randf() > dens:
 			continue
 		# especie dominante de la mancha según bioma y humedad
@@ -599,7 +603,7 @@ func _spawn_grass_tufts() -> void:
 			var x: float = c.x + cos(a) * d
 			var z: float = c.z + sin(a) * d
 			var y: float = terrain.height_at(x, z)
-			if y < 1.15 or y > 11.0 or terrain.is_in_pond_area(x, z, 1.1) or terrain.is_in_cave_area(x, z, 1.0) or terrain.is_on_path(x, z, 0.25):
+			if y < 1.15 or y > 13.0 or terrain.is_in_pond_area(x, z, 1.1) or terrain.is_in_cave_area(x, z, 1.0) or terrain.is_on_path(x, z, 0.25):
 				continue
 			# ruido de densidad y de altura (idea de FoliageFlow): zonas ralas, zonas de pasto largo y mucho pasto corto
 			var dn: float = remap(gnoise.get_noise_2d(x * 3.0 + 50.0, z * 3.0), -1.0, 1.0, 0.45, 1.0)
@@ -617,7 +621,13 @@ func _spawn_grass_tufts() -> void:
 			sc *= 1.0 - 0.3 * (d / rad)
 			if m == "Grass_Common_Short":
 				# alfombra: tarjetas con textura de hojas (como SimpleGrassTextured), muy baratas y tupidas
-				m = "CARD%d" % rng.randi_range(0, 2)
+				var cv: int = rng.randi_range(0, 2)
+				var bwx: PackedFloat32Array = terrain.eco.get_bioma_pesos(Vector3(x, y, z))
+				if bwx[5] + bwx[0] * 0.6 + bwx[1] * 0.5 > 0.55 and rng.randf() < 0.75:
+					cv = 3      # pasto seco, pajizo (zona árida, costa, roquedal)
+				elif bwx[2] > 0.45 and rng.randf() < 0.7:
+					cv = 4      # verde profundo y húmedo (selva)
+				m = "CARD%d" % cv
 				sc = rng.randf_range(0.3, 0.62) * (1.0 - 0.3 * (d / rad))
 			elif rng.randf() > 0.55:
 				continue      # los mechones 3D altos se reparten más ralos
@@ -645,6 +655,187 @@ func _spawn_grass_tufts() -> void:
 			root.add_child(mmi)
 			total += xf.size()
 	print("Pasto: %d mechones en %d lotes" % [total, cells.size()])
+
+## Capa de pasto de suelo: alfombra corta y muy abundante en zonas altas y en la entrada de la playa.
+## Usa el mismo shader que los mechones (se mece y se aplasta al pisarlo).
+const GROUND_GRASS_COUNT: int = 9000
+const GROUND_GRASS_VIS: float = 42.0
+
+func _spawn_grass_ground() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 571 + 13
+	var gnoise := FastNoiseLite.new()
+	gnoise.seed = seed_value + 321
+	gnoise.frequency = 0.07
+	var cells: Dictionary = {}
+	var made: int = 0
+	var tries: int = 0
+	while made < GROUND_GRASS_COUNT and tries < 400:
+		tries += 1
+		var high: bool = rng.randf() < 0.6
+		var c: Vector3 = terrain.find_spot(rng, 5.0, 14.0) if high else terrain.find_spot(rng, 1.2, 3.6)
+		if not _valid(c):
+			continue
+		var bw0: PackedFloat32Array = terrain.eco.get_bioma_pesos(c)
+		if not high and bw0[0] + bw0[1] < 0.25:
+			continue
+		for i in 40:
+			var a: float = rng.randf() * TAU
+			var d: float = sqrt(rng.randf()) * 3.2
+			var x: float = c.x + cos(a) * d
+			var z: float = c.z + sin(a) * d
+			var y: float = terrain.height_at(x, z)
+			if y < 1.2 or y > 15.0 or terrain.is_in_pond_area(x, z, 1.1) or terrain.is_in_cave_area(x, z, 1.0) or terrain.is_on_path(x, z, 0.3):
+				continue
+			var cm: float = terrain._cliff_mask(x, z)
+			if cm > 0.8:
+				continue
+			# entrada de playa: más ralo cerca de la arena, más tupido hacia adentro
+			var dens: float = clampf(remap(y, 1.2, 3.2, 0.15, 1.0), 0.15, 1.0)
+			dens *= remap(gnoise.get_noise_2d(x, z), -1.0, 1.0, 0.5, 1.0)
+			if rng.randf() > dens:
+				continue
+			var bw: PackedFloat32Array = terrain.eco.get_bioma_pesos(Vector3(x, y, z))
+			var cv: int = rng.randi_range(0, 2)
+			if bw[5] + bw[0] * 0.6 + bw[1] * 0.5 > 0.55 and rng.randf() < 0.8:
+				cv = 3
+			elif bw[2] > 0.45 and rng.randf() < 0.75:
+				cv = 4
+			var sc: float = rng.randf_range(0.16, 0.34)
+			var gb := Basis(Vector3.UP, rng.randf() * TAU) * Basis(Vector3.RIGHT, rng.randf_range(-0.1, 0.1))
+			gb = gb.scaled(Vector3(sc * 1.7 * rng.randf_range(0.85, 1.2), sc * rng.randf_range(0.85, 1.2), sc * 1.7 * rng.randf_range(0.85, 1.2)))
+			var key: String = "%d,%d,CARD%d" % [floori(x / GRASS_CELL), floori(z / GRASS_CELL), cv]
+			if not cells.has(key):
+				cells[key] = [] as Array[Transform3D]
+			(cells[key] as Array[Transform3D]).append(Transform3D(gb, Vector3(x, y - 0.03, z)))
+			made += 1
+	var root := Node3D.new()
+	root.name = "GrassGround"
+	add_child(root)
+	for key: String in cells.keys():
+		var parts: PackedStringArray = key.split(",")
+		var mmi: MultiMeshInstance3D = _grass_cards(int(parts[2].substr(4)), cells[key] as Array[Transform3D])
+		mmi.visibility_range_end = GROUND_GRASS_VIS
+		mmi.visibility_range_end_margin = GROUND_GRASS_VIS * 0.1
+		root.add_child(mmi)
+	print("Pasto de suelo: %d matas" % made)
+
+## Plantas medianas propias de cada bioma (arbustos, helechos, matas), con su tinte.
+## [modelo, bioma (0 costa,1 roquedal,2 selva,3 bosque,4 matorral,5 árido), cantidad, escala mín, escala máx, tinte]
+const BIOME_PLANTS: Array = [
+	["Plant_1_Big", 2, 230, 0.9, 1.5, Color(0.7, 1.0, 0.75)],
+	["Plant_7_Big", 2, 200, 0.9, 1.4, Color(0.75, 1.0, 0.7)],
+	["UQ:Bush_Large", 2, 120, 0.8, 1.3, Color(0.6, 0.9, 0.65)],
+	["Fern_1", 2, 300, 0.7, 1.2, Color(0.65, 0.95, 0.7)],
+	["UQ:Bush_Small", 5, 160, 0.8, 1.3, Color(1.1, 0.85, 0.5)],
+	["Grass_Wispy_Tall", 5, 220, 0.7, 1.2, Color(1.2, 0.95, 0.55)],
+	["Plant_7", 5, 90, 0.6, 1.0, Color(1.1, 0.9, 0.55)],
+	["Fern_1", 1, 110, 0.5, 0.9, Color(0.75, 0.85, 0.8)],
+	["UQ:Bush_Small", 1, 110, 0.7, 1.1, Color(0.65, 0.78, 0.72)],
+	["Mushroom_Common", 1, 50, 0.8, 1.4, Color.WHITE],
+	["Fern_1", 3, 220, 0.6, 1.1, Color(0.9, 1.0, 0.75)],
+	["UQ:Bush_Small", 3, 140, 0.8, 1.3, Color(0.85, 1.0, 0.75)],
+	["Mushroom_Common", 3, 50, 0.8, 1.4, Color.WHITE],
+	["Plant_7", 3, 120, 0.7, 1.2, Color(0.95, 1.0, 0.8)],
+	["Bush_Common_Flowers", 4, 150, 0.7, 1.2, Color(1.05, 1.0, 0.8)],
+	["UQ:Bush_Flowers", 4, 140, 0.8, 1.3, Color(1.0, 1.0, 0.85)],
+	["Grass_Wispy_Tall", 4, 160, 0.7, 1.1, Color(1.05, 1.0, 0.7)],
+	["Plant_7", 0, 110, 0.6, 1.0, Color(1.05, 1.1, 0.85)],
+	["Grass_Wispy_Tall", 0, 130, 0.6, 1.0, Color(1.2, 1.1, 0.7)],
+	["UQ:Bush_Small", 0, 70, 0.7, 1.1, Color(0.95, 1.05, 0.8)],
+]
+
+func _spawn_biome_plants() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 733 + 5
+	var root := Node3D.new()
+	root.name = "BiomePlants"
+	add_child(root)
+	var total: int = 0
+	for entry: Array in BIOME_PLANTS:
+		var model: String = entry[0]
+		if not NatureKit.exists(model):
+			continue
+		var bi: int = int(entry[1])
+		var target: int = int(entry[2])
+		var xf: Array[Transform3D] = []
+		var attempts: int = target * 12
+		while xf.size() < target and attempts > 0:
+			attempts -= 1
+			var c: Vector3 = terrain.find_spot(rng, 1.4, 13.0)
+			if not _valid(c):
+				continue
+			var bw: PackedFloat32Array = terrain.eco.get_bioma_pesos(c)
+			if rng.randf() > bw[bi] * bw[bi]:
+				continue
+			if terrain._cliff_mask(c.x, c.z) > 0.55 or terrain.is_in_pond_area(c.x, c.z, 1.1) or terrain.is_in_cave_area(c.x, c.z, 1.0) or terrain.is_on_path(c.x, c.z, 0.5):
+				continue
+			var n: int = rng.randi_range(1, 3)
+			for k in n:
+				var a: float = rng.randf() * TAU
+				var d: float = rng.randf_range(0.0, 1.4) if k > 0 else 0.0
+				var x: float = c.x + cos(a) * d
+				var z: float = c.z + sin(a) * d
+				var y: float = terrain.height_at(x, z)
+				if y < 1.3 or terrain.is_in_pond_area(x, z, 1.1) or terrain.is_on_path(x, z, 0.4):
+					continue
+				var sc: float = rng.randf_range(float(entry[3]), float(entry[4]))
+				var b := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc * rng.randf_range(0.85, 1.2), sc * rng.randf_range(0.85, 1.25), sc * rng.randf_range(0.85, 1.2)))
+				xf.append(Transform3D(b, Vector3(x, y - 0.05, z)))
+		var m: MultiMeshInstance3D = NatureKit.multi(model, xf, 80.0, entry[5] as Color)
+		if m != null:
+			root.add_child(m)
+			total += xf.size()
+	print("Plantas por bioma: %d" % total)
+
+## Vegetación de ribera: juncos altos en el borde del agua, helechos y plantas húmedas un poco más atrás.
+## [modelo, distancia mín al eje (m), máx, probabilidad por punto, escala mín, escala máx, tinte]
+const RIVER_PLANTS: Array = [
+	["Grass_Wispy_Tall", 1.7, 2.7, 0.9, 1.0, 1.7, Color(0.85, 1.0, 0.6)],
+	["Grass_Common_Tall", 1.8, 3.0, 0.7, 0.9, 1.5, Color(0.8, 1.0, 0.65)],
+	["Fern_1", 2.6, 4.6, 0.5, 0.7, 1.2, Color(0.7, 1.0, 0.75)],
+	["Plant_7", 2.6, 4.4, 0.25, 0.7, 1.2, Color(0.75, 1.0, 0.75)],
+	["UQ:Flower_3_Clump", 2.4, 4.2, 0.12, 0.7, 1.1, Color.WHITE],
+	["Clover_1", 2.0, 3.6, 0.45, 0.8, 1.3, Color(0.8, 1.0, 0.7)],
+]
+
+func _spawn_river_banks() -> void:
+	if terrain.river == null or not terrain.river.valid:
+		return
+	var rv: IslandRiver = terrain.river
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 421 + 17
+	var root := Node3D.new()
+	root.name = "RiverBanks"
+	add_child(root)
+	var total: int = 0
+	for entry: Array in RIVER_PLANTS:
+		var model: String = entry[0]
+		if not NatureKit.exists(model):
+			continue
+		var xf: Array[Transform3D] = []
+		for i in rv.pts.size() - 1:
+			if rng.randf() > float(entry[3]):
+				continue
+			var a: Vector2 = rv.pts[i]
+			var dir: Vector2 = (rv.pts[i + 1] - a).normalized()
+			var nrm: Vector2 = Vector2(-dir.y, dir.x)
+			for side in [-1.0, 1.0]:
+				var off: float = rng.randf_range(float(entry[1]), float(entry[2]))
+				var q: Vector2 = a + nrm * off * float(side) + dir * rng.randf_range(-0.5, 0.5)
+				var y: float = terrain.height_at(q.x, q.y)
+				if y < 0.9 or terrain.is_in_pond_area(q.x, q.y, 1.1) or terrain.is_on_path(q.x, q.y, 0.3):
+					continue
+				if terrain.river.dist_at(q.x, q.y) < 1.5:
+					continue
+				var sc: float = rng.randf_range(float(entry[4]), float(entry[5]))
+				var b := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc * rng.randf_range(0.85, 1.2), sc * rng.randf_range(0.85, 1.25), sc * rng.randf_range(0.85, 1.2)))
+				xf.append(Transform3D(b, Vector3(q.x, y - 0.05, q.y)))
+		var m: MultiMeshInstance3D = NatureKit.multi(model, xf, 70.0, entry[6] as Color)
+		if m != null:
+			root.add_child(m)
+			total += xf.size()
+	print("Ribera: %d plantas" % total)
 
 static var _card_mesh: ArrayMesh
 static var _card_mats: Dictionary = {}
@@ -677,8 +868,8 @@ func _grass_cards(variant: int, xf: Array[Transform3D]) -> MultiMeshInstance3D:
 		var sh := ShaderMaterial.new()
 		sh.shader = preload("res://shaders/wind_leaf.gdshader")
 		sh.set_shader_parameter("albedo_tex", load("res://addons/simplegrasstextured/textures/grassbushcc008.png"))
-		var tints: Array[Color] = [Color(0.85, 1.0, 0.7), Color(1.0, 1.0, 0.72), Color(0.7, 0.95, 0.72)]
-		sh.set_shader_parameter("tint", tints[variant % 3])
+		var tints: Array[Color] = [Color(0.85, 1.0, 0.7), Color(1.0, 1.0, 0.72), Color(0.7, 0.95, 0.72), Color(1.0, 0.9, 0.62), Color(0.55, 0.85, 0.6)]
+		sh.set_shader_parameter("tint", tints[variant % 5])
 		var pr: Dictionary = NatureKit.WIND_PARAMS["grass"]
 		for k: String in pr.keys():
 			sh.set_shader_parameter(k, pr[k])
@@ -886,7 +1077,7 @@ func _spawn_glow_flowers() -> void:
 			var x: float = c0.x + cos(a) * d
 			var z: float = c0.z + sin(a) * d
 			var y: float = terrain.height_at(x, z)
-			if y < 1.5 or y > 11.0 or terrain.is_in_pond_area(x, z, 1.1) or terrain.is_in_cave_area(x, z, 1.0) or terrain.is_on_path(x, z, 0.25):
+			if y < 1.5 or y > 13.0 or terrain.is_in_pond_area(x, z, 1.1) or terrain.is_in_cave_area(x, z, 1.0) or terrain.is_on_path(x, z, 0.25):
 				continue
 			var sc: float = rng.randf_range(0.8, 1.5)
 			var key: String = "%d,%d,%d" % [floori(x / 40.0), floori(z / 40.0), ci]

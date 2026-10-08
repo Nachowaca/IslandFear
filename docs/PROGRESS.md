@@ -316,3 +316,10 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Estanque con agua turquesa-verdosa acorde al rio.
 - No hecho: bruma baja en caminos (contradice la decision de no usar capas de niebla); escalones y faroles ya existian en path_decor.gd; vegetacion de orilla del rio; revision de coherencia de assets; mas follaje por bioma (solo mapa de calor).
 - Sin medir fps ni memoria.
+
+
+## Follaje y ribera (sesion actual)
+- Pasto por bioma (paja en arido/costa/roquedal, verde profundo en selva), capa GrassGround (9000 matas cortas), 3600 parches.
+- BIOME_PLANTS: plantas medianas por bioma (~3000, MultiMesh). RIVER_PLANTS: juncos/helechos/treboles en las orillas del rio (_spawn_river_banks).
+- Fogatas del mapa usan cozy_campfire.glb. Pendiente: campfire.gd (la del jugador) con ese modelo.
+- No medido: fps con estas capas, de noche, a pie.
