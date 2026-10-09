@@ -78,6 +78,7 @@ const EVENTOS: Dictionary = {
 }
 
 const VIDAS_MAX: int = 7
+const VINCULO_INICIO: float = 30.0     ## vínculo mínimo al abrir el juego (Tolerante: la luciérnaga viene)
 
 var tumbas: Array = []                  ## piedras de las vidas pasadas del ciclo: {x, y, z, texto}
 
@@ -114,6 +115,9 @@ func _ready() -> void:
 		vida_actual[c] = 0.0
 	if not cargar():
 		_personalidad_inicial()
+	# punto de partida de las pruebas: arranca en paz (Tolerante) como mínimo
+	vinculo = maxf(vinculo, VINCULO_INICIO)
+	_etapa_prev = etapa_idx()
 	for e: String in EMOCIONES:
 		if not valor.has(e):
 			valor[e] = base[e]

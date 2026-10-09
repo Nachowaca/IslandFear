@@ -440,7 +440,7 @@ func _update_sacred(ppos: Vector3, delta: float) -> void:
 
 func _update_emotions(delta: float) -> void:
 	# humor errático: caminata aleatoria que vuelve lento hacia el centro
-	_noise = clampf(_noise + _rng.randfn(0.0, 0.12) * sqrt(delta) - (_noise - 0.5) * 0.04 * delta, 0.0, 1.0)
+	_noise = clampf(_noise + _rng.randfn(0.0, 0.03) * sqrt(delta) - (_noise - 0.5) * 0.008 * delta, 0.0, 1.0)
 	_curiosity = Isla.get_emocion("curiosidad")      # la curiosidad ahora vive en el autoload Isla
 	# lingerar en un lugar sagrado SÍ es una ofensa
 	if _sacred_pressure > 0.5:

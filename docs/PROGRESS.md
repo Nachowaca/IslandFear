@@ -374,3 +374,9 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Fuego: `MAX_FUEL` 1200 s (20 min reales); leña madera 240 / rama 100 / paja 36. Tecla N apaga la fogata cercana (quedan brasas) para guardar recursos.
 - Hambre/sed: `hunger_decay` 0.037 (~45 min reales), `thirst_decay` 0.06 (~28 min). Multiplicador por actividad: correr x1.8, cortar/recoger x1.5 (6 s), sentado x0.5; x1.25 si una necesidad está en 0.
 - Quitado el medidor de fps (`fps_meter.gd` queda en disco sin uso). Sin cambios: canto, estudio de la isla, clima.
+
+## Vela, sombras y arranque de pruebas
+- Vela: botavara alta (SAIL_FOOT 2.3) y girada (SAIL_YAW), tela suelta con ráfagas y ondas (sail.gdshader). Ya no atraviesa al jugador.
+- Sombras del sol: filtro soft high, shadow_blur 2.5, distancia 100 m.
+- Humor de la isla más lento (caminata aleatoria 0.03).
+- Arranque de pruebas (TEMPORAL): reloj a las 6:00 (START_HOUR) y vínculo mínimo 30 (VINCULO_INICIO). Quitar antes de publicar.

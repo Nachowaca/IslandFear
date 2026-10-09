@@ -55,6 +55,8 @@ func setup(p_sun: DirectionalLight3D, p_env: WorldEnvironment) -> void:
 	env_node = p_env
 
 func _ready() -> void:
+	# punto de partida de cada partida: amanecer (6:00 de la isla)
+	_offset_hours = fposmod(START_HOUR - _current_hour(), 24.0)
 	_env = env_node.environment
 	_sky_mat = ShaderMaterial.new()
 	_sky_mat.shader = SKY_SHADER
@@ -128,6 +130,7 @@ func water_mat() -> ShaderMaterial:
 
 ## Reloj de la isla: 2 h reales = 24 h de juego (1 h real de día + 1 h real de noche). Fecha fija (equinoccio): días y noches parejos.
 const TIME_SCALE: float = 12.0
+const START_HOUR: float = 6.0     ## hora de la isla al empezar la partida
 var _equinox_unix: float = Time.get_unix_time_from_datetime_string("2026-03-20T00:00:00")
 
 ## Horas UTC del juego (0..24).

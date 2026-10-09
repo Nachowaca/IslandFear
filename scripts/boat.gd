@@ -10,6 +10,8 @@ const SAIL_SHADER: Shader = preload("res://shaders/sail.gdshader")
 const BOW_Z: float = -2.1
 const STERN_Z: float = 1.9
 const DECK_Y: float = 0.125
+const SAIL_FOOT: float = 2.3        ## altura de la botavara (sobre la cabeza del jugador)
+const SAIL_YAW: float = 0.2        ## giro de la vela respecto al eje del barco (rad)
 
 var _mats: Dictionary = {}
 var _ramp_hinge: Node3D
@@ -128,12 +130,13 @@ func _build_rig() -> void:
 	var rope: StandardMaterial3D = _mat(Color(0.7, 0.62, 0.45))
 	var mast_z: float = -0.85
 	var base: Vector3 = Vector3(0, DECK_Y, mast_z)
-	var top: Vector3 = Vector3(0, 2.85, mast_z)
+	var top: Vector3 = Vector3(0, 3.9, mast_z)
 	_line(base, top, 0.055, dark)
 	_box(Vector3(0.28, 0.1, 0.4), Vector3(0, 0.17, mast_z), dark)          # carlinga del mástil
 	# botavara
-	var boom_a: Vector3 = Vector3(0, 0.95, mast_z)
-	var boom_b: Vector3 = Vector3(0, 0.95, 1.05)
+	# la botavara va alta (sobre la cabeza) y apenas girada: la vela no estorba al caminar por cubierta
+	var boom_a: Vector3 = Vector3(0, SAIL_FOOT, mast_z)
+	var boom_b: Vector3 = Vector3(sin(SAIL_YAW) * 1.9, SAIL_FOOT, 1.05)
 	_line(boom_a, boom_b, 0.04, dark)
 	# estayes y cuerdas
 	_line(top, Vector3(0, 0.2, BOW_Z + 0.15), 0.012, rope)
@@ -145,14 +148,16 @@ func _build_rig() -> void:
 	var pm := MeshInstance3D.new()
 	pm.mesh = pennant
 	pm.material_override = _mat(Color(0.75, 0.15, 0.12))
-	pm.position = Vector3(0, 2.8, mast_z + 0.15)
+	pm.position = Vector3(0, 3.85, mast_z + 0.15)
 	pm.rotation = Vector3(0, PI / 2.0, -PI / 2.0)
 	add_child(pm)
 	# vela triangular con panza
 	var sail := MeshInstance3D.new()
-	sail.mesh = _make_sail(Vector3(0, 1.0, mast_z), Vector3(0, 2.75, mast_z), Vector3(0, 1.0, 1.0), 9)
+	sail.mesh = _make_sail(Vector3(0, SAIL_FOOT, mast_z), Vector3(0, 3.8, mast_z), Vector3(0, SAIL_FOOT, 1.0), 12)
 	var sm := ShaderMaterial.new()
 	sm.shader = SAIL_SHADER
+	sm.set_shader_parameter("mast_z", mast_z)
+	sm.set_shader_parameter("yaw", SAIL_YAW)
 	sail.material_override = sm
 	sail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	add_child(sail)
