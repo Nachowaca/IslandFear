@@ -38,6 +38,9 @@ var noche: LookNoche
 var eco: EcoMap
 var _contacto: LookContacto
 var _destello: LookDestello
+var _ins: Node3D
+var _part: Node3D
+var _flut: Node3D
 var _cam_attr: CameraAttributesPractical
 var _overlay_layer: CanvasLayer
 var _overlay: Label
@@ -96,6 +99,18 @@ func preparar_mundo(p_terrain: IslandTerrain, p_player: Node3D) -> void:
 	noche.eco = eco
 	noche.player = player
 	add_child(noche)
+	_ins = load("res://scripts/air/air_insects.gd").new() as Node3D
+	_ins.set("terrain", terrain)
+	_ins.set("player", player)
+	add_child(_ins)
+	_part = load("res://scripts/air/air_particles.gd").new() as Node3D
+	_part.set("terrain", terrain)
+	_part.set("player", player)
+	add_child(_part)
+	_flut = load("res://scripts/air/air_flutter.gd").new() as Node3D
+	_flut.set("terrain", terrain)
+	_flut.set("player", player)
+	add_child(_flut)
 	_destello = LookDestello.new()
 	_destello.name = "LookDestello"
 	_destello.player = player
@@ -196,6 +211,10 @@ func aplicar(day: float, dusk: float, golden: float, e: float, manana: bool) -> 
 			fuerza = 0.0     # la luna no hace haces duros: su luz es suave y viene de la luz direccional y el ambiente
 		_haces.set_luz(luz_dir, luz_col, fuerza)
 		_haces.set_bruma(p.color_niebla.lerp(Color.WHITE, 0.15), clampf(p.niebla_altura / 0.04 + (daynight.fog_boost + daynight.fog_clima) * 40.0, 0.0, 1.0))
+	if _ins != null:
+		_ins.call("set_noche", _w_noche)
+		_flut.call("set_noche", _w_noche)
+		_part.call("set_hora", daynight.hour, _w_noche)
 	if _destello != null:
 		_destello.set_sol(daynight.sun_dir, p.color_sol, smoothstep(0.05, 0.3, e) * lerpf(1.0, 0.0, clampf(nub * 1.6, 0.0, 1.0)), on and calidad >= Calidad.MEDIA)
 	if _contacto != null:

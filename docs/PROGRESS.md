@@ -416,3 +416,9 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 ## Preset look-v3 (dia) 
 - Dia: sol 1.3 dorado (1.0,0.86,0.6), niebla 0.0009, nubes minimas 0.15, saturacion 1.08, sombras frias, hojas a contraluz, polvo brillante, sombras definidas (shadow_blur 0.55), mancha bajo el personaje, destello de lente (look_destello.gd), rocas grises calidas, particulas suaves, suciedad del suelo del bosque, troncos oscuros.
 - Restaurar: git checkout look-v3 -- .
+
+## Preset look-v4 (look congelado + aire)
+- Aire: libelulas, mosquitos, semillas, petalos, rocio, abejas y mariposas extra (scripts/air/*.gd, conectados desde look_director.preparar_mundo).
+- Copias fuera del proyecto: /Users/avisamacstudio/islander-fear-look-congelado/ (ambiente_preset.gd, look_director.gd, sky_daynight.gdshader).
+- Regla: el clima NO toca los presets; solo fog_clima, cloud y set_modificador, con multiplicadores temporales que vuelven a 1.0.
+- Restaurar: git checkout look-v4 -- .
