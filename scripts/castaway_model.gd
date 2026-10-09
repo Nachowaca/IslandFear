@@ -17,6 +17,7 @@ var ap: AnimationPlayer
 var sk: Skeleton3D
 var pose: CastawayPose
 
+var sit_target: float = 0.0            ## 0 de pie, 1 sentado (la pose interpola hacia este valor)
 var _cur: String = ""
 var _air: bool = false
 var _action: String = ""
@@ -75,7 +76,27 @@ func _start_pose_action(a: String, length: float) -> void:
 func pulse_use() -> void:
 	_use_t = 0.4
 
+## Ángulos extra (hombro, antebrazo) del brazo derecho según cómo se sostiene el objeto.
+func _kind_target(kind: String) -> Vector2:
+	match kind:
+		"luz":
+			return Vector2(-0.22, -0.12)        # brazo más adelante y alto
+		"herramienta":
+			return Vector2(0.28, 0.35)          # brazo más bajo, mano al costado
+		"caña":
+			return Vector2(-0.12, 0.15)         # brazo adelante, algo extendido
+	return Vector2.ZERO
+
 func update(dt: float, h_speed: float, air: bool, dead: bool, crouch_target: float) -> void:
+	var kt: Vector2 = _kind_target(pose.hold_kind)
+	var kk: float = 1.0 - exp(-6.0 * dt)
+	pose.kind_up = lerpf(pose.kind_up, kt.x, kk)
+	pose.kind_fore = lerpf(pose.kind_fore, kt.y, kk)
+	pose.hold_kind_w = lerpf(pose.hold_kind_w, 1.0 if pose.hold_kind != "" else 0.0, kk)
+	pose.run_w = lerpf(pose.run_w, clampf((h_speed - 4.5) / 3.0, 0.0, 1.0), 1.0 - exp(-7.0 * dt))
+	pose.sit = lerpf(pose.sit, sit_target, 1.0 - exp(-5.0 * dt))
+	if absf(pose.sit - sit_target) < 0.003:
+		pose.sit = sit_target
 	_use_t = maxf(_use_t - dt, 0.0)
 	pose.use_w = sin(PI * (1.0 - _use_t / 0.4)) if _use_t > 0.0 else 0.0
 	pose.crouch = lerpf(pose.crouch, crouch_target, 1.0 - exp(-9.0 * dt))

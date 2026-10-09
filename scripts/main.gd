@@ -127,6 +127,8 @@ func _ready() -> void:
 	mano.player = _castaway
 	mano.ui = inv_ui
 	mano.terrain = _island
+	mano.inter = inter
+	inter.mano = mano
 	add_child(mano)
 	var eco: EcoMap = _island.eco      # lo crea la isla antes de plantar
 	Isla.eco = eco

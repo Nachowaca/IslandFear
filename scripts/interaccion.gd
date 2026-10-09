@@ -11,6 +11,7 @@ var terrain: IslandTerrain
 var features: IslandFeatures
 var ui: InventoryUi
 var cofre_ui: CofreUi
+var mano: HeldItem
 var _cofre: CofrePlaya
 
 var _prev: Dictionary = {}
@@ -347,6 +348,7 @@ func _ofrenda(id: String, pos: Vector3, it: WorldItem = null) -> void:
 	for n: Node in get_tree().get_nodes_in_group("stela"):      # una ofrenda ante una piedra tallada también cuenta
 		var sn: Node3D = n as Node3D
 		if sn != null and Vector2(pos.x - sn.global_position.x, pos.z - sn.global_position.z).length() < 2.4:
+			_gesto_ofrenda(pos)
 			Isla.registrar_evento("ofrenda", pos, 0.6)
 			ui.message("Dejás una ofrenda ante la piedra tallada. La isla lo siente.")
 			return
@@ -355,6 +357,7 @@ func _ofrenda(id: String, pos: Vector3, it: WorldItem = null) -> void:
 			continue
 		var p: Vector3 = sp["pos"]
 		if Vector2(pos.x - p.x, pos.z - p.z).length() < float(sp["radius"]) + 1.5:
+			_gesto_ofrenda(pos)
 			Isla.registrar_evento("ofrenda", pos, 1.0)
 			ui.message("Dejás una ofrenda en %s. La isla lo siente." % str(sp["name"]).to_lower())
 			return
@@ -418,16 +421,27 @@ func _probar() -> void:
 # ------------------------------------------------------------------ cortar
 
 
+## Q: corta con lo que tengas en la mano (hacha o cuchilla); T con esas herramientas hace lo mismo.
 func _cortar() -> void:
+	var e: Variant = Inventario.item_seleccionado()
+	cortar_con_mano(str(e["id"]) if e != null else "")
+
+## Usa la herramienta de la mano: sin árbol delante solo da el tajo al aire.
+func cortar_con_mano(herramienta: String) -> void:
 	if _cut_cd > 0.0:
 		return
-	if _plant == null:
-		ui.message("No hay nada para cortar delante.")
-		return
-	var hacha: bool = Inventario.tiene("hacha")
-	var cuchilla: bool = Inventario.tiene("piedra_afilada")
+	var hacha: bool = herramienta == "hacha"
+	var cuchilla: bool = herramienta == "piedra_afilada"
 	if not hacha and not cuchilla:
-		ui.message("Necesitás algo afilado: una cuchilla de piedra o un hacha.")
+		if Inventario.tiene("hacha") or Inventario.tiene("piedra_afilada"):
+			ui.message("Tenés que llevar el hacha o la cuchilla en la mano: elegila en la barra.")
+		else:
+			ui.message("Necesitás algo afilado: una cuchilla de piedra o un hacha.")
+		return
+	if _plant == null:
+		_cut_cd = 0.55
+		player.play_action("cut")
+		_sonido("step_grass", player.global_position, -14.0)
 		return
 	_cut_cd = 0.55
 	player.play_action("cut")
@@ -642,6 +656,8 @@ func _investigar() -> void:
 			if e != null:
 				var id2: String = str(e["id"])
 				Inventario.descubrir(id2)
+				if mano != null:
+					mano.inspeccionar(id2)
 				texto = "%s: %s" % [ItemDB.display_name(id2), str(ItemDB.get_def(id2)["hint"])]
 			else:
 				ui.message("No hay nada que investigar acá.")
@@ -661,3 +677,35 @@ func _lugar_cercano() -> Dictionary:
 			best_d = d
 			best = sp
 	return best
+
+## Gesto de dejar una ofrenda: se agacha y sube un destello suave de luz desde el objeto.
+func _gesto_ofrenda(pos: Vector3) -> void:
+	player.play_action("pickup")
+	var fx := CPUParticles3D.new()
+	var m := SphereMesh.new()
+	m.radius = 0.03
+	m.height = 0.06
+	m.radial_segments = 4
+	m.rings = 2
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.7, 1.0, 0.9)
+	mat.emission_enabled = true
+	mat.emission = Color(0.6, 1.0, 0.85)
+	mat.emission_energy_multiplier = 2.5
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.material = mat
+	fx.mesh = m
+	fx.amount = 18
+	fx.lifetime = 1.6
+	fx.one_shot = true
+	fx.explosiveness = 0.6
+	fx.direction = Vector3.UP
+	fx.spread = 30.0
+	fx.gravity = Vector3(0, 0.4, 0)
+	fx.initial_velocity_min = 0.4
+	fx.initial_velocity_max = 1.1
+	fx.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	player.get_parent().add_child(fx)
+	fx.global_position = pos + Vector3(0, 0.15, 0)
+	fx.emitting = true
+	get_tree().create_timer(2.4).timeout.connect(fx.queue_free)

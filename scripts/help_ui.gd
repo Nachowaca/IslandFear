@@ -16,9 +16,12 @@ const SECTIONS: Array[Dictionary] = [
 		["F", "Investigar: te cuenta qué es lo que mirás. Puede avisarte de peligros."],
 		["R", "Probar o comer el objeto elegido. Cuidado con los hongos."],
 		["Q", "Cortar. Con cuchilla: lianas y hojas. Con hacha: talar árboles."],
-		["G", "Dejar el objeto elegido (Shift: todos). Una ofrenda en un lugar sagrado calma a la isla."]]},
+		["G", "Dejar el objeto elegido (Shift: todos). Una ofrenda en un lugar sagrado calma a la isla."],
+		["T", "Usar el objeto en la mano: linterna, antorcha, hacha (talar), cuchilla, caña de pescar."],
+		["V", "Sentarte a contemplar la isla. Cualquier movimiento te levanta."],
+		["Z", "Mantener para observar con zoom desde los ojos (rueda del mouse: más o menos zoom)."]]},
 	{"title": "Fabricar", "rows": [
-		["C", "Combinar objetos: cuchilla, cuerda, hacha, lanza y fuego."],
+		["C", "Combinar objetos: cuchilla, cuerda, hacha, lanza, antorcha, caña de pescar y fuego."],
 		["1 – 0", "Elegir un objeto de la barra (o usá la rueda del mouse)."]]},
 	{"title": "Sobrevivir", "rows": [
 		["Hambre y sed", "Bajan solas. Bajo el 10 % se ponen rojas y dejás de curarte. En 0 perdés salud."],

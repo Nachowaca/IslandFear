@@ -16,7 +16,7 @@ const ETAPA_LIMITES: Array[float] = [-40.0, -10.0, 15.0, 45.0, 75.0]
 const VINCULO_FX: Dictionary = {
 	"arbol_cortado": -8.0, "fuego": -3.0, "animal_cazado": -12.0, "animal_molestado": -0.6,
 	"fruto_tomado": -0.15, "zona_sagrada": -0.5,
-	"ofrenda": 7.0, "cuidado": 1.0, "explorar": 0.2, "limpieza": 3.0, "contaminacion": -0.5,
+	"ofrenda": 7.0, "cuidado": 1.0, "contemplar": 0.3, "explorar": 0.2, "limpieza": 3.0, "contaminacion": -0.5,
 }
 const PAZ_TOPE: float = 40.0                 ## la paz sola no pasa de aquí: para más hacen falta gestos (ofrendas)
 
@@ -73,6 +73,7 @@ const EVENTOS: Dictionary = {
 	"explorar": {"cont": "", "fx": {"curiosidad": 0.05, "miedo": -0.01}, "dano": false},
 	"cuidado": {"cont": "", "fx": {"confianza": 0.05, "enojo": -0.03}, "dano": false},
 	"cofre": {"cont": "", "fx": {"curiosidad": 0.02}, "dano": false},
+	"contemplar": {"cont": "", "fx": {"confianza": 0.03, "enojo": -0.02, "miedo": -0.02}, "dano": false},
 	"muerte_jugador": {"cont": "muertes", "fx": {"curiosidad": 0.15, "enojo": -0.12, "miedo": 0.05}, "dano": false},
 }
 

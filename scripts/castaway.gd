@@ -130,6 +130,12 @@ var _cam_shape: SphereShape3D = SphereShape3D.new()
 @onready var _model: Node3D = $Model
 
 var _rig: CastawayModel
+var observar: Observar
+var sitting: bool = false        ## sentado contemplando (lo maneja Observar): no procesa movimiento
+var zoom_fov: float = 0.0        ## 0 = sin zoom; >0 = FOV objetivo de la vista de ojos (lo controla Observar)
+var eye_view: float = 0.0        ## 0..1: cuánto está la cámara en "vista de ojos" (lo controla Observar)
+var _sit_cam: float = 0.0
+var _sway: Vector3 = Vector3.ZERO
 var _crouch: float = 0.0
 var _crouching: bool = false
 
@@ -146,6 +152,20 @@ func play_action(action: String) -> void:
 func set_hold(w: float) -> void:
 	if _rig != null:
 		_rig.pose.hold = w
+
+## Muestra u oculta el cuerpo (vista de ojos con zoom).
+func set_model_visible(v: bool) -> void:
+	if _model != null and _model.visible != v:
+		_model.visible = v
+
+## Cómo se sostiene el objeto: "luz", "herramienta", "caña" o "" (ninguno).
+func set_hold_kind(kind: String) -> void:
+	if _rig != null:
+		_rig.pose.hold_kind = kind
+
+## Balanceo del objeto en mano (espacio del cuerpo, ±0.03 m), sincronizado con el paso.
+func hold_sway() -> Vector3:
+	return _sway
 
 ## Gesto corto de usar el objeto en mano.
 func pulse_use() -> void:
@@ -242,6 +262,9 @@ func _ready() -> void:
 	_cam_default = _camera.transform
 	floor_snap_length = 0.6
 	floor_max_angle = deg_to_rad(60.0)
+	observar = Observar.new()
+	observar.name = "Observar"
+	add_child(observar)
 	_update_pivot(0.0)
 
 ## Gira la cámara hacia una dirección del mundo (por ejemplo, la luna).
@@ -258,8 +281,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion:
 		var mm: InputEventMouseMotion = event
-		_yaw -= mm.relative.x * mouse_sensitivity
-		_pitch = clampf(_pitch - mm.relative.y * mouse_sensitivity, -1.2, 0.5)
+		var sens: float = mouse_sensitivity * lerpf(1.0, clampf(_camera.fov / base_fov, 0.1, 1.0), eye_view)
+		_yaw -= mm.relative.x * sens
+		_pitch = clampf(_pitch - mm.relative.y * sens, -1.2, 0.5)
 	elif event is InputEventMouseButton and event.pressed:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
@@ -283,7 +307,7 @@ var menu_lock: bool = false   ## con un menú abierto las flechas eligen y no mu
 
 ## Teclas leídas directo: W adelante, S o X atrás, A izquierda, D derecha (+ flechas y acciones del Input Map).
 func _read_move_input() -> Vector2:
-	if ui_lock:
+	if ui_lock or sitting:
 		return Vector2.ZERO
 	var v: Vector2 = Vector2.ZERO if menu_lock else Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if _key(KEY_A):
@@ -304,7 +328,7 @@ func _move(delta: float) -> void:
 	var dir: Vector3 = Vector3.ZERO
 	if input != Vector2.ZERO:
 		dir = (Basis(Vector3.UP, _yaw) * Vector3(input.x, 0.0, input.y)).normalized()
-	_crouching = _key(KEY_CTRL) and _grounded
+	_crouching = _key(KEY_CTRL) and _grounded and not sitting
 	var speed: float = run_speed if _key(KEY_SHIFT) else walk_speed
 	if _crouching:
 		speed = walk_speed * 0.45   # agachado: lento y silencioso
@@ -332,7 +356,7 @@ func _move(delta: float) -> void:
 	velocity.z = horizontal.z
 
 	# Salto y gravedad
-	if _grounded and _key(KEY_SPACE) and not _crouching and not ui_lock:
+	if _grounded and _key(KEY_SPACE) and not _crouching and not ui_lock and not sitting:
 		velocity.y = jump_velocity
 		_grounded = false
 	elif _grounded:
@@ -385,16 +409,30 @@ func _animate(delta: float) -> void:
 	if _grounded and not _prev_grounded and controllable:
 		_emit_step(10.0)
 	_prev_grounded = _grounded
+	_rig.sit_target = 1.0 if (sitting and not dead) else 0.0
 	_rig.update(delta, h_speed, air, dead, 1.0 if _crouching else 0.0)
 
+	# Balanceo del objeto en mano, sincronizado con el ciclo de paso
+	var sway_t: Vector3 = Vector3.ZERO
+	if ph >= 0.0 and _grounded:
+		var a: float = clampf(h_speed / run_speed, 0.0, 1.0) * 0.6 + 0.4
+		var w: float = ph * TAU
+		sway_t = Vector3(sin(w) * 0.012, cos(w * 2.0) * 0.018, sin(w) * 0.01) * a * 1.6
+		sway_t = sway_t.clamp(Vector3(-0.03, -0.03, -0.03), Vector3(0.03, 0.03, 0.03))
+	_sway = _sway.lerp(sway_t, 1.0 - exp(-12.0 * delta))
+
 func _update_pivot(delta: float) -> void:
-	_pivot.global_position = global_position + Vector3(0, 1.5, 0)
+	_sit_cam = lerpf(_sit_cam, 1.0 if sitting else 0.0, 1.0 - exp(-4.0 * delta))
+	_pivot.global_position = global_position + Vector3(0, 1.5 - 0.6 * _sit_cam, 0)
 	_pivot.global_basis = Basis.from_euler(Vector3(_pitch, _yaw, 0))
 
-	# FOV más amplio al correr
+	# FOV más amplio al correr (o el de zoom si se está observando con Z)
 	var h_speed: float = Vector2(velocity.x, velocity.z).length()
 	var run_amt: float = clampf((h_speed - walk_speed) / maxf(run_speed - walk_speed, 0.1), 0.0, 1.0)
-	_camera.fov = lerpf(_camera.fov, base_fov + run_amt * run_fov_boost, 1.0 - exp(-5.0 * delta))
+	var fov_goal: float = base_fov + run_amt * run_fov_boost
+	if zoom_fov > 0.0:
+		fov_goal = zoom_fov
+	_camera.fov = lerpf(_camera.fov, fov_goal, 1.0 - exp(-(9.0 if zoom_fov > 0.0 else 5.0) * delta))
 
 	# La cámara no atraviesa terreno, árboles ni rocas
 	_camera.transform = _cam_default
@@ -414,5 +452,9 @@ func _update_pivot(delta: float) -> void:
 	var rate: float = 18.0 if want_frac < _cam_frac else 2.5
 	_cam_frac = lerpf(_cam_frac, want_frac, 1.0 - exp(-rate * delta))
 	_camera.global_position = from + full * _cam_frac
+	if eye_view > 0.001:
+		# Vista de ojos: la cámara se mete en la cabeza (un poco adelante para no ver el cuello)
+		var eye_pos: Vector3 = from + _pivot.global_basis * Vector3(0.0, 0.0, -0.12)
+		_camera.global_position = _camera.global_position.lerp(eye_pos, smoothstep(0.0, 1.0, eye_view))
 	if _shake > 0.001:
 		_camera.global_position += Vector3(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * _shake * 0.12

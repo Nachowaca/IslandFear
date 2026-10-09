@@ -90,6 +90,12 @@ const DEFS: Dictionary = {
 		"hint": "Una bolsa deshilachada. Los animales la confunden con comida."},
 	"red_enredada": {"name": "Red enredada", "color": Color(0.3, 0.45, 0.35), "shape": "net", "food": false, "offering": false, "contaminante": true,
 		"hint": "Una red de pesca perdida, hecha un nudo. Atrapa a lo que pasa."},
+	"antorcha": {"name": "Antorcha", "color": Color(0.45, 0.3, 0.16), "shape": "torch", "food": false, "offering": false, "tool": "luz",
+		"hint": "Una rama con paja seca atada en la punta. Con T se enciende (cerca de una fogata, o chocando dos piedras). Dura unos diez minutos y se apaga en el agua."},
+	"cana_pescar": {"name": "Caña de pescar", "color": Color(0.5, 0.36, 0.2), "shape": "rod", "food": false, "offering": false, "tool": "pesca",
+		"hint": "Una rama larga con cuerda y una espina de anzuelo. Con T lanzás frente al agua; cuando el flotador se hunde, T otra vez."},
+	"pescado": {"name": "Pescado crudo", "color": Color(0.6, 0.7, 0.78), "shape": "fish", "food": true, "nutrition": 0.2, "hydration": 0.0, "offering": false,
+		"hint": "Un pez fresco. Crudo alimenta, pero a la brasa seguramente sabría mejor."},
 	"sal": {"name": "Sal marina", "color": Color(0.95, 0.95, 0.92), "shape": "salt", "food": false, "offering": false,
 		"hint": "Cristales blancos que se secaron en la roca. Conservan la comida."},
 }
@@ -173,7 +179,9 @@ static func make_visual(id: String) -> Node3D:
 			_mi(root, _cyl(0.025, 0.035, 0.12), Color(0.9, 0.85, 0.72), Vector3(0, 0.06, 0))
 			_mi(root, _sph(0.09), c, Vector3(0, 0.13, 0), Vector3.ZERO, Vector3(1, 0.5, 1))
 		"blade":
-			_mi(root, _sph(0.1), c, Vector3(0, 0.03, 0), Vector3(0, 0.5, 0), Vector3(1.4, 0.2, 0.7))
+			_mi(root, _cyl(0.02, 0.022, 0.16), Color(0.45, 0.3, 0.17), Vector3(0.1, 0.04, 0), Vector3(0, 0, PI / 2.0))
+			_mi(root, _sph(0.1), c, Vector3(-0.07, 0.04, 0), Vector3(0, 0, 0), Vector3(1.5, 0.12, 0.45))
+			_mi(root, _cyl(0.0, 0.02, 0.05), c, Vector3(-0.17, 0.04, 0), Vector3(0, 0, PI / 2.0))
 		"axe":
 			_mi(root, _cyl(0.025, 0.03, 0.7), c, Vector3(0, 0.05, 0), Vector3(PI / 2.0, 0, 0.1))
 			_mi(root, _sph(0.09), Color(0.7, 0.72, 0.78), Vector3(0, 0.07, -0.3), Vector3(0, 0, 0), Vector3(0.4, 1.0, 1.2))
@@ -241,6 +249,14 @@ static func make_visual(id: String) -> Node3D:
 		"shovel":
 			_mi(root, _cyl(0.02, 0.025, 0.8), Color(0.5, 0.36, 0.2), Vector3(0, 0.04, 0), Vector3(PI / 2.0, 0, 0.1))
 			_mi(root, _sph(0.13), c, Vector3(0, 0.05, -0.4), Vector3.ZERO, Vector3(1.0, 0.25, 0.9))
+		"torch":
+			_mi(root, _cyl(0.022, 0.03, 0.75), c, Vector3(0, 0.05, 0), Vector3(0, 0, PI / 2.0))
+			_mi(root, _sph(0.06), Color(0.82, 0.7, 0.35), Vector3(-0.37, 0.05, 0), Vector3.ZERO, Vector3(1.3, 1.0, 1.0))
+			_mi(root, _sph(0.045), Color(0.2, 0.15, 0.1), Vector3(-0.42, 0.05, 0))
+		"rod":
+			root.add_child((load("res://scripts/pesca.gd") as GDScript).call("make_rod_visual") as Node3D)
+		"fish":
+			root.add_child((load("res://scripts/pesca.gd") as GDScript).call("make_fish_visual") as Node3D)
 		"salt":
 			for k in 3:
 				_mi(root, _sph(0.045), c, Vector3(cos(float(k) * 2.1) * 0.05, 0.02, sin(float(k) * 2.1) * 0.05), Vector3.ZERO, Vector3(1.0, 0.6, 1.0))

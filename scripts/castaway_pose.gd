@@ -11,6 +11,13 @@ var act_w: float = 0.0      ## intensidad 0..1 de la acción
 var hold: float = 0.0          ## 0..1: brazo derecho levantado sosteniendo un objeto
 var use_w: float = 0.0        ## 0..1: pulso de uso del objeto en mano (un gesto corto)
 
+var sit: float = 0.0           ## 0..1: sentado (contemplando)
+var hold_kind: String = ""     ## "luz", "herramienta", "caña" o "" (cómo se sostiene el objeto)
+var hold_kind_w: float = 0.0   ## 0..1: cuánto pesa el matiz del tipo de objeto
+var kind_up: float = 0.0       ## desplazamiento suavizado del hombro según el tipo (lo calcula CastawayModel)
+var kind_fore: float = 0.0     ## ídem para el antebrazo
+var run_w: float = 0.0         ## 0..1: cuánto corre (para el brazo con objeto)
+
 var _idx: Dictionary = {}
 var record_idle: bool = false     ## true mientras suena Idle: guarda la pose de los brazos en reposo
 var arm_damp: float = 0.0         ## 0..1: cuánto se aquietan los brazos hacia esa pose (caminar tranquilo)
@@ -61,12 +68,13 @@ func _process_modification() -> void:
 		elif (arm_damp > 0.001 or (hold > 0.001 and ab.ends_with(".R"))) and _arm_rest.has(ab) and act == "":
 			var dm: float = arm_damp
 			if hold > 0.001 and ab.ends_with(".R"):
-				dm = maxf(dm, 0.9 * hold)
-			var k: float = dm * (1.0 if ab.begins_with("Upper") else 0.8)
+				dm = maxf(dm, 0.84 * hold)   # conserva ~16 % de la oscilación al caminar
+			var k: float = dm * (1.0 if ab.begins_with("Upper") else 0.95)
 			sk.set_bone_pose_rotation(bi, sk.get_bone_pose_rotation(bi).slerp(_arm_rest[ab], k))
 	if hold > 0.001 and act == "":
-		_rot(sk, "UpperArm.R", -0.55 * hold - 0.15 * use_w)
-		_rot(sk, "LowerArm.R", -1.0 * hold - 0.4 * use_w)
+		var kw: float = hold_kind_w * hold
+		_rot(sk, "UpperArm.R", -0.55 * hold - 0.15 * use_w + kind_up * kw + 0.1 * run_w * hold)
+		_rot(sk, "LowerArm.R", -1.0 * hold - 0.4 * use_w + kind_fore * kw - 0.25 * run_w * hold)
 	var pw: float = act_w if act == "pickup" else 0.0
 	var c: float = maxf(crouch, pw * 0.8)
 	if c > 0.001:
@@ -77,6 +85,14 @@ func _process_modification() -> void:
 		_rot(sk, "Abdomen", 0.22 * c)
 		_rot(sk, "Torso", 0.22 * c)
 		_rot(sk, "Head", -0.2 * c)
+	if sit > 0.001:
+		_drop(sk, "Body", -1.3 * sit)
+		for s2: String in ["L", "R"]:
+			_rot(sk, "UpperLeg." + s2, -1.5 * sit)
+			_rot(sk, "LowerLeg." + s2, 1.5 * sit)
+		_rot(sk, "Abdomen", -0.06 * sit)
+		_rot(sk, "Torso", 0.04 * sit)
+		_rot(sk, "Head", 0.05 * sit)
 	if pw > 0.001:
 		_rot(sk, "Abdomen", 0.35 * pw)
 		_rot(sk, "Torso", 0.3 * pw)
