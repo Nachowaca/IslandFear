@@ -713,22 +713,19 @@ func _scatter_flora() -> void:
 			var bw4: PackedFloat32Array = eco.get_bioma_pesos(pos4)    # los afloramientos se juntan en el roquedal
 			if rng.randf() > 0.06 + bw4[1] * 0.9 + bw4[5] * 0.3 + bw4[4] * 0.15 + eco.get_misterio(pos4) * 0.9:
 				continue
-		var uq_rock: bool = true
 		var ridx: int = rng.randi_range(1, 5)
-		var rshape: int = _rock_shape(rng, 0.25)
-		var r: Node3D = NatureKit.make_uq("Rock_%d" % ridx, NatureKit.rock_tint(rng), 140.0, rshape)
+		var rvar: int = rng.randi_range(0, 2)
+		var r: Node3D = NatureKit.make_stone(ridx, rvar, rng.randi_range(0, 2))
 		if _near_path(pos4.x, pos4.z, 1.0):
 			r.free()
 			continue
-		r.position = pos4 - Vector3(0, 0.15, 0)
-		r.rotation.y = rng.randf() * TAU
-		r.rotation = Vector3(rng.randf_range(-0.2, 0.2) if rshape != 2 else rng.randf_range(-0.1, 0.1), r.rotation.y, rng.randf_range(-0.2, 0.2) if rshape != 2 else rng.randf_range(-0.1, 0.1))
+		r.position = pos4 - Vector3(0, 0.12, 0)
+		r.rotation = Vector3(rng.randf_range(-0.12, 0.12), rng.randf() * TAU, rng.randf_range(-0.12, 0.12))
 		var rs: float = rng.randf_range(0.3, 0.8) if talus else rng.randf_range(0.25, 0.6)
 		r.scale = Vector3(rs * rng.randf_range(0.7, 1.4), rs * rng.randf_range(0.7, 1.35), rs * rng.randf_range(0.7, 1.4))
-		if uq_rock:
-			r.scale *= 3.0
+		r.scale *= 3.0
 		_flora.add_child(r)
-		_add_rock_body(r, ridx * 10 + rshape)
+		_add_rock_body(r, 1000 + ridx * 10 + rvar)
 		made += 1
 	_add_rock_clusters(rng)
 
@@ -761,17 +758,17 @@ func _add_rock_clusters(rng: RandomNumberGenerator) -> void:
 			if gy < 0.3:
 				continue
 			var cidx: int = rng.randi_range(1, 5)
-			var cshape: int = _rock_shape(rng, 0.1 if big else 0.4)
-			var r: Node3D = NatureKit.make_uq("Rock_%d" % cidx, NatureKit.rock_tint(rng), 200.0, cshape)
-			r.position = Vector3(gx, gy - 0.3, gz)
+			var cvar: int = rng.randi_range(0, 2)
+			var r: Node3D = NatureKit.make_stone(cidx, cvar, rng.randi_range(0, 2))
+			r.position = Vector3(gx, gy - 0.25, gz)
 			r.rotation = Vector3(rng.randf_range(-0.12, 0.12), rng.randf() * TAU, rng.randf_range(-0.12, 0.12))
-			var sc: float = rng.randf_range(1.7, 2.7) if big else rng.randf_range(0.5, 1.2)
+			var sc: float = rng.randf_range(1.3, 2.1) if big else rng.randf_range(0.4, 1.0)
 			r.scale = Vector3(sc * rng.randf_range(0.9, 1.3), sc * rng.randf_range(0.8, 1.2), sc * rng.randf_range(0.9, 1.3)) * 3.0
 			if _near_path(gx, gz, minf(sc * 3.0 * 0.6, 4.0)):
 				r.free()
 				continue
 			_flora.add_child(r)
-			_add_rock_body(r, cidx * 10 + cshape)
+			_add_rock_body(r, 1000 + cidx * 10 + cvar)
 		clusters += 1
 
 ## Árbol individual (talable): visual, colisión, lianas (solo los vivos) y registro en las listas.

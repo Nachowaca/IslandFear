@@ -312,3 +312,60 @@ static func _uq_mat(nm: String, tint: Color, fbx: bool, kind: String) -> Materia
 		out = sm2
 	_uq_mats[key] = out
 	return out
+
+
+# ---------------------------------------------------------------- Stylized Stones minipack (rocas de la isla)
+const STONES_GLB: String = "res://assets/generated/stylized_stones_minipack.glb"
+static var _stone_tpl: Dictionary = {}
+static var _stone_mats: Dictionary = {}
+
+## Piedra del minipack: `idx` 1..5 (1 chica y baja ... 5 alta), `variant` 0 = musgo, 1 = sin musgo, 2 = musgo alterno,
+## `tone` 0..2 oscurece el material. Devuelve un nodo de 1 m de ancho con la base en y = 0 (se escala desde afuera).
+static func make_stone(idx: int, variant: int, tone: int = 0) -> Node3D:
+	var key: String = "%d_%d" % [idx, variant]
+	if not _stone_tpl.has(key):
+		var src: Node3D = (load(STONES_GLB) as PackedScene).instantiate() as Node3D
+		var suffix: String = ["", "_001", "_002"][variant]
+		var want: String = "Stone_%d_Low%s" % [idx, suffix]
+		var found: Node = src.find_child(want, true, false)
+		var tpl: Dictionary = {}
+		if found != null:
+			var mi: MeshInstance3D = null
+			for c in found.get_children():
+				if c is MeshInstance3D:
+					mi = c as MeshInstance3D
+			if mi != null:
+				var t: Transform3D = Transform3D.IDENTITY
+				var cur: Node = mi
+				while cur != null and cur != src:
+					t = (cur as Node3D).transform * t
+					cur = cur.get_parent()
+				var bb: AABB = t * mi.mesh.get_aabb()
+				var k: float = 1.0 / maxf(maxf(bb.size.x, bb.size.z), 0.0001)
+				var base: Vector3 = Vector3(bb.get_center().x, bb.position.y, bb.get_center().z)
+				var fx: Transform3D = Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * k), -k * base) * t
+				tpl = {"mesh": mi.mesh, "xf": fx, "mat": mi.mesh.surface_get_material(0)}
+		src.free()
+		_stone_tpl[key] = tpl
+	var out := Node3D.new()
+	var tp: Dictionary = _stone_tpl[key]
+	if tp.is_empty():
+		return out
+	var mk: String = "%s_%d" % [key, tone]
+	if not _stone_mats.has(mk):
+		var m: StandardMaterial3D = (tp["mat"] as StandardMaterial3D).duplicate() as StandardMaterial3D
+		var g: float = [1.25, 1.05, 0.88][clampi(tone, 0, 2)]
+		m.albedo_color = Color(g * 0.9, g * 0.97, g * 1.05)
+		m.emission_enabled = true      # el pack traía emisión al 100 %: la dejamos como un brillo propio muy leve
+		m.emission = Color(0.55, 0.5, 0.45)
+		m.emission_energy_multiplier = 0.22
+		m.roughness = 1.0
+		m.metallic = 0.0
+		_stone_mats[mk] = m
+	var mn := MeshInstance3D.new()
+	mn.mesh = tp["mesh"]
+	mn.transform = tp["xf"]
+	mn.material_override = _stone_mats[mk]
+	mn.visibility_range_end = 160.0
+	out.add_child(mn)
+	return out
