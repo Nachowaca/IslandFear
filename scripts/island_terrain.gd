@@ -488,6 +488,8 @@ func _mat(c: Color) -> StandardMaterial3D:
 	m.roughness = 1.0
 	return m
 
+const TREE_VIS: float = 110.0   # árboles más lejos se ocultan (rendimiento)
+
 func _scatter_flora() -> void:
 	if _flora and is_instance_valid(_flora):
 		_flora.free()
@@ -777,7 +779,7 @@ func _add_tree(rng: RandomNumberGenerator, pos: Vector3, kit_name: String, sc: f
 	tree.position = pos
 	tree.scale = Vector3.ONE * sc
 	tree.rotation.y = rng.randf() * TAU
-	var visual: Node3D = NatureKit.make_uq(kit_name, tint.lerp(Color.WHITE, 0.5), 160.0) if (kit_name.begins_with("Birch") or kit_name.begins_with("Maple") or kit_name.begins_with("NormalTree") or kit_name.begins_with("PineTree") or dead) else NatureKit.make(kit_name, tint, 160.0)
+	var visual: Node3D = NatureKit.make_uq(kit_name, tint.lerp(Color.WHITE, 0.5), TREE_VIS) if (kit_name.begins_with("Birch") or kit_name.begins_with("Maple") or kit_name.begins_with("NormalTree") or kit_name.begins_with("PineTree") or dead) else NatureKit.make(kit_name, tint, TREE_VIS)
 	tree.add_child(visual)
 	_flora.add_child(tree)
 	_add_solid(tree, _trunk_shape_for(kit_name, visual, shape), Vector3(0, 1.5, 0))

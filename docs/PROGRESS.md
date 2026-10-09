@@ -335,3 +335,13 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Caminos importantes: más lajas/escalones, más follaje, bruma baja (path_decor.gd).
 - Naufragio: tablas paradas, vela rota, musgo + senda de lajas hacia el árbol corazón (island_features.gd). Sin verificar a pie.
 - Glow (Media+) y DOF (solo Alta, apagado por defecto) ya existían en look_director.gd; no se cambió nada.
+
+## Arte y rendimiento (sesión reciente)
+- Barco hundido (`main.gd::_build_old_ship`, estático, sin colisión, ~200 m); decorado del mar `sea_decor.gd` (corales en MultiMesh, boyas, peces).
+- Barra de combustible sobre la fogata (`campfire.gd`, máx 100 min: leña 20, rama ~8, paja 3).
+- Rocas de la isla = pack `stylized_stones_minipack.glb` (`NatureKit.make_stone`); emisión 0.22 para tono propio. Cueva y decoración de caminos siguen con `Rock_*`.
+- Colisiones por modelo y evitar caminos, baúl persistente, plantas que se pisan y se mecen, pantalla completa (modo 3; Cmd+Enter).
+- RENDIMIENTO (medido en editor, noche, playa): antes 48-54 fps, 4.8 M tri, ~5.700 draws. Causas: sombras de la luna (~2.6 M tri), árboles (~2.2 M), recogibles sueltos (~4.350 draws).
+  Cambios: luna 2 cortes/70 m (`day_night.gd`), árboles visibles hasta 110 m (`TREE_VIS` en `island_terrain.gd`), recogibles ocultos a 60 m (`island_life.gd::_mesh`), agua 200x200 subdivisiones. Playa: 60 fps, ~3.400 draws, 2.7 M tri. Bosque (usuario): ~50 fps.
+- Pendiente rendimiento: recogibles en MultiMesh, distancia de pasto/arbustos, medir en calidad Alta y fuera del editor.
+- DEV a quitar: `fps_meter.gd` (F12) + 1 línea en `main.gd`; cámara del cielo.

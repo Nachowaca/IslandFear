@@ -8,8 +8,8 @@ shader = ExtResource("1")
 [sub_resource type="PlaneMesh" id="PlaneMesh_1"]
 material = SubResource("ShaderMaterial_1")
 size = Vector2(1200, 1200)
-subdivide_width = 400
-subdivide_depth = 400
+subdivide_width = 200
+subdivide_depth = 200
 
 [sub_resource type="ProceduralSkyMaterial" id="Sky_1"]
 sky_top_color = Color(0.2, 0.45, 0.82, 1)

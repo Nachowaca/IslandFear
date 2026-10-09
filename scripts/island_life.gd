@@ -128,6 +128,10 @@ func _mesh(parent: Node3D, mesh: Mesh, color: Color, pos: Vector3 = Vector3.ZERO
 	mi.position = pos
 	mi.rotation = rot
 	mi.scale = scl
+	if parent is WorldItem:      # objetos recogibles: pequeños, no hace falta dibujarlos lejos (rendimiento)
+		mi.visibility_range_end = 60.0
+		mi.visibility_range_end_margin = 6.0
+		mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
 	parent.add_child(mi)
 	return mi
 

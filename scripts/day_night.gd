@@ -67,7 +67,8 @@ func _ready() -> void:
 	_moon = DirectionalLight3D.new()
 	_moon.name = "Moon"
 	_moon.light_color = Color(0.55, 0.66, 1.0)
-	_moon.directional_shadow_max_distance = 120.0
+	_moon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+	_moon.directional_shadow_max_distance = 70.0
 	_moon.shadow_normal_bias = 1.5
 	sun.get_parent().add_child(_moon)
 
