@@ -587,7 +587,8 @@ func _avisar_recetas(delta: float) -> void:
 		var id: String = str(r["id"])
 		var ok: bool = Recipes.can(r)
 		if ok and not _aviso.get(id, false) and not _craft_open:
-			ui.message("Ya podés fabricar: %s  (C)" % str(r["name"]))
+			var outs2: Array = (r["out"] as Dictionary).keys()
+			ui.aviso_receta(str(r["name"]), str(outs2[0]) if not outs2.is_empty() else str(r.get("icon", "fuego")))
 			_aviso[id] = true
 			return
 		if not ok:

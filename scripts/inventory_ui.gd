@@ -110,15 +110,26 @@ func _ready() -> void:
 	add_child(_prog)
 
 	_craft = Control.new()
+	_craft.anchor_left = 0.5
+	_craft.anchor_right = 0.5
 	_craft.anchor_top = 0.5
 	_craft.anchor_bottom = 0.5
-	_craft.offset_left = 30.0
-	_craft.offset_top = -270.0
-	_craft.size = Vector2(600, 540)
+	_craft.offset_left = -300.0
+	_craft.offset_right = 300.0
+	_craft.offset_top = -CRAFT_H * 0.5
+	_craft.offset_bottom = CRAFT_H * 0.5
 	_craft.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_craft.visible = false
 	_craft.draw.connect(_draw_craft)
 	add_child(_craft)
+
+	_rn = Control.new()
+	_rn.position = Vector2(16.0, 70.0)
+	_rn.size = Vector2(420, 64)
+	_rn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rn.modulate.a = 0.0
+	_rn.draw.connect(_draw_rn)
+	add_child(_rn)
 
 # ------------------------------------------------------------------ API
 
@@ -139,6 +150,35 @@ func message(text: String) -> void:
 func show_info(text: String) -> void:
 	_info.text = text
 	_info_t = 10.0
+
+const CRAFT_VIS: int = 5                      # recetas visibles a la vez; el resto se desplaza
+const CRAFT_H: float = 86.0 + 84.0 * 5.0 + 24.0
+
+## Aviso discreto de receta lista: ícono + nombre + tecla C, arriba a la izquierda.
+var _rn: Control
+var _rn_t: float = 0.0
+var _rn_name: String = ""
+var _rn_icon: String = ""
+
+func aviso_receta(nombre: String, icono: String) -> void:
+	_rn_name = nombre
+	_rn_icon = icono
+	_rn_t = 6.0
+	_rn.queue_redraw()
+
+func _draw_rn() -> void:
+	var w: float = 112.0 + UiTheme.BOLD.get_string_size(_rn_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x
+	var r := Rect2(0, 0, w, 60)
+	_rn.draw_style_box(UiTheme.panel_style(14, Color(UiTheme.C_TEAL, 0.7), Color(0.02, 0.06, 0.08, 0.82), 1), r)
+	var tex: Texture2D = UiTheme.icon(_rn_icon)
+	if tex != null:
+		_rn.draw_texture_rect(tex, Rect2(10, 8, 44, 44), false)
+	UiTheme.text(_rn_t_ctl(), UiTheme.BODY, Vector2(64, 24), "Podés armar", 16, UiTheme.C_DIM, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 3)
+	UiTheme.text(_rn_t_ctl(), UiTheme.BOLD, Vector2(64, 49), _rn_name, 22, UiTheme.C_GOOD, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 4)
+	UiTheme.key_chip(_rn, Vector2(w - 40.0, 16.0), "C", 20)
+
+func _rn_t_ctl() -> Control:
+	return _rn
 
 func show_recipes(list: Array, idx: int) -> void:
 	_recipes = list
@@ -169,6 +209,11 @@ func hide_recipes() -> void:
 
 func _process(delta: float) -> void:
 	_pulse += delta
+	if _rn_t > 0.0:
+		_rn_t -= delta
+		_rn.modulate.a = clampf(minf(_rn_t / 1.0, (6.0 - _rn_t) / 0.4), 0.0, 1.0)
+	elif _rn.modulate.a > 0.0:
+		_rn.modulate.a = 0.0
 	if _msg_t > 0.0:
 		_msg_t -= delta
 		_msg.modulate.a = clampf(_msg_t / 0.7, 0.0, 1.0)
@@ -231,13 +276,18 @@ func _draw_bar() -> void:
 
 func _draw_craft() -> void:
 	var rows: int = _recipes.size()
-	var h: float = 86.0 + 84.0 * float(rows)
+	var vis: int = mini(rows, CRAFT_VIS)
+	var first: int = clampi(_recipe_idx - 2, 0, maxi(0, rows - CRAFT_VIS))
+	var h: float = 86.0 + 84.0 * float(vis) + 24.0
+	_craft.offset_top = -h * 0.5
+	_craft.offset_bottom = h * 0.5
 	UiTheme.draw_panel(_craft, Rect2(0, 0, 600, h), UiTheme.C_TEAL)
 	UiTheme.text(_craft, UiTheme.TITLE, Vector2(28, 46), "COMBINAR", 30, UiTheme.C_TEAL, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 5)
 	UiTheme.text(_craft, UiTheme.BODY, Vector2(0, 46), "Rueda o ↑↓: elegir     E: fabricar     C: cerrar", 17, UiTheme.C_DIM, 572.0, HORIZONTAL_ALIGNMENT_RIGHT, 3)
-	for i in rows:
+	for n in vis:
+		var i: int = first + n
 		var rc: Dictionary = _recipes[i]
-		var y: float = 66.0 + 84.0 * float(i)
+		var y: float = 66.0 + 84.0 * float(n)
 		var sel: bool = i == _recipe_idx
 		var ok: bool = bool(rc["ok"])
 		var row := Rect2(14, y, 572, 78)
@@ -248,6 +298,13 @@ func _draw_craft() -> void:
 			_craft.draw_texture_rect(tex, Rect2(24, y + 9, 58, 58), false, Color.WHITE if ok else Color(0.55, 0.55, 0.6, 0.7))
 		var col: Color = UiTheme.C_GOOD if ok else UiTheme.C_DIM
 		UiTheme.text(_craft, UiTheme.BOLD, Vector2(96, y + 28), str(rc["name"]), 24, col, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 4)
-		UiTheme.text(_craft, UiTheme.BODY, Vector2(96, y + 52), "Necesita: %s" % str(rc["ing"]), 19, UiTheme.C_TEXT if ok else Color(0.95, 0.6, 0.55), 480.0, HORIZONTAL_ALIGNMENT_LEFT, 3)
+		UiTheme.text(_craft, UiTheme.BODY, Vector2(96, y + 52), "Necesita: %s" % str(rc["ing"]), 19, UiTheme.C_TEXT if ok else Color(0.85, 0.62, 0.56), 480.0, HORIZONTAL_ALIGNMENT_LEFT, 3)
 		if sel:
 			UiTheme.text(_craft, UiTheme.BODY, Vector2(96, y + 72), str(rc["desc"]), 16, UiTheme.C_DIM, 480.0, HORIZONTAL_ALIGNMENT_LEFT, 2)
+	# indicador de desplazamiento
+	var pie: String = "%d / %d" % [_recipe_idx + 1, rows]
+	if first > 0:
+		pie = "▲  " + pie
+	if first + vis < rows:
+		pie = pie + "  ▼"
+	UiTheme.text(_craft, UiTheme.BODY, Vector2(0, h - 12.0), pie, 16, UiTheme.C_DIM, 600.0, HORIZONTAL_ALIGNMENT_CENTER, 3)

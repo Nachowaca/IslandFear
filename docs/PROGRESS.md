@@ -446,3 +446,14 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Aire/sonido: grillos con mp3 real (assets/audio), olas segun distancia a costa, buhos/ranas extra, canto de la manta cada 4 min, destellos de sol, mas insectos.
 - Clima como filtro (look-v5), lluvia/tormenta ajustadas.
 - Pendiente: 5.8 extras (cama ya hecha; pescar, marcar caminos, sentarse a observar, sonido segun salud), codigo del agua del estanque y playa, probar todo en juego.
+
+## Bloque 7 - Rediseño del GUI (pendiente, para mas adelante)
+- Rediseñar los inventarios, el baul y el menu de recetas (C): hoy se superponen con la vida, el hambre/sed, la hotbar y el texto de hora/sol (la lista de recetas queda debajo de esos elementos y se pisa).
+- Ideas: paneles con anclas y margenes propios, la lista de recetas con scroll y que no cubra el HUD, ocultar o atenuar el HUD al abrir un menu, y revisar a distintas resoluciones y en pantalla completa.
+- Captura de referencia: el menu de recetas con 'Refugio' tapado por la barra de vida.
+
+### Bloque 7 - estado (HECHO, falta probar a mano)
+- HUD apilado abajo a la izquierda: hambre/sed sobre la vida; reloj debajo. Recetas (C) centradas, 5 visibles con scroll y contador.
+- Aviso 'Podes armar: X' (icono + C) arriba a la izquierda, 6 s, una vez por receta (inventory_ui.aviso_receta).
+- Baul: casillas de 66 px y fondo mas oscuro. Colores del HUD mas apagados (vida, corazon, marco latón, barras).
+- Pendiente: probar aviso y baul en juego; iconos flojos (cana de pescar, hacha).

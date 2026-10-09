@@ -71,13 +71,13 @@ func _ready() -> void:
 
 	_build_health()
 
-	# hambre y sed, a la derecha del medidor de salud
+	# hambre y sed, sobre el medidor de salud
 	var needs := NeedsBar.new()
 	needs.player = player
 	needs.anchor_top = 1.0
 	needs.anchor_bottom = 1.0
-	needs.offset_left = 318.0
-	needs.offset_top = -152.0
+	needs.offset_left = 16.0
+	needs.offset_top = -250.0      # apilado sobre los corazones de vida
 	add_child(needs)
 
 	# mensajes de la isla
@@ -162,15 +162,15 @@ func _build_health() -> void:
 	add_child(_hp_root)
 
 	# marco oscuro redondeado con borde azul
-	var frame: Panel = _panel_node(_hp_root, Vector2(34, 18), FRAME_SIZE - Vector2(34, 0), _style(Color(0.04, 0.05, 0.15, 0.92), 13, Color(0.27, 0.58, 0.88), 2))
+	var frame: Panel = _panel_node(_hp_root, Vector2(34, 18), FRAME_SIZE - Vector2(34, 0), _style(Color(0.03, 0.07, 0.09, 0.9), 13, Color(UiTheme.C_BRASS, 0.75), 2))
 	frame.size = Vector2(FRAME_SIZE.x - 34.0, FRAME_SIZE.y)
 	var inner: Vector2 = INNER_SIZE - Vector2(34.0, 0.0)
 
 	# estela de daño (clara) y relleno brillante
 	_ghost = _panel_node(frame, Vector2(INNER_POS.x - 24.0, INNER_POS.y), Vector2(inner.x, inner.y), _style(Color(1.0, 0.78, 0.82, 0.55), 10))
-	_fill_style = _style(Color(0.93, 0.1, 0.25), 10)
-	_fill_style.shadow_color = Color(1.0, 0.2, 0.3, 0.45)
-	_fill_style.shadow_size = 6
+	_fill_style = _style(Color(0.8, 0.2, 0.28), 10)
+	_fill_style.shadow_color = Color(0.9, 0.3, 0.35, 0.25)
+	_fill_style.shadow_size = 4
 	_fill = _panel_node(frame, Vector2(INNER_POS.x - 24.0, INNER_POS.y), Vector2(inner.x, inner.y), _fill_style)
 	_gloss = _panel_node(_fill, Vector2(6, 3), Vector2(inner.x - 12.0, 8), _style(Color(1.0, 0.7, 0.78, 0.5), 5))
 
@@ -308,7 +308,7 @@ func _update_health(delta: float) -> void:
 		# color: rojo vivo, más oscuro y titilante con poca salud
 		var low: float = clampf((0.35 - k) / 0.35, 0.0, 1.0)
 		var blink: float = 0.5 + 0.5 * sin(_beat * TAU * 1.0)
-		var base: Color = Color(0.93, 0.1, 0.25).lerp(Color(0.75, 0.05, 0.12), low)
+		var base: Color = Color(0.8, 0.2, 0.28).lerp(Color(0.66, 0.1, 0.16), low)
 		_fill_style.bg_color = base.lerp(Color(1.0, 0.35, 0.4), low * blink * 0.5)
 		_fill_style.shadow_color = Color(1.0, 0.2, 0.3, 0.3 + 0.3 * low * blink)
 	else:
@@ -330,7 +330,7 @@ func _update_health(delta: float) -> void:
 	var s: float = 1.0 + thump * lerpf(0.05, 0.16, low_k) + _pulse
 	_heart.scale = Vector2(s, s)
 	var tint: float = 1.0 - clampf(_pulse * 1.5, 0.0, 0.5)
-	_heart.modulate = Color(1.0, tint, tint)
+	_heart.modulate = Color(0.92, 0.8 * tint, 0.8 * tint)
 	if player.dead:
 		_heart.modulate = Color(0.4, 0.4, 0.45)
 

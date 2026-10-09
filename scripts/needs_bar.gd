@@ -8,9 +8,9 @@ const METERS: Array[Dictionary] = [
 	{"prop": "hambre", "icon": "apple", "label": "Hambre"},
 	{"prop": "sed", "icon": "drop", "label": "Sed"},
 ]
-const BAR_W: float = 140.0
+const BAR_W: float = 170.0
 const BAR_H: float = 20.0
-const ROW: float = 38.0
+const ROW: float = 34.0
 const LOW: float = 10.0
 
 var player: Castaway
@@ -39,7 +39,7 @@ func _draw() -> void:
 		var low: bool = float(player.get(p)) <= LOW if player != null else false
 		var y: float = 8.0 + float(i) * ROW
 		var blink: float = 0.5 + 0.5 * sin(_t * 7.0)
-		var col: Color = Color(0.34, 0.82, 0.42)
+		var col: Color = Color(0.46, 0.74, 0.5)
 		if low:
 			col = Color(0.95, 0.15, 0.15).lerp(Color(1.0, 0.5, 0.45), blink * 0.5)
 		_icon(str(m["icon"]), Vector2(26.0, y + 17.0), col)

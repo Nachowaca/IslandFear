@@ -4,7 +4,7 @@ extends CanvasLayer
 ## Panel del baúl: 30 celdas (6 x 5) arriba y la mochila (10) abajo. Mismo estilo que la barra de objetos.
 ## Clic izquierdo: pasa toda la pila al otro lado. Clic derecho: pasa una unidad. E o "Cerrar": cierra.
 
-const CELL: float = 72.0
+const CELL: float = 66.0
 const GAP: float = 8.0
 const COLS: int = 6
 const PW: float = 860.0
@@ -166,7 +166,7 @@ func _draw_slot(r: Rect2, e: Variant, hover: bool) -> void:
 		UiTheme.text(_root, UiTheme.BOLD, r.position + Vector2(0, CELL - 6.0), str(int(e["n"])), 22, Color(1, 0.96, 0.8), CELL - 7.0, HORIZONTAL_ALIGNMENT_RIGHT, 6)
 
 func _draw_all() -> void:
-	_root.draw_rect(Rect2(Vector2.ZERO, _root.size), Color(0, 0, 0, 0.4))
+	_root.draw_rect(Rect2(Vector2.ZERO, _root.size), Color(0, 0, 0, 0.55))
 	var pn: Rect2 = _panel()
 	UiTheme.draw_panel(_root, pn, UiTheme.C_BRASS)
 	UiTheme.text(_root, UiTheme.TITLE, pn.position + Vector2(30, 50), "BAÚL", 32, UiTheme.C_BRASS, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 5)

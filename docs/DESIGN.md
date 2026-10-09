@@ -265,3 +265,14 @@ Baúl de madera fijo en la playa de llegada, vacío, con la inscripción 'Welcom
 - 5.1, 5.2, 5.3, 5.4, 5.5, 5.6 implementadas (sin probar en juego largo). 5.7 voces hecha antes. 5.8 parcial: refugio y dormir hechos; faltan pescar, marcar caminos, sentarse a observar con fauna, sonido por salud.
 - Dormir: refugio simple (tela, madera, hojas), eleccion de minutos de la isla, pantalla de sueño con reloj acelerado, -2 % hambre y sed, mensajes de la isla segun su animo, pose fetal con Z grandes y marca brillante. El refugio dura 2 vidas.
 - Regla de arte: nada nuevo puede cambiar el look; sin luces nuevas, solo piezas simples y sprites aditivos.
+
+## Bloque 7 - Rediseño del GUI (pendiente, para mas adelante)
+- Rediseñar los inventarios, el baul y el menu de recetas (C): hoy se superponen con la vida, el hambre/sed, la hotbar y el texto de hora/sol (la lista de recetas queda debajo de esos elementos y se pisa).
+- Ideas: paneles con anclas y margenes propios, la lista de recetas con scroll y que no cubra el HUD, ocultar o atenuar el HUD al abrir un menu, y revisar a distintas resoluciones y en pantalla completa.
+- Captura de referencia: el menu de recetas con 'Refugio' tapado por la barra de vida.
+
+### Bloque 7 - estado (HECHO, falta probar a mano)
+- HUD apilado abajo a la izquierda: hambre/sed sobre la vida; reloj debajo. Recetas (C) centradas, 5 visibles con scroll y contador.
+- Aviso 'Podes armar: X' (icono + C) arriba a la izquierda, 6 s, una vez por receta (inventory_ui.aviso_receta).
+- Baul: casillas de 66 px y fondo mas oscuro. Colores del HUD mas apagados (vida, corazon, marco latón, barras).
+- Pendiente: probar aviso y baul en juego; iconos flojos (cana de pescar, hacha).
