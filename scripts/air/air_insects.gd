@@ -3,8 +3,8 @@ extends Node3D
 ## Libélulas y nubes de mosquitos decorativas (solo de día).
 
 # --- Ajustes ---
-const DRAGONFLY_COUNT: int = 6
-const MIDGE_CLOUDS: int = 3
+const DRAGONFLY_COUNT: int = 8
+const MIDGE_CLOUDS: int = 4
 const MIDGE_POINTS: int = 14
 const RELOC_FAR: float = 50.0          ## distancia a la que se reubican
 const SPAWN_MIN: float = 8.0

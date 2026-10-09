@@ -3,8 +3,8 @@ extends Node3D
 
 ## Abejas y mariposas extra alrededor del jugador. Se crea solo en _ready().
 
-const BEE_COUNT: int = 8
-const BUTTERFLY_COUNT: int = 6
+const BEE_COUNT: int = 12
+const BUTTERFLY_COUNT: int = 12
 const MIN_GROUND: float = 1.0          # por debajo es agua: no volar ahí
 const BEE_RADIUS_MIN: float = 3.0
 const BEE_RADIUS_MAX: float = 28.0

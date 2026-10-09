@@ -28,6 +28,7 @@ var terrain: IslandTerrain
 var _seeds: CPUParticles3D
 var _petals: CPUParticles3D
 var _dew: CPUParticles3D
+var _glints: CPUParticles3D
 var _noche: float = 0.0
 var _dew_k: float = 0.0
 
@@ -39,6 +40,8 @@ func _ready() -> void:
 	add_child(_petals)
 	_dew = _make_dew()
 	add_child(_dew)
+	_glints = _make_glints()
+	add_child(_glints)
 	set_hora(12.0, 0.0)
 
 ## hora: 0..24, noche: 0 día .. 1 noche.
@@ -48,6 +51,7 @@ func set_hora(hora: float, noche: float) -> void:
 	if _seeds:
 		_seeds.emitting = day
 		_petals.emitting = day
+		_glints.emitting = noche < 0.3
 	# Rocío: sube de 5 a 6, pleno hasta 9, se desvanece a las 10
 	var k: float = 0.0
 	if hora >= DEW_START and hora < DEW_FADE_END:
@@ -71,6 +75,7 @@ func _process(_delta: float) -> void:
 	_dew.position = Vector3(0.0, gy + DEW_GROUND_OFFSET, 0.0)
 	_seeds.position = Vector3(0.0, p.y + SEEDS_HEIGHT, 0.0)
 	_petals.position = Vector3(0.0, p.y + PETALS_HEIGHT, 0.0)
+	_glints.position = Vector3(0.0, p.y + 1.6, 0.0)
 
 # Textura de círculo suave (alpha radial)
 func _soft_tex(size: int) -> GradientTexture2D:
@@ -211,4 +216,39 @@ func _make_dew() -> CPUParticles3D:
 	p.scale_amount_curve = c
 	p.color = Color(1.0, 1.0, 1.0, 0.0)
 	p.emitting = false
+	return p
+
+## Destellos de sol: chispitas doradas que se encienden y apagan en el aire durante el dia.
+func _make_glints() -> CPUParticles3D:
+	var p := CPUParticles3D.new()
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.06, 0.06)
+	var mat: StandardMaterial3D = _make_mat(true, false)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.9, 0.6)
+	mat.emission_energy_multiplier = 5.0
+	quad.material = mat
+	p.mesh = quad
+	p.amount = 70
+	p.lifetime = 2.4
+	p.lifetime_randomness = 0.6
+	p.preprocess = 2.4
+	p.local_coords = false
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(14.0, 3.0, 14.0)
+	p.direction = Vector3.UP
+	p.spread = 180.0
+	p.initial_velocity_min = 0.0
+	p.initial_velocity_max = 0.06
+	p.gravity = Vector3.ZERO
+	p.scale_amount_min = 0.5
+	p.scale_amount_max = 1.5
+	var c := Curve.new()
+	c.add_point(Vector2(0.0, 0.0))
+	c.add_point(Vector2(0.3, 1.0))
+	c.add_point(Vector2(0.45, 0.25))
+	c.add_point(Vector2(0.6, 1.0))
+	c.add_point(Vector2(1.0, 0.0))
+	p.scale_amount_curve = c
+	p.color = Color(1.0, 0.95, 0.8, 0.9)
 	return p

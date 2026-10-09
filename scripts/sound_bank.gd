@@ -156,19 +156,21 @@ static func rustle() -> AudioStreamWAV:
 
 static func crickets() -> AudioStreamWAV:
 	var sr: int = SR_MID
-	var L: float = 8.0
-	var fade: int = int(float(sr) * 0.5)
-	var b := Buf.new(L + 0.5, sr)
+	var L: float = 16.0
+	var fade: int = int(float(sr) * 0.8)
+	var b := Buf.new(L + 0.8, sr)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 41
-	for v in 5:
-		var f: float = rng.randf_range(3900.0, 4600.0)
-		var t: float = rng.randf() * 0.4
-		while t < L + 0.4:
-			var pulses: int = rng.randi_range(3, 4)
+	for v in 3:
+		var f: float = rng.randf_range(3300.0, 3900.0)
+		var t: float = rng.randf() * 2.0
+		while t < L + 0.6:
+			var pulses: int = rng.randi_range(2, 3)
 			for p in pulses:
-				_tone(b, t + float(p) * 0.022, 0.016, f, f, 0.1, 0.002, 0.0, 1.2)
-			t += rng.randf_range(0.28, 0.55)
+				_tone(b, t + float(p) * 0.034, 0.024, f, f, 0.075, 0.006, 0.0, 1.2)
+			t += rng.randf_range(1.1, 2.4)
+			if rng.randf() < 0.25:
+				t += rng.randf_range(1.5, 3.0)   # pausas largas, mas calmo
 	return _wav(_loopify(b.d, int(L * float(sr)), fade), sr, true, 0.6)
 
 static func drone() -> AudioStreamWAV:

@@ -428,3 +428,7 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Lluvia: llovizna gotas chicas y lentas; tormenta rapidas, grandes y mas niebla (weather.gd).
 - Ventana de prueba 1760x990.
 - Restaurar: git checkout look-v5 -- .
+
+## look-v6: aire + sonido nocturno
+- Mas insectos/mariposas, destellos de sol, grillos reales (assets/audio/Crickets Sound 1_1.mp3) por bioma, olas segun distancia a costa, buhos/ranas/llamada lejana, canto de la manta cada 4 min.
+- Restaurar: git checkout look-v6 -- .

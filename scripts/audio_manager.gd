@@ -120,7 +120,17 @@ func _on_asset(id: String, stream: AudioStreamWAV) -> void:
 			p.stream = stream
 			p.volume_db = -80.0
 			add_child(p)
-			p.play()
+			if id == "crickets":
+				# grillos reales (mp3 de ~10 min en bucle), empezando en un punto al azar
+				var gr: AudioStreamMP3 = load("res://assets/audio/Crickets Sound 1_1.mp3") as AudioStreamMP3
+				if gr != null:
+					gr.loop = true
+					p.stream = gr
+					p.play(_rng.randf() * (gr.get_length() - 5.0))
+				else:
+					p.play()
+			else:
+				p.play()
 			_beds[id] = p
 			_bed_vol[id] = 0.0
 		"pond":
@@ -227,11 +237,23 @@ func _process(delta: float) -> void:
 	var open: float = 1.0 - 0.9 * _cave
 	var day: float = 1.0 - _night
 
-	_set_bed("waves", 0.6 * shore * (1.0 - 0.85 * _cave) * (0.4 + 0.6 * close), delta)
+	# olas: bajan con la distancia a la costa; grillos: segun bioma, y se apagan hacia el mar y en las laderas altas
+	var olas_k: float = 1.0
+	var grillo_k: float = 1.0 - 0.7 * shore
+	var eco_m: Variant = Isla.eco
+	if eco_m != null:
+		var dc: float = float(eco_m.call("get_dist_costa", p))
+		olas_k = clampf(1.0 - (dc - 4.0) / 90.0, 0.0, 1.0)
+		olas_k = olas_k * olas_k * (3.0 - 2.0 * olas_k)
+		var w: PackedFloat32Array = eco_m.call("get_bioma_pesos", p) as PackedFloat32Array
+		if w.size() >= 6:
+			grillo_k = w[0] * 0.05 + w[1] * 0.15 + w[2] * 1.0 + w[3] * 1.0 + w[4] * 0.9 + w[5] * 0.5
+		grillo_k *= smoothstep(4.0, 14.0, dc) * (1.0 - smoothstep(9.0, 18.0, h))
+	_set_bed("waves", 0.6 * shore * olas_k * (1.0 - 0.85 * _cave) * (0.4 + 0.6 * close), delta)
 	_set_bed("wind", (0.25 + 0.3 * exposure) * day * open, delta)
 	_set_bed("wind_night", (0.3 + 0.3 * exposure) * _night * open, delta)
 	_set_bed("rustle", _forest * 0.55 * (1.0 - 0.3 * _night) * (1.0 - _cave) * close, delta)
-	_set_bed("crickets", _night * (1.0 - 0.7 * shore) * (1.0 - 0.85 * _cave) * (1.0 - 0.7 * hostile) * 0.6 * close, delta)
+	_set_bed("crickets", _night * grillo_k * (1.0 - 0.85 * _cave) * (1.0 - 0.7 * hostile) * 0.75 * close, delta)
 	_set_bed("drone", (0.04 + _night * 0.3 + hostile * 0.3) * (0.25 + 0.75 * close), delta)
 	_close = close
 	_set_bed("cave_hum", _cave * 0.5, delta)
@@ -282,12 +304,23 @@ func _events(delta: float, p: Vector3, day: float, hostile: float, shore: float)
 	# navegando: crujidos suaves de la madera del barco
 	if player != null and not player.controllable and not player.dead and _tick("boat", delta, 4.0, 9.0):
 		_play2d("creak", -24.0, BUS_FX)
-	if _tick("owl", delta, 16.0, 40.0) and _night > 0.6 and outside and _close > 0.3:
+	if _tick("owl", delta, 12.0, 30.0) and _night > 0.6 and outside and _close > 0.3:
 		_play3d("owl", _around(p, 18.0, 40.0, 6.0, 9.0), -6.0, _rng.randf_range(0.92, 1.05), BUS_AMB, 12.0, 100.0)
-	if _tick("frog", delta, 4.0, 10.0) and _night > 0.4 and outside:
+	if _tick("frog", delta, 2.5, 6.0) and _night > 0.4 and outside:
 		var pond: Vector3 = Vector3(IslandTerrain.POND_CENTER.x, terrain.pond_water_level, IslandTerrain.POND_CENTER.y)
 		if p.distance_to(pond) < 35.0 and _close > 0.5:
 			_play3d("frog", pond + Vector3(_rng.randf_range(-6.0, 6.0), 0.2, _rng.randf_range(-6.0, 6.0)), -7.0, _rng.randf_range(0.9, 1.15), BUS_AMB, 5.0, 50.0)
+	# segundo buho que responde desde otro lado
+	if _tick("owl2", delta, 25.0, 60.0) and _night > 0.6 and outside and _close > 0.3:
+		_play3d("owl", _around(p, 30.0, 60.0, 6.0, 12.0), -10.0, _rng.randf_range(1.05, 1.2), BUS_AMB, 14.0, 120.0)
+	# coro de ranitas: voces extra cerca del estanque
+	if _tick("frog2", delta, 3.0, 7.0) and _night > 0.4 and outside:
+		var pond2: Vector3 = Vector3(IslandTerrain.POND_CENTER.x, terrain.pond_water_level, IslandTerrain.POND_CENTER.y)
+		if p.distance_to(pond2) < 40.0 and _close > 0.5:
+			_play3d("frog", pond2 + Vector3(_rng.randf_range(-8.0, 8.0), 0.2, _rng.randf_range(-8.0, 8.0)), -10.0, _rng.randf_range(1.1, 1.4), BUS_AMB, 5.0, 50.0)
+	# llamada misteriosa lejana (buho grave, como de algo grande) cada tanto, al azar
+	if _tick("lejano", delta, 70.0, 170.0) and _night > 0.7 and outside:
+		_play3d("owl", _around(p, 70.0, 120.0, 8.0, 20.0), -7.0, _rng.randf_range(0.5, 0.62), BUS_AMB, 40.0, 220.0)
 	if _tick("creak", delta, 22.0, 55.0) and _night > 0.5 and outside:
 		_play3d("creak", _around(p, 8.0, 22.0, 1.0, 4.0), -6.0, _rng.randf_range(0.85, 1.1), BUS_AMB, 8.0, 60.0)
 	if _tick("pad", delta, 35.0, 75.0) and _night > 0.6:

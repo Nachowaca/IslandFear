@@ -6,8 +6,8 @@ extends Node3D
 const ORBIT_R: float = 420.0            ## la isla llega a ~120 m, así que queda a ~300 m de la costa
 const HEIGHT: float = 55.0
 const SPEED: float = 0.02               ## rad/s (una vuelta cada ~5 min)
-const SONG_EVERY: float = 600.0
-const SONG_FIRST: float = 45.0          ## primer canto poco después de caer la noche
+const SONG_EVERY: float = 240.0
+const SONG_FIRST: float = 25.0          ## primer canto poco después de caer la noche
 
 var daynight: Node
 
