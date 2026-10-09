@@ -589,6 +589,7 @@ func _build_wreck_trail() -> void:
 		var mmi: MultiMeshInstance3D = NatureKit.multi(nm, arr, 90.0, Color(1.55, 1.2, 0.85), false)
 		if mmi != null:
 			mmi.name = "SendaNaufragio"
+			NatureKit.add_box_colliders(mmi)
 			add_child(mmi)
 
 # ------------------------------------------------------------------ elementos aleatorios

@@ -390,3 +390,8 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Especie por ruido de rodales (_stand_value, ~55 m): selva torcidos/grandes/juntos, bosque manchas de abedul y arce, matorral bajos y sueltos. 5 % fuera de rodal.
 - Bordes: árboles más chicos y espaciados en transición claro/arboleda y entre biomas; troncos caídos y arbustos marcan el límite (_add_edge_markers).
 - Palmeras en grupos de 2-3 modelos, solo en tramos de costa (ruido), inclinadas hacia el agua (_water_dir). Sin medir fps.
+
+## Colision de piedras de sendero y vuelo de pajaros
+- NatureKit.add_box_colliders/add_box_collider: caja por piedra de sendero (RockPath, Rock_) en path_decor, island_features (senda naufragio) e island_marks.
+- bird.gd: posadas dentro de la copa, huyen si talan el arbol, estado ROAM (vuelo libre 3-5 puntos), gaviotas con orbita que deriva.
+- Pendiente: mariposas e insectos; guijarros (Pebble) siguen sin colision.

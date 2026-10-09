@@ -1248,8 +1248,11 @@ func _spawn_kit_ground() -> void:
 # ------------------------------------------------------------------ fauna
 
 ## Puntos donde posarse: la copa real de cada árbol (según su malla), no una altura supuesta.
+var _perch_trees: Array[Node3D] = []
+
 func _tree_perches() -> Array[Vector3]:
 	var out: Array[Vector3] = []
+	_perch_trees.clear()
 	for tn: Node3D in terrain.tree_nodes:
 		if not is_instance_valid(tn):
 			continue
@@ -1267,7 +1270,8 @@ func _tree_perches() -> Array[Vector3]:
 		if first or box.size.y < 2.5:
 			continue
 		var c3: Vector3 = box.get_center()
-		out.append(Vector3(c3.x, box.end.y - 0.15, c3.z))
+		out.append(Vector3(c3.x, box.end.y - 0.7, c3.z))   # dentro de la copa, no flotando encima
+		_perch_trees.append(tn)
 	return out
 
 func _spawn_wildlife() -> void:
@@ -1293,7 +1297,8 @@ func _spawn_wildlife() -> void:
 	for i in songbird_count:
 		if perch_list.is_empty():
 			break
-		var tp: Vector3 = perch_list[_rng.randi_range(0, perch_list.size() - 1)]
+		var pi: int = _rng.randi_range(0, perch_list.size() - 1)
+		var tp: Vector3 = perch_list[pi]
 		var bird := Bird.new()
 		bird.kind = Bird.Kind.SONGBIRD
 		var pal: Array = palettes[i % palettes.size()]
@@ -1302,6 +1307,8 @@ func _spawn_wildlife() -> void:
 		bird.size = 1.0
 		bird.perch = tp
 		bird.perches = perch_list
+		bird.perch_trees = _perch_trees
+		bird.perch_tree = _perch_trees[pi]
 		bird.name = "Songbird%d" % i
 		bird.add_to_group("songbirds")
 		add_child(bird)

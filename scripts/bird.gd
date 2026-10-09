@@ -5,7 +5,7 @@ extends Node3D
 ## SONGBIRD: pajarito posado en un árbol que huye si el jugador se acerca y luego vuelve.
 
 enum Kind { GULL, SONGBIRD }
-enum State { PERCHED, FLEE, RETURN, ORBIT, WANDER }
+enum State { PERCHED, FLEE, RETURN, ORBIT, WANDER, ROAM }
 
 var kind: Kind = Kind.SONGBIRD
 var body_color: Color = Color(0.3, 0.5, 0.8)
@@ -18,6 +18,12 @@ var orbit_height: float = 18.0
 var orbit_speed: float = 0.25
 var player: Node3D
 var perches: Array[Vector3] = []     ## copas de árboles donde puede posarse (vuela de una a otra)
+var perch_trees: Array[Node3D] = []  ## árbol de cada copa (en paralelo a `perches`): si lo talan, el pájaro se va
+var perch_tree: Node3D = null
+var _vel: Vector3 = Vector3.ZERO
+var _roam_pts: Array[Vector3] = []
+var _roam_i: int = 0
+var _phase: float = 0.0
 
 var _state: State = State.PERCHED
 var _time: float = 0.0
@@ -35,6 +41,7 @@ var _rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	_rng.randomize()
 	_angle = _rng.randf() * TAU
+	_phase = _rng.randf() * TAU
 	_build()
 	if kind == Kind.GULL:
 		_state = State.ORBIT
@@ -110,6 +117,8 @@ func _process(delta: float) -> void:
 			_do_return(delta)
 		State.WANDER:
 			_do_wander(delta)
+		State.ROAM:
+			_do_roam(delta)
 
 func _flap(speed: float, amp: float) -> void:
 	var a: float = sin(_time * speed) * amp
@@ -120,15 +129,22 @@ func _fold() -> void:
 	_wing_l.rotation.z = lerpf(_wing_l.rotation.z, -1.2, 0.2)
 	_wing_r.rotation.z = lerpf(_wing_r.rotation.z, 1.2, 0.2)
 
+## Posición en la órbita: radio, velocidad, centro y altura derivan despacio, así que nunca repite el mismo círculo.
+func _orbit_pos(ang: float, t: float) -> Vector3:
+	var r: float = orbit_radius * (1.0 + 0.22 * sin(t * 0.071 + _phase) + 0.1 * sin(t * 0.137 + _phase * 2.0))
+	var c: Vector3 = orbit_center + Vector3(sin(t * 0.047 + _phase) * 35.0, 0.0, cos(t * 0.039 + _phase) * 35.0)
+	var h: float = orbit_height + sin(ang * 3.0) * 2.0 + sin(t * 0.17 + _phase) * 7.0
+	return c + Vector3(cos(ang) * r, h, sin(ang) * r)
+
 func _do_orbit(delta: float) -> void:
-	_angle += orbit_speed * delta
-	var p: Vector3 = orbit_center + Vector3(cos(_angle) * orbit_radius, orbit_height + sin(_angle * 3.0) * 2.0, sin(_angle) * orbit_radius)
-	var ahead: Vector3 = orbit_center + Vector3(cos(_angle + 0.05) * orbit_radius, orbit_height + sin((_angle + 0.05) * 3.0) * 2.0, sin(_angle + 0.05) * orbit_radius)
+	_angle += orbit_speed * delta * (1.0 + 0.35 * sin(_time * 0.11 + _phase))
+	var p: Vector3 = _orbit_pos(_angle, _time)
+	var ahead: Vector3 = _orbit_pos(_angle + 0.05, _time)
 	global_position = p
 	look_at(ahead, Vector3.UP)
-	rotation.z += sin(_time * 0.5) * 0.15 - 0.25 # leve inclinación al virar
-	# aleteo lento con planeos
-	_flap(5.0, 0.35 * maxf(0.0, sin(_time * 0.8) + 0.4))
+	rotation.z += sin(_time * 0.5 + _phase) * 0.2 - 0.25 * signf(orbit_speed)   # inclinación al virar
+	# aleteo en ráfagas con planeos de duración irregular
+	_flap(5.0 + sin(_time * 0.3 + _phase) * 1.5, 0.35 * maxf(0.0, sin(_time * 0.8 + _phase * 3.0) + 0.3))
 
 ## La isla los espanta (presagio): el pajarito sale volando aunque el jugador esté lejos.
 func scare() -> void:
@@ -145,17 +161,18 @@ func _player_dist() -> float:
 
 func _do_perched(delta: float) -> void:
 	_fold()
+	if perch_tree != null and not _tree_alive(perch_tree):
+		perch_tree = null
+		scare()   # le talaron el árbol: sale volando
+		return
 	_idle_left -= delta
 	if _idle_left <= 0.0 and not perches.is_empty():
 		_idle_left = _rng.randf_range(8.0, 25.0)
-		for k in 8:
-			var cand: Vector3 = perches[_rng.randi_range(0, perches.size() - 1)]
-			var dd: float = cand.distance_to(global_position)
-			if dd > 6.0 and dd < 35.0:
-				_wander_to = cand
-				_wander_t = 0.0
-				_state = State.WANDER
-				return
+		if _rng.randf() < 0.5:
+			_start_roam()
+			return
+		if _pick_perch(6.0, 35.0):
+			return
 	_head.rotation.y = sin(_time * 1.3 + _angle) * 0.6 * maxf(0.0, sin(_time * 0.4 + _angle * 3.0))
 	_head.rotation.x = absf(sin(_time * 3.0 + _angle)) * 0.25 * maxf(0.0, sin(_time * 0.3 + _angle))
 	if _player_dist() < 8.0:
@@ -164,6 +181,67 @@ func _do_perched(delta: float) -> void:
 		_flee_dir = (away.normalized() + Vector3(_rng.randf_range(-0.4, 0.4), 0.0, _rng.randf_range(-0.4, 0.4))).normalized()
 		_flee_time = 0.0
 		_state = State.FLEE
+
+## ¿El árbol sigue en pie? (talado = liberado, en cola de borrado o ya caído)
+func _tree_alive(t: Node3D) -> bool:
+	return is_instance_valid(t) and not t.is_queued_for_deletion() and t.basis.y.normalized().y > 0.9
+
+## Elige otra copa viva a esa distancia y va hacia ella.
+func _pick_perch(dmin: float, dmax: float) -> bool:
+	for k in 10:
+		var i: int = _rng.randi_range(0, perches.size() - 1)
+		var tr_i: Node3D = perch_trees[i] if i < perch_trees.size() else null
+		if tr_i != null and not _tree_alive(tr_i):
+			continue
+		var dd: float = perches[i].distance_to(global_position)
+		if dd > dmin and dd < dmax:
+			_wander_to = perches[i]
+			perch_tree = tr_i
+			_wander_t = 0.0
+			_state = State.WANDER
+			return true
+	return false
+
+## Vuelo libre: da una vuelta por 3 a 5 puntos al azar a distinta altura y recién después se posa.
+func _start_roam() -> void:
+	_roam_pts.clear()
+	var base: Vector3 = global_position
+	var n: int = _rng.randi_range(3, 5)
+	var ang: float = _rng.randf() * TAU
+	for i in n:
+		ang += _rng.randf_range(0.8, 2.2)
+		var r: float = _rng.randf_range(12.0, 32.0)
+		_roam_pts.append(Vector3(base.x + cos(ang) * r, base.y + _rng.randf_range(3.0, 13.0), base.z + sin(ang) * r))
+	_roam_i = 0
+	_vel = Vector3(0, 2.5, 0)
+	_wander_t = 0.0
+	_state = State.ROAM
+
+func _do_roam(delta: float) -> void:
+	if player != null and _player_dist() < 4.0:
+		scare()
+	_wander_t += delta
+	var target: Vector3 = _roam_pts[_roam_i]
+	var to: Vector3 = target - global_position
+	if to.length() < 3.0:
+		_roam_i += 1
+		if _roam_i >= _roam_pts.size():
+			if not _pick_perch(4.0, 60.0):
+				_state = State.RETURN
+			return
+		target = _roam_pts[_roam_i]
+		to = target - global_position
+	var speed: float = 6.5 + sin(_time * 0.9 + _phase) * 1.5
+	var desired: Vector3 = to.normalized() * speed + Vector3.UP * sin(_time * 5.0 + _phase) * 0.8   # bamboleo de aleteo
+	var prev_dir: Vector3 = _vel.normalized()
+	_vel = _vel.lerp(desired, 1.0 - exp(-1.6 * delta))
+	global_position += _vel * delta
+	if _vel.length() > 0.5:
+		look_at(global_position + _vel, Vector3.UP)
+		var turn: float = prev_dir.cross(_vel.normalized()).y
+		rotation.z = clampf(turn * 25.0, -0.6, 0.6)   # se inclina al virar
+	var burst: float = clampf(sin(_time * 2.4 + _phase) * 2.0 + 0.8, 0.0, 1.0)
+	_flap(24.0, lerpf(0.15, 0.85, burst))
 
 func _do_flee(delta: float) -> void:
 	_flee_time += delta
@@ -175,6 +253,10 @@ func _do_flee(delta: float) -> void:
 		_state = State.RETURN
 
 func _do_return(delta: float) -> void:
+	if perch_tree != null and not _tree_alive(perch_tree):
+		perch_tree = null
+	if perch_tree == null and not perches.is_empty() and _pick_perch(4.0, 90.0):
+		return   # su árbol ya no está: busca otro
 	if _player_dist() < 6.0:
 		var away: Vector3 = global_position - player.global_position
 		away.y = 0.0

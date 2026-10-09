@@ -65,6 +65,47 @@ static func multi(model: String, xforms: Array[Transform3D], vis_end: float = 90
 	src.free()
 	return out
 
+## Colisión para piedras planas / rocas chicas de un MultiMesh: una caja por instancia (un solo cuerpo, muchas formas).
+static func add_box_colliders(mmi: MultiMeshInstance3D, min_h: float = 0.08) -> void:
+	if Engine.is_editor_hint() or mmi == null or mmi.multimesh == null or mmi.multimesh.mesh == null:
+		return
+	var bb: AABB = mmi.multimesh.mesh.get_aabb()
+	var body := StaticBody3D.new()
+	body.name = "Colision"
+	for i in mmi.multimesh.instance_count:
+		var xf: Transform3D = mmi.multimesh.get_instance_transform(i)
+		var sc: Vector3 = xf.basis.get_scale().abs()
+		var sz: Vector3 = Vector3(bb.size.x * sc.x, maxf(bb.size.y * sc.y, min_h), bb.size.z * sc.z) * Vector3(0.9, 1.0, 0.9)
+		var cs := CollisionShape3D.new()
+		var bx := BoxShape3D.new()
+		bx.size = sz
+		cs.shape = bx
+		var ctr: Vector3 = xf * bb.get_center()
+		ctr.y = xf.origin.y + bb.position.y * sc.y + sz.y * 0.5
+		cs.transform = Transform3D(xf.basis.orthonormalized(), ctr)
+		body.add_child(cs)
+	mmi.add_child(body)
+
+## Lo mismo para una piedra suelta (nodo con una malla).
+static func add_box_collider(n: Node3D, min_h: float = 0.08) -> void:
+	if Engine.is_editor_hint():
+		return
+	var mi: MeshInstance3D = _first_mesh(n)
+	if mi == null:
+		return
+	var bb: AABB = mi.mesh.get_aabb()
+	var sc: Vector3 = mi.transform.basis.get_scale().abs() * n.scale
+	var sz: Vector3 = Vector3(bb.size.x * sc.x, maxf(bb.size.y * sc.y, min_h), bb.size.z * sc.z) * Vector3(0.9, 1.0, 0.9)
+	var body := StaticBody3D.new()
+	var cs := CollisionShape3D.new()
+	var bx := BoxShape3D.new()
+	bx.size = sz / n.scale.abs()
+	cs.shape = bx
+	cs.position = bb.get_center() * mi.transform.basis.get_scale() + mi.transform.origin
+	cs.position.y = mi.transform.origin.y + bb.position.y * mi.transform.basis.get_scale().y + bx.size.y * 0.5
+	body.add_child(cs)
+	n.add_child(body)
+
 static func _first_mesh(n: Node) -> MeshInstance3D:
 	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
 		return n as MeshInstance3D

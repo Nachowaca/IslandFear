@@ -183,3 +183,4 @@ func _make_stone_path(c: Vector3) -> void:
 		st.rotation.y = rng.randf() * TAU
 		st.scale = Vector3.ONE * rng.randf_range(0.9, 1.4)
 		add_child(st)
+		NatureKit.add_box_collider(st)

@@ -247,6 +247,8 @@ func _build_instances() -> void:
 		if mmi != null:
 			if model.begins_with("RockPath"):
 				_warm_stone(mmi)
+			if model.begins_with("RockPath") or model.begins_with("Rock_"):
+				NatureKit.add_box_colliders(mmi)
 			root.add_child(mmi)
 
 func _radial(edge: float) -> GradientTexture2D:
