@@ -187,7 +187,7 @@ const ROCK_SHADER: Shader = preload("res://shaders/rock_island.gdshader")
 
 ## Tonos de gris/marrón de las rocas (alfa = cantidad de musgo, en 3 niveles para compartir materiales).
 static func rock_tint(rng: RandomNumberGenerator) -> Color:
-	var tones: Array[Color] = [Color(1.0, 1.0, 1.0), Color(1.1, 1.02, 0.88), Color(0.62, 0.65, 0.72), Color(0.85, 0.72, 0.6), Color(1.2, 1.18, 1.1), Color(0.46, 0.47, 0.52)]
+	var tones: Array[Color] = [Color(1.0, 1.0, 1.0), Color(1.1, 1.02, 0.88), Color(0.7, 0.68, 0.64), Color(0.85, 0.72, 0.6), Color(1.2, 1.15, 1.05), Color(0.55, 0.52, 0.48)]
 	var c: Color = tones[rng.randi() % tones.size()]
 	var mossy: Array[float] = [0.08, 0.45, 0.85]
 	c.a = mossy[rng.randi() % 3]
@@ -199,7 +199,7 @@ static func _bark_tone(tint: Color, birch: bool) -> Color:
 	var i: int = absi(hash(tint.to_html())) % tones.size()
 	if birch:
 		return Color(1, 1, 1).lerp(tones[i], 0.4)
-	return tones[i] * Color(0.8, 0.76, 0.68)   # corteza cálida: bajo cielo azul el gris/marrón se vuelve azulado
+	return tones[i] * Color(0.62, 0.6, 0.55)   # corteza cálida: bajo cielo azul el gris/marrón se vuelve azulado
 
 ## Instancia un modelo del pack Ultimate Stylized Nature. Los de `FBX/` (palmeras, rocas…) están en centímetros
 ## (el nodo ya trae escala 100); los de `glTF/` (abedul, arce, arbustos, flores…) en metros.

@@ -63,5 +63,5 @@ void fragment() {
 	ALPHA_SCISSOR_THRESHOLD = 0.5;
 	ROUGHNESS = 1.0;
 	SPECULAR = 0.0;
-	BACKLIGHT = vec3(0.04, 0.07, 0.025) * backlight_amt;
+	BACKLIGHT = vec3(0.16, 0.2, 0.05) * backlight_amt;
 }

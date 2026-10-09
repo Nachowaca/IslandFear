@@ -412,3 +412,7 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 ## Preset look-v2 (cielo con nubes, clima separado del color, rayos variados dorados, mas bruma de noche) - usuario conforme
 - look_director: hum_n por fecha, sol suave/brillante, rayos segun humedad, clima menos gris. look_haz: boost/warm por haz.
 - Siguiente: sol +, particulas, suciedad en suelo, troncos humedos (volver con git checkout look-v2 si no gusta).
+
+## Preset look-v3 (dia) 
+- Dia: sol 1.3 dorado (1.0,0.86,0.6), niebla 0.0009, nubes minimas 0.15, saturacion 1.08, sombras frias, hojas a contraluz, polvo brillante, sombras definidas (shadow_blur 0.55), mancha bajo el personaje, destello de lente (look_destello.gd), rocas grises calidas, particulas suaves, suciedad del suelo del bosque, troncos oscuros.
+- Restaurar: git checkout look-v3 -- .

@@ -137,6 +137,13 @@ void fragment() {
 		// tierra pisada: manchas sueltas y rotas, no círculos
 		float bare = smoothstep(0.58, 0.8, fbm(wp * 0.12 + 40.0) * 0.7 + vnoise(wp * 0.9) * 0.3) * g_only;
 		col = mix(col, c_dirt * vec3(1.2, 1.05, 0.82), bare * 0.5);
+		// suciedad del bosque: hojarasca oscura, hojas caidas sueltas y musgo humedo
+		float hoja_n = smoothstep(0.52, 0.8, fbm(wp * 0.35 + 60.0)) * g_only;
+		col = mix(col, col * vec3(0.66, 0.56, 0.42), hoja_n * 0.55);
+		float leaf_sp = step(0.84, vnoise(uv * 7.0 + 3.0)) * smoothstep(0.3, 0.65, patch_m) * g_only;
+		col = mix(col, vec3(0.42, 0.28, 0.13), leaf_sp * 0.55);
+		float moss_n = smoothstep(0.5, 0.8, fbm(wp * 0.5 + 90.0)) * (g_only * 0.35 + w_dirt * 0.5);
+		col = mix(col, col * vec3(0.7, 0.88, 0.58), moss_n * 0.5);
 		col = mix(col, col * vec3(1.04, 1.02, 0.95), w_sand * (1.0 - w_rock) * 0.5);   // arena beige clara
 	// caminos de tierra: senderos principales (R) y sendas chicas cortadas (G), con borde irregular
 	vec3 pt = textureLod(path_tex, clamp((wpos.xz - path_origin) / path_size, 0.0, 1.0), 0.0).rgb;

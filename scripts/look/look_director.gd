@@ -37,6 +37,7 @@ var _haces: LookHaces
 var noche: LookNoche
 var eco: EcoMap
 var _contacto: LookContacto
+var _destello: LookDestello
 var _cam_attr: CameraAttributesPractical
 var _overlay_layer: CanvasLayer
 var _overlay: Label
@@ -85,6 +86,7 @@ func preparar_mundo(p_terrain: IslandTerrain, p_player: Node3D) -> void:
 	_haces.player = player
 	add_child(_haces)
 	_contacto = LookContacto.new()
+	_contacto.player = player
 	_contacto.name = "LookContacto"
 	_contacto.terrain = terrain
 	add_child(_contacto)
@@ -94,6 +96,10 @@ func preparar_mundo(p_terrain: IslandTerrain, p_player: Node3D) -> void:
 	noche.eco = eco
 	noche.player = player
 	add_child(noche)
+	_destello = LookDestello.new()
+	_destello.name = "LookDestello"
+	_destello.player = player
+	add_child(_destello)
 	_aplicar_calidad()
 
 # ------------------------------------------------------------------ aplicar cada frame
@@ -119,15 +125,16 @@ func aplicar(day: float, dusk: float, golden: float, e: float, manana: bool) -> 
 	var cielo_alto: Color = p.color_cielo_alto.lerp(gris_t, nub * 0.5)
 	var cielo_hor: Color = p.color_cielo_horizonte.lerp(gris_h, nub * 0.5)
 	sky_mat.set_shader_parameter("top_color", cielo_alto)
-	sky_mat.set_shader_parameter("cloud_cover", clampf(0.4 + nub * 0.6, 0.0, 1.0))
+	sky_mat.set_shader_parameter("cloud_cover", clampf(0.15 + nub * 0.75, 0.0, 1.0))
 	sky_mat.set_shader_parameter("horizon_color", cielo_hor)
 	sky_mat.set_shader_parameter("ground_color", cielo_hor.darkened(0.55))
 
 	# sol
 	sun.light_color = p.color_sol
-	sun.light_energy = p.energia_sol * smoothstep(-0.03, 0.22, e) * lerpf(1.0, 0.18, nub) * lerpf(1.12, 0.85, hum_n * _w_dia + (1.0 - _w_dia) * 0.5)
+	sun.light_energy = p.energia_sol * smoothstep(-0.03, 0.22, e) * lerpf(1.0, 0.18, nub) * lerpf(1.08, 0.95, hum_n * _w_dia + (1.0 - _w_dia) * 0.5)
 	sun.visible = sun.light_energy > 0.01
-	sun.shadow_opacity = 0.72 if on else 1.0
+	sun.shadow_opacity = 1.0
+	sun.shadow_blur = 0.55 if on else 1.0     # sombras mas definidas (la del personaje)
 
 	# visibilidad nocturna local: luna tapada, bosque cerrado o cueva = más oscuro; playa y claros = más claro
 	var vis: float = 1.0
@@ -159,7 +166,7 @@ func aplicar(day: float, dusk: float, golden: float, e: float, manana: bool) -> 
 
 	# postproceso
 	env.tonemap_exposure = p.exposicion
-	env.adjustment_saturation = p.saturacion * lerpf(1.0, 0.92, nub)
+	env.adjustment_saturation = p.saturacion * lerpf(1.0, 0.92, nub) * (1.0 if on else 0.88)
 	env.adjustment_contrast = p.contraste
 	env.glow_enabled = on and calidad >= Calidad.MEDIA
 	env.glow_intensity = p.intensidad_bloom
@@ -189,6 +196,8 @@ func aplicar(day: float, dusk: float, golden: float, e: float, manana: bool) -> 
 			fuerza = 0.0     # la luna no hace haces duros: su luz es suave y viene de la luz direccional y el ambiente
 		_haces.set_luz(luz_dir, luz_col, fuerza)
 		_haces.set_bruma(p.color_niebla.lerp(Color.WHITE, 0.15), clampf(p.niebla_altura / 0.04 + (daynight.fog_boost + daynight.fog_clima) * 40.0, 0.0, 1.0))
+	if _destello != null:
+		_destello.set_sol(daynight.sun_dir, p.color_sol, smoothstep(0.05, 0.3, e) * lerpf(1.0, 0.0, clampf(nub * 1.6, 0.0, 1.0)), on and calidad >= Calidad.MEDIA)
 	if _contacto != null:
 		_contacto.visible = on and calidad >= Calidad.MEDIA
 		_contacto.set_fuerza(lerpf(0.5, 0.3, _w_noche))

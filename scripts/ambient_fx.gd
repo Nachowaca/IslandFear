@@ -16,7 +16,7 @@ func set_night(n: float) -> void:
 	var c: Color = Color(1.0, 0.9, 0.6).lerp(Color(0.7, 1.0, 0.25), n)
 	_pollen_mat.emission = c
 	_pollen_mat.albedo_color = Color(c.r, c.g, c.b, 0.8)
-	_pollen_mat.emission_energy_multiplier = lerpf(2.5, 7.0, n)
+	_pollen_mat.emission_energy_multiplier = lerpf(6.5, 7.0, n)
 	_leaves.visible = n < 0.6
 
 func _ready() -> void:
@@ -29,14 +29,28 @@ func _ready() -> void:
 func _make_leaves() -> CPUParticles3D:
 	var p := CPUParticles3D.new()
 	var quad := QuadMesh.new()
-	quad.size = Vector2(0.16, 0.1)
+	quad.size = Vector2(0.09, 0.055)
 	var mat := StandardMaterial3D.new()
 	mat.vertex_color_use_as_albedo = true
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mat.roughness = 1.0
+	# forma de hoja ovalada (no un rectangulo plano)
+	var gt := GradientTexture2D.new()
+	var gr := Gradient.new()
+	gr.set_color(0, Color(1, 1, 1, 1))
+	gr.set_color(1, Color(1, 1, 1, 0))
+	gt.gradient = gr
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.0, 0.5)
+	gt.width = 32
+	gt.height = 32
+	mat.albedo_texture = gt
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	mat.alpha_scissor_threshold = 0.45
 	quad.material = mat
 	p.mesh = quad
-	p.amount = 45
+	p.amount = 80
 	p.lifetime = 14.0
 	p.preprocess = 14.0
 	p.local_coords = false
@@ -53,8 +67,8 @@ func _make_leaves() -> CPUParticles3D:
 	p.angular_velocity_min = -220.0
 	p.angular_velocity_max = 220.0
 	p.angle_max = 360.0
-	p.scale_amount_min = 0.8
-	p.scale_amount_max = 1.6
+	p.scale_amount_min = 0.7
+	p.scale_amount_max = 1.2
 	p.color = Color(0.4, 0.62, 0.2)
 	p.hue_variation_min = -0.1
 	p.hue_variation_max = 0.12
@@ -63,10 +77,10 @@ func _make_leaves() -> CPUParticles3D:
 func _make_pollen() -> CPUParticles3D:
 	var p := CPUParticles3D.new()
 	var s := SphereMesh.new()
-	s.radius = 0.025
-	s.height = 0.05
-	s.radial_segments = 4
-	s.rings = 2
+	s.radius = 0.02
+	s.height = 0.04
+	s.radial_segments = 8
+	s.rings = 4
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.albedo_color = Color(1.0, 0.95, 0.7, 0.8)
@@ -77,7 +91,7 @@ func _make_pollen() -> CPUParticles3D:
 	s.material = mat
 	_pollen_mat = mat
 	p.mesh = s
-	p.amount = 90
+	p.amount = 220
 	p.lifetime = 9.0
 	p.preprocess = 9.0
 	p.local_coords = false
@@ -89,8 +103,8 @@ func _make_pollen() -> CPUParticles3D:
 	p.initial_velocity_min = 0.1
 	p.initial_velocity_max = 0.45
 	p.gravity = Vector3(0.12, 0.02, 0.05)
-	p.scale_amount_min = 0.5
-	p.scale_amount_max = 1.6
+	p.scale_amount_min = 0.4
+	p.scale_amount_max = 1.3
 	return p
 
 func _process(_delta: float) -> void:

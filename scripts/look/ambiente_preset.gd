@@ -65,8 +65,8 @@ static func amanecer() -> AmbientePreset:
 
 ## Cálido y saturado, sombras azuladas.
 static func dia() -> AmbientePreset:
-	return _crear("Día", Color(0.14, 0.42, 0.9), Color(0.62, 0.8, 0.96), Color(0.96, 0.95, 0.9), 0.9,
-		Color(0.62, 0.8, 0.96), 0.0024, Color(0.62, 0.7, 0.82), 0.7, 0.5, 0.7, 0.3, 0.04, 0.95, 0.92, 1.05)
+	return _crear("Día", Color(0.14, 0.42, 0.9), Color(0.62, 0.8, 0.96), Color(1.0, 0.86, 0.6), 1.3,
+		Color(0.62, 0.8, 0.96), 0.0009, Color(0.46, 0.64, 0.92), 0.5, 0.4, 0.8, 0.3, 0.02, 1.0, 1.08, 1.1)
 
 ## Ámbar y rosado, haces largos.
 static func atardecer() -> AmbientePreset:

@@ -30,7 +30,7 @@ void vertex() {
 }
 
 void fragment() {
-	vec3 t = texture(albedo_tex, UV).rgb * vec3(1.9, 1.9, 2.0) * tint.rgb;
+	vec3 t = texture(albedo_tex, UV).rgb * vec3(1.95, 1.85, 1.72) * tint.rgb;
 	float n1 = vnoise(wpos * 0.9) * 0.6 + vnoise(wpos * 2.7) * 0.4;
 	float n2 = vnoise(wpos * 1.7 + 13.0);
 	t *= 0.8 + n1 * 0.45;                                     // manchas de tono dentro de la misma roca

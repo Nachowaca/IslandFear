@@ -5,6 +5,8 @@ extends MultiMeshInstance3D
 ## Se reconstruye (barato) solo si cambia la cantidad de árboles (talas).
 
 var terrain: IslandTerrain
+var player: Node3D
+var _blob: MeshInstance3D
 
 var _mat: ShaderMaterial
 var _cuenta: int = -1
@@ -25,6 +27,7 @@ func set_fuerza(f: float) -> void:
 	_mat.set_shader_parameter("strength", f)
 
 func _process(delta: float) -> void:
+	_mover_blob()
 	_t += delta
 	if _t > 3.0:
 		_t = 0.0
@@ -52,3 +55,20 @@ func _reconstruir() -> void:
 		mm.set_instance_transform(n_t + k, Transform3D(Basis.from_scale(Vector3(3.2, 1.0, 3.2)), Vector3(pp.x, pp.y + 0.07, pp.z)))
 	multimesh = mm
 	_cuenta = n_t + n_p
+
+## Mancha suave bajo los pies del personaje: ancla su sombra al suelo.
+func _mover_blob() -> void:
+	if player == null or not is_instance_valid(player) or terrain == null:
+		return
+	if _blob == null:
+		_blob = MeshInstance3D.new()
+		var q := QuadMesh.new()
+		q.size = Vector2(1.5, 1.5)
+		q.orientation = PlaneMesh.FACE_Y
+		_blob.mesh = q
+		_blob.material_override = _mat
+		_blob.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_blob.top_level = true
+		add_child(_blob)
+	var pp: Vector3 = player.global_position
+	_blob.global_position = Vector3(pp.x, terrain.height_at(pp.x, pp.z) + 0.08, pp.z)
