@@ -236,7 +236,7 @@ func _process(delta: float) -> void:
 	_close = close
 	_set_bed("cave_hum", _cave * 0.5, delta)
 	if weather != null:
-		_set_bed("rain", weather.intensity * (0.55 - 0.3 * _cave), delta)   # bajo techo se oye, pero lejos
+		_set_bed("rain", weather.intensity * (0.55 - 0.3 * _cave) * lerpf(1.0, 0.4, _night), delta)   # bajo techo se oye, pero lejos
 
 	# la cueva apaga lo de afuera y añade eco
 	_lowpass.cutoff_hz = lerpf(20500.0, 2200.0, _cave)

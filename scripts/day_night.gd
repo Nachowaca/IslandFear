@@ -42,6 +42,8 @@ var _lighthouse: Lighthouse
 var _water_mat: ShaderMaterial
 var _vis_timer: float = 0.0
 var fog_local: float = 0.0   ## niebla extra según el bioma (la pone BiomeAtmosphere)
+var fog_clima: float = 0.0    ## niebla extra del clima (la pone Weather; aparte de fog_boost para no pisar la de la isla)
+var cloud: float = 0.0       ## 0 = cielo limpio, 1 = cubierto (lo pone Weather): baja el sol, apaga el cielo
 var fog_boost: float = 0.0   ## niebla extra que levanta la isla (0 = normal)
 var _sun_shadow_on: bool = true
 var _moon_shadow_on: bool = false
@@ -124,10 +126,16 @@ func moon_light() -> DirectionalLight3D:
 func water_mat() -> ShaderMaterial:
 	return _water_mat
 
+## Reloj de la isla: 2 h reales = 24 h de juego (1 h real de día + 1 h real de noche). Fecha fija (equinoccio): días y noches parejos.
+const TIME_SCALE: float = 12.0
+var _equinox_unix: float = Time.get_unix_time_from_datetime_string("2026-03-20T00:00:00")
+
+## Horas UTC del juego (0..24).
+func _game_utc_hours() -> float:
+	return fposmod(Time.get_unix_time_from_system() * TIME_SCALE / 3600.0 + _offset_hours, 24.0)
+
 func _current_hour() -> float:
-	var t: Dictionary = Time.get_datetime_dict_from_system() # hora local
-	var h: float = float(t["hour"]) + float(t["minute"]) / 60.0 + float(t["second"]) / 3600.0
-	return fposmod(h + _offset_hours, 24.0)
+	return fposmod(_game_utc_hours() + longitude / 15.0, 24.0)
 
 ## Convierte ascensión recta / declinación a un vector de dirección en el mundo.
 ## Convención del mundo: +X = Este, -Z = Norte, +Y = arriba.
@@ -141,7 +149,8 @@ func _equatorial_to_dir(ra: float, dec: float, gmst_deg: float) -> Vector3:
 
 ## Posiciones astronómicas reales (algoritmos de baja precisión, error < ~1°).
 func _compute_astro() -> void:
-	var unix: float = Time.get_unix_time_from_system() + _offset_hours * 3600.0 # UTC
+	var unix: float = _equinox_unix + _game_utc_hours() * 3600.0 # UTC de juego
+	var unix_real: float = Time.get_unix_time_from_system()
 	var n: float = unix / 86400.0 + 2440587.5 - 2451545.0       # días desde J2000
 	var eps: float = deg_to_rad(23.439 - 0.0000004 * n)
 	var gmst: float = fposmod((18.697374558 + 24.06570982441908 * n) * 15.0, 360.0)
@@ -163,7 +172,8 @@ func _compute_astro() -> void:
 	var ra_m: float = atan2(sin(lam_m) * cos(eps) - tan(beta) * sin(eps), cos(lam_m))
 	var dec_m: float = asin(sin(beta) * cos(eps) + cos(beta) * sin(eps) * sin(lam_m))
 	moon_dir = _equatorial_to_dir(ra_m, dec_m, gmst)
-	moon_phase = (1.0 - cos(lam_m - lam_s)) * 0.5 # 0 luna nueva, 1 luna llena
+	var sinodico: float = fposmod(unix_real / 86400.0 + 2440587.5 - 2451550.1, 29.530588) / 29.530588
+	moon_phase = (1.0 - cos(TAU * sinodico)) * 0.5   # fase real (la fecha del juego está fija)
 	# Luna de juego: arco propio. Sale por el este a las 19:00, culmina a las 01:00 y se pone a las 07:00 (siempre hay luna de noche)
 	var mu: float = fposmod(hour - 19.0, 24.0) / 12.0
 	var ma: float = mu * PI
@@ -237,21 +247,19 @@ func _update(refresh_slow: bool) -> void:
 	look.aplicar(day, dusk, golden, e, hour < 12.0)
 	_sky_mat.set_shader_parameter("sun_dir", sun_pos)
 	_sky_mat.set_shader_parameter("moon_dir", moon_pos)
-	_sky_mat.set_shader_parameter("sun_amount", smoothstep(-0.1, 0.05, e))
-	_sky_mat.set_shader_parameter("moon_amount", smoothstep(-0.05, 0.1, moon_pos.y))
-	_sky_mat.set_shader_parameter("star_amount", night * night)
+	_sky_mat.set_shader_parameter("sun_amount", smoothstep(-0.1, 0.05, e) * (1.0 - cloud * 0.92))
+	_sky_mat.set_shader_parameter("moon_amount", smoothstep(-0.05, 0.1, moon_pos.y) * (1.0 - cloud * 0.85))
+	_sky_mat.set_shader_parameter("star_amount", night * night * (1.0 - cloud))
 	_sky_mat.set_shader_parameter("moon_phase", moon_phase)
 	_sky_mat.set_shader_parameter("star_x", star_x)
 	_sky_mat.set_shader_parameter("star_y", star_y)
 	_sky_mat.set_shader_parameter("star_z", star_z)
 
 	# Reloj
-	var t: Dictionary = Time.get_datetime_dict_from_system()
 	var hh: int = int(hour)
 	var mm: int = int((hour - float(hh)) * 60.0)
-	var ss: int = int(t["second"])
-	_clock.text = "%02d:%02d:%02d   %02d/%02d/%d\nSol %d°  Luna %d° (%d%% iluminada)" % [
-		hh, mm, ss, int(t["day"]), int(t["month"]), int(t["year"]),
+	_clock.text = "%02d:%02d  (hora de la isla)\nSol %d°  Luna %d° (%d%% iluminada)" % [
+		hh, mm,
 		roundi(rad_to_deg(asin(sun_dir.y))), roundi(rad_to_deg(asin(moon_dir.y))), roundi(moon_phase * 100.0)]
 
 	if refresh_slow:

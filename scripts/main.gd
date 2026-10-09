@@ -105,7 +105,14 @@ func _ready() -> void:
 	weather.name = "Weather"
 	weather.player = _castaway
 	weather.features = features
-	# add_child(weather)   # DESACTIVADO: el clima queda para más adelante (memoria)
+	weather.terrain = _island
+	weather.brain = brain
+	add_child(weather)
+	var clima_ui: Node = (load("res://scripts/clima_panel.gd") as GDScript).new() as Node
+	clima_ui.name = "ClimaPanel"
+	clima_ui.set("weather", weather)
+	clima_ui.set("player", _castaway)
+	add_child(clima_ui)
 	var audio := AudioManager.new()
 	audio.name = "Audio"
 	audio.weather = weather

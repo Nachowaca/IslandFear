@@ -360,3 +360,12 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Calma: item `semilla_paz` (una por vida, `Inventario.sembrar_paz()` la deja en el baúl). T en el templo: ofensa/hostilidad/rencor a 0, ofrenda +, se consume.
 - Ofrendas (`interaccion._calma_ofrenda`): la del bioma baja ofensa 10, otra 4, y 1.5 si la isla está furiosa (>70).
 - NO probado en vivo: tiempos reales, fuego en el templo, uso de la semilla, ofrendas por bioma. Clima real queda para después.
+
+## Clima (Weather) + reloj de la isla
+- Reloj: 2 h reales = 24 h de juego (`DayNight.TIME_SCALE = 12`), fecha fija (equinoccio), fase lunar real. F9 = +1 hora de juego.
+- `weather.gd` reescrito: estados SOL, NUBLANDO, LLOVIZNA, LLUVIA, TORMENTA, CLAREANDO, PAZ. Se anuncia: nubes (`DayNight.cloud` -> LookDirector baja sol/cielo/saturación), niebla (`fog_clima`), viento (`Wind.set_clima`); la lluvia solo arranca con cielo cerrado.
+- La isla decide tras el sol (emociones + hostilidad): sol en paz / lluvia / llovizna / tormenta. Frases "lluvia"/"tormenta" ya activas.
+- Lluvia tranquila: baja la ofensa muy despacio y hace rebrotar árboles talados (`IslandTerrain.felled` / `regrow_tree`, ~1 cada 30 s). Fin de tormenta: 6–10 charcos que se secan solos. Sin flores arrancables.
+- Sonido de lluvia al 40 % de noche. Truenos solo en tormenta.
+- Panel de pruebas `clima_panel.gd`: botón "Clima (K)" o tecla K: forzar estados, hora +1, charcos, rebrote, interruptor "Clima activo".
+- Gancho: `Weather.wetness` (personaje mojado), sin uso. Probado: tormenta forzada visible, rebrote de árbol por script, panel. NO probado: ciclo automático completo, charcos a la vista, sonido, fps en bosque bajo lluvia.

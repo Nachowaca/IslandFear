@@ -281,7 +281,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var sens: float = mouse_sensitivity * lerpf(1.0, clampf(_camera.fov / base_fov, 0.1, 1.0), eye_view)
 		_yaw -= mm.relative.x * sens
 		_pitch = clampf(_pitch - mm.relative.y * sens, -1.2, 0.5)
-	elif event is InputEventMouseButton and event.pressed:
+	elif event is InputEventMouseButton and event.pressed and not menu_lock:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

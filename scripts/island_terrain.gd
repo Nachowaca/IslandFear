@@ -398,9 +398,14 @@ func _spawn_life() -> void:
 	add_child(life)
 
 ## Tala un árbol o palmera: lo saca del registro, quita su colisión y lo hace caer. Devuelve su posición.
+## Árboles talados guardados como molde (fuera del árbol de escena) para que la lluvia tranquila los haga rebrotar.
+var felled: Array = []
+
 func fell_tree(tree: Node3D, dir: Vector3) -> Vector3:
 	var pos: Vector3 = tree.global_position
 	var idx: int = tree_nodes.find(tree)
+	if felled.size() < 80 and (idx >= 0 or palm_nodes.has(tree)):
+		felled.append({"node": tree.duplicate(), "palm": palm_nodes.has(tree), "pos": pos})
 	if idx >= 0:
 		tree_nodes.remove_at(idx)
 		if idx < tree_positions.size():
@@ -424,6 +429,31 @@ func fell_tree(tree: Node3D, dir: Vector3) -> Vector3:
 	tw.tween_method(func(a: float) -> void: tree.basis = Basis(axis, a) * start, 0.0, PI * 0.5, 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_interval(0.4)
 	tw.tween_callback(tree.queue_free)
+	return pos
+
+## Hace rebrotar el árbol talado número i: reaparece chico en su lugar y crece despacio. Devuelve su posición (o Vector3.INF si no hay).
+func regrow_tree(i: int, seconds: float = 40.0) -> Vector3:
+	if i < 0 or i >= felled.size() or _flora == null:
+		return Vector3.INF
+	var d: Dictionary = felled[i]
+	felled.remove_at(i)
+	var tree: Node3D = d["node"] as Node3D
+	var pos: Vector3 = d["pos"]
+	var full: Vector3 = tree.scale
+	tree.position = _flora.to_local(pos)
+	tree.scale = full * 0.12
+	tree.set_meta("golpes", 0)
+	if bool(d["palm"]):
+		tree.set_meta("hojas", 4)
+		palm_nodes.append(tree)
+		palm_positions.append(pos)
+	else:
+		tree_nodes.append(tree)
+		tree_positions.append(pos)
+		tree_scales.append(full.x)
+	_flora.add_child(tree)
+	var tw: Tween = tree.create_tween()
+	tw.tween_property(tree, "scale", full, seconds).set_trans(Tween.TRANS_SINE)
 	return pos
 
 ## Quita árboles, arbustos y rocas de un círculo (para despejar un lugar especial).
