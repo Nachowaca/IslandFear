@@ -17,7 +17,7 @@ extends MeshInstance3D
 		noise_seed = v
 		_build()
 @export var palm_count: int = 150
-@export var tree_count: int = 360
+@export var tree_count: int = 250
 @export var bush_count: int = 600
 @export var rock_count: int = 170
 
@@ -558,7 +558,7 @@ func _scatter_flora() -> void:
 	trunk_shape.radius = 0.35
 	trunk_shape.height = 3.0
 	var trunk_shape_palm := CylinderShape3D.new()
-	trunk_shape_palm.radius = 0.25
+	trunk_shape_palm.radius = 0.45
 	trunk_shape_palm.height = 3.0
 
 	# ---- ecología: zonas reales de una costa (playa/duna -> matorral costero -> bosque -> altura),
@@ -590,8 +590,8 @@ func _scatter_flora() -> void:
 		var palm := Node3D.new()
 		palm.position = pos
 		palm.rotation.y = rng.randf() * TAU
-		palm.scale = Vector3.ONE * rng.randf_range(1.0, 1.5)
-		var coast_visual: Node3D = NatureKit.make_uq("PalmTree_%d" % rng.randi_range(1, 5), Color(rng.randf_range(0.9, 1.1), rng.randf_range(1.0, 1.1), rng.randf_range(0.85, 1.0)), 180.0)
+		palm.scale = Vector3.ONE * rng.randf_range(0.85, 1.25)
+		var coast_visual: Node3D = _palm_visual(rng)
 		coast_visual.rotation.x = rng.randf_range(0.04, 0.14)   # el viento del mar los inclina
 		palm.add_child(coast_visual)
 		_flora.add_child(palm)
@@ -611,7 +611,9 @@ func _scatter_flora() -> void:
 		var wet: float = moisture_at(pos2.x, pos2.z)
 		var bw: PackedFloat32Array = eco.get_bioma_pesos(pos2)
 		var dens: float = bw[2] * 1.0 + bw[3] * 0.75 + bw[4] * 0.2 + bw[5] * 0.05 + bw[1] * 0.08 + bw[0] * 0.05
-		var p_tree: float = maxf(dens * (0.65 + 0.7 * smoothstep(-0.3, 0.3, forest_value(pos2.x, pos2.z))), wet * 0.8)
+		# arboledas y claros marcados: bajo el umbral del ruido no crece casi nada (claro), sobre él hay arboleda densa
+		var grove: float = smoothstep(-0.14, 0.1, forest_value(pos2.x, pos2.z))
+		var p_tree: float = maxf(dens * (0.04 + 1.1 * grove), wet * 0.8 * (0.35 + 0.65 * grove))
 		if pos2.y < 2.6:
 			p_tree *= clampf((pos2.y - 1.75) / 0.85, 0.0, 1.0)      # se aclara hacia la costa
 		if pos2.y > 7.0:
@@ -623,8 +625,8 @@ func _scatter_flora() -> void:
 			continue
 		if _near_path(pos2.x, pos2.z, 1.3):
 			continue
-		if _too_close(pos2, 2.6):
-			continue                                                  # separación mínima entre árboles
+		if _too_close(pos2, lerpf(3.4, 2.3, grove)):
+			continue                                                  # separación: más juntos en la arboleda, más aire en los bordes
 		var kit_name: String = "NormalTree_%d" % rng.randi_range(1, 5)
 		var sc: float = rng.randf_range(0.9, 1.3)
 		var mix: float = rng.randf()
@@ -760,6 +762,37 @@ func _scatter_flora() -> void:
 		_add_rock_body(r, 1000 + ridx * 10 + rvar)
 		made += 1
 	_add_rock_clusters(rng)
+
+## Palmera del modelo stylized_palm_tree (una sola malla con textura): se normaliza a ~7 m con la base del tronco en el origen.
+const PALM_GLB: String = "res://assets/terrain/stylized_palm_tree_1k_pbr.glb"
+const PALM_K: float = 0.48                        ## el modelo mide ~14,5 m: se reduce a ~7 m
+const PALM_BASE: Vector3 = Vector3(-1.364, -0.115, -1.210)   ## base del tronco, en el espacio del modelo ya con sus transformaciones
+var _palm_mesh: Mesh = null
+var _palm_xf: Transform3D = Transform3D.IDENTITY
+
+func _palm_visual(rng: RandomNumberGenerator) -> Node3D:
+	if _palm_mesh == null:
+		var root: Node3D = (load(PALM_GLB) as PackedScene).instantiate() as Node3D
+		var mi: MeshInstance3D = root.find_child("Object_4", true, false) as MeshInstance3D
+		var xf: Transform3D = Transform3D.IDENTITY
+		var c: Node3D = mi
+		while c != null:
+			xf = c.transform * xf
+			c = c.get_parent() as Node3D
+		_palm_mesh = mi.mesh
+		_palm_xf = Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * PALM_K), -PALM_BASE * PALM_K) * xf
+		root.free()
+	var holder := Node3D.new()
+	var m := MeshInstance3D.new()
+	m.mesh = _palm_mesh
+	m.transform = _palm_xf
+	m.visibility_range_end = 150.0
+	m.visibility_range_end_margin = 10.0
+	m.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+	holder.add_child(m)
+	holder.scale = Vector3.ONE * rng.randf_range(0.9, 1.1)
+	holder.rotation.y = rng.randf() * TAU
+	return holder
 
 ## Forma de una roca: 0 redondeada, 1 normal, 2 de pico fino. `spike` = probabilidad de pico.
 func _rock_shape(rng: RandomNumberGenerator, spike: float) -> int:

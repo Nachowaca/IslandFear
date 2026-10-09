@@ -380,3 +380,8 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Sombras del sol: filtro soft high, shadow_blur 2.5, distancia 100 m.
 - Humor de la isla más lento (caminata aleatoria 0.03).
 - Arranque de pruebas (TEMPORAL): reloj a las 6:00 (START_HOUR) y vínculo mínimo 30 (VINCULO_INICIO). Quitar antes de publicar.
+
+## Bosque en arboledas y claros + palmera nueva
+- Árboles: tope 250; el ruido de manchas separa claros (casi sin árboles) de arboledas densas; separación 3.4 m en bordes, 2.3 m en el centro.
+- Palmeras de costa: modelo assets/terrain/stylized_palm_tree_1k_pbr.glb (3 troncos, ~23k tris, escalado a ~7 m), colisión radio 0.45. Sin medir fps aún.
+- Pendiente: rodales por especie y bordes graduales.
