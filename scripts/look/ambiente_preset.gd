@@ -56,7 +56,7 @@ static func _crear(nom: String, alto: Color, horiz: Color, sol: Color, e_sol: fl
 ## Azul lunar desaturado, puntos cálidos emisivos.
 static func noche() -> AmbientePreset:
 	return _crear("Noche", Color(0.01, 0.045, 0.14), Color(0.04, 0.14, 0.28), Color(1.0, 0.5, 0.22), 0.0,
-		Color(0.04, 0.12, 0.24), 0.0034, Color(0.14, 0.3, 0.62), 0.6, 0.8, 0.8, 1.0, 0.07, 0.95, 1.05, 1.08)
+		Color(0.04, 0.12, 0.24), 0.0046, Color(0.14, 0.3, 0.62), 0.6, 0.8, 0.8, 1.0, 0.11, 0.95, 1.05, 1.08)
 
 ## Rosado y ámbar suave, bruma de la mañana.
 static func amanecer() -> AmbientePreset:

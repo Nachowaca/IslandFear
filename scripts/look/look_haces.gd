@@ -15,6 +15,7 @@ var terrain: IslandTerrain
 
 var _shafts: Array[MeshInstance3D] = []
 var _shaft_mat: ShaderMaterial
+var _shaft_mats: Array[ShaderMaterial] = []
 var _layers: Array[MeshInstance3D] = []
 var _layer_mats: Array[ShaderMaterial] = []
 var _rng := RandomNumberGenerator.new()
@@ -36,7 +37,12 @@ func _ready() -> void:
 	for i in SHAFT_MAX:
 		var mi := MeshInstance3D.new()
 		mi.mesh = mesh
-		mi.material_override = _shaft_mat
+		var sm: ShaderMaterial = _shaft_mat.duplicate() as ShaderMaterial
+		var fuerte: bool = i % 4 == 0     # 1 de cada 4: haz dorado y fuerte
+		sm.set_shader_parameter("boost", 2.6 if fuerte else _rng.randf_range(0.5, 1.0))
+		sm.set_shader_parameter("warm", 0.8 if fuerte else _rng.randf_range(0.0, 0.25))
+		mi.material_override = sm
+		_shaft_mats.append(sm)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mi.visible = false
 		mi.set_meta("w", _rng.randf_range(6.0, 12.0))
@@ -79,7 +85,8 @@ func _shaft_mesh() -> ArrayMesh:
 ## Luz que produce los haces: dirección HACIA la luz (sol o luna), su color y qué tan fuertes (0..1).
 func set_luz(hacia_luz: Vector3, color: Color, fuerza: float) -> void:
 	_dir = hacia_luz.normalized()
-	_shaft_mat.set_shader_parameter("color", Vector3(color.r, color.g, color.b))
+	for m: ShaderMaterial in _shaft_mats:
+		m.set_shader_parameter("color", Vector3(color.r, color.g, color.b))
 	_k_haz_obj = fuerza
 
 func set_bruma(color: Color, fuerza: float) -> void:
@@ -99,7 +106,8 @@ func _process(delta: float) -> void:
 	_k_bruma = lerpf(_k_bruma, _k_bruma_obj if activo else 0.0, k)
 	var pp: Vector3 = player.global_position
 	# haces
-	_shaft_mat.set_shader_parameter("intensity", _k_haz)
+	for m2: ShaderMaterial in _shaft_mats:
+		m2.set_shader_parameter("intensity", _k_haz)
 	var ver_haces: bool = activo and _k_haz > 0.01 and _dir.y > 0.03
 	for i in SHAFT_MAX:
 		var mi: MeshInstance3D = _shafts[i]

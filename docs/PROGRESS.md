@@ -408,3 +408,7 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Dia: ambiente_preset.gd dia() sat 0.92, contraste 1.05, sol 0.9. Noche aprobada. Calidad Media (look.cfg calidad=1).
 - Para volver a este punto: git checkout look-v1 -- scripts/look shaders scripts/day_night.gd scripts/weather.gd
 - Proximos pasos: separar clima del color del mundo (nub), sol suave/brillante segun humedad, mas bruma de noche, pasto/flores fluor.
+
+## Preset look-v2 (cielo con nubes, clima separado del color, rayos variados dorados, mas bruma de noche) - usuario conforme
+- look_director: hum_n por fecha, sol suave/brillante, rayos segun humedad, clima menos gris. look_haz: boost/warm por haz.
+- Siguiente: sol +, particulas, suciedad en suelo, troncos humedos (volver con git checkout look-v2 si no gusta).

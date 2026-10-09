@@ -6,6 +6,8 @@ render_mode unshaded, blend_add, cull_disabled, depth_draw_never, fog_disabled;
 
 uniform vec3 color : source_color = vec3(1.0, 0.85, 0.6);
 uniform float intensity = 0.0;
+uniform float boost = 1.0;      // algunos haces son mas fuertes que otros
+uniform float warm = 0.0;       // 0 color del sol .. 1 dorado/anaranjado
 uniform float fade_near = 3.0;
 uniform float fade_far = 55.0;
 
@@ -25,6 +27,6 @@ void fragment() {
 	float facing = smoothstep(0.12, 0.65, abs(dot(normalize(NORMAL), normalize(VIEW))));
 	float shimmer = 0.78 + 0.22 * sin(TIME * 0.5 + wpos.x * 0.35 + wpos.z * 0.27 + UV.y * 5.0);
 	float dfade = smoothstep(fade_near, fade_near + 5.0, dist) * (1.0 - smoothstep(fade_far * 0.55, fade_far, dist));
-	ALBEDO = color;
-	ALPHA = across * streak * along * facing * shimmer * dfade * intensity * 0.26;
+	ALBEDO = mix(color, vec3(1.0, 0.66, 0.24), warm);
+	ALPHA = across * streak * along * facing * shimmer * dfade * intensity * boost * 0.26;
 }
