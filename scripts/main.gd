@@ -79,7 +79,6 @@ func _ready() -> void:
 	add_child(lighthouse)
 	_build_bridge(shore, shore_dir, light_r)
 	_build_old_ship(-shore_dir)
-	add_child((load("res://scripts/fps_meter.gd") as GDScript).new() as Node)   # DEV: medidor de fps (F12)
 	_build_sea_decor(shore_dir, shore_r, light_r)
 	# puntos de interés, mente de la isla e interfaz
 	var features := IslandFeatures.new()

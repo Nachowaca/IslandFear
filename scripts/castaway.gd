@@ -73,8 +73,9 @@ func heal(amount: float) -> void:
 # ---------------------------------------------------------------- necesidades (hambre y sed)
 
 @export_group("Necesidades")
-@export var hunger_decay: float = 0.08      ## puntos por segundo (100 → 0 en ~21 min)
-@export var thirst_decay: float = 0.14      ## la sed baja más rápido (~12 min)
+@export var hunger_decay: float = 0.037     ## puntos por segundo en reposo-caminando (100 → 0 en ~45 min reales, ~9 h de la isla)
+@export var thirst_decay: float = 0.06      ## la sed baja más rápido (~28 min reales)
+var _effort: float = 0.0                    ## segundos de esfuerzo restantes (cortar, recoger, pescar...)
 @export var starve_damage: float = 0.6      ## salud por segundo con hambre en 0
 @export var dehydrate_damage: float = 1.0   ## salud por segundo con sed en 0
 const NEED_LOW: float = 10.0                ## por debajo de esto: rojo y sin regeneración
@@ -108,9 +109,19 @@ func drain_health(amount: float, source: String = "") -> void:
 func _update_needs(delta: float) -> void:
 	if dead or not controllable:
 		return
-	var run: float = 1.6 if Vector2(velocity.x, velocity.z).length() > walk_speed * 1.15 else 1.0
-	hambre = maxf(hambre - hunger_decay * run * delta, 0.0)
-	sed = maxf(sed - thirst_decay * run * delta, 0.0)
+	# el gasto depende de lo que hacés: correr y trabajar gastan más, estar sentado casi nada;
+	# y si una necesidad está vacía el cuerpo débil gasta la otra más rápido
+	_effort = maxf(_effort - delta, 0.0)
+	var run: float = 1.0
+	if Vector2(velocity.x, velocity.z).length() > walk_speed * 1.15:
+		run = 1.8
+	elif _effort > 0.0:
+		run = 1.5
+	elif sitting:
+		run = 0.5
+	var debil: float = 1.25 if (hambre <= 0.0 or sed <= 0.0) else 1.0
+	hambre = maxf(hambre - hunger_decay * run * debil * delta, 0.0)
+	sed = maxf(sed - thirst_decay * run * debil * (1.15 if run > 1.2 else 1.0) * delta, 0.0)
 	if hambre <= 0.0:
 		drain_health(starve_damage * delta, "hambre")
 	if sed <= 0.0:
@@ -145,6 +156,8 @@ func express(_expr_name: String, _seconds: float = 1.5) -> void:
 
 ## Gesto puntual: "pickup" (agacharse a recoger), "eat", "drink" o "cut" (tajo).
 func play_action(action: String) -> void:
+	if action == "cut" or action == "pickup":
+		_effort = 6.0
 	if _rig != null and not dead:
 		_rig.play_action(action)
 

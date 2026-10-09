@@ -369,3 +369,8 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Sonido de lluvia al 40 % de noche. Truenos solo en tormenta.
 - Panel de pruebas `clima_panel.gd`: botón "Clima (K)" o tecla K: forzar estados, hora +1, charcos, rebrote, interruptor "Clima activo".
 - Gancho: `Weather.wetness` (personaje mojado), sin uso. Probado: tormenta forzada visible, rebrote de árbol por script, panel. NO probado: ciclo automático completo, charcos a la vista, sonido, fps en bosque bajo lluvia.
+
+## Ajuste a reloj 12x: fuego, hambre y sed
+- Fuego: `MAX_FUEL` 1200 s (20 min reales); leña madera 240 / rama 100 / paja 36. Tecla N apaga la fogata cercana (quedan brasas) para guardar recursos.
+- Hambre/sed: `hunger_decay` 0.037 (~45 min reales), `thirst_decay` 0.06 (~28 min). Multiplicador por actividad: correr x1.8, cortar/recoger x1.5 (6 s), sentado x0.5; x1.25 si una necesidad está en 0.
+- Quitado el medidor de fps (`fps_meter.gd` queda en disco sin uso). Sin cambios: canto, estudio de la isla, clima.

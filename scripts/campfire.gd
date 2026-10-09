@@ -5,7 +5,7 @@ extends Node3D
 ## Se le puede echar más leña (add_fuel). Cuando se apaga quedan brasas y luego cenizas.
 
 var fuel: float = 60.0                 ## segundos de fuego que quedan
-const MAX_FUEL: float = 6000.0       ## 100 min: la barra baja 10 % cada 10 min
+const MAX_FUEL: float = 1200.0       ## 20 min reales: la barra baja 10 % cada 2 min
 const BAR_SHOW_DIST: float = 7.0
 const BAR_SHADER: String = "shader_type spatial;\nrender_mode unshaded, cull_disabled, depth_draw_never;\nuniform float fill = 1.0;\nuniform float alpha = 1.0;\nvoid vertex() {\n\tMODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);\n}\nvoid fragment() {\n\tvec2 e = min(UV, 1.0 - UV);\n\tfloat border = step(min(e.x * 5.0, e.y), 0.14);\n\tvec3 c = mix(vec3(0.95, 0.5, 0.1), vec3(0.12, 0.07, 0.04), step(fill, UV.x));\n\tc = mix(c, vec3(0.05, 0.03, 0.02), border);\n\tALBEDO = c;\n\tALPHA = alpha;\n}\n"
 var _bar: MeshInstance3D
@@ -248,6 +248,10 @@ func _update_bar() -> void:
 func add_fuel(seconds: float) -> void:
 	fuel = minf(fuel + seconds, MAX_FUEL)
 	_ember_left = EMBER_TIME
+
+## El jugador la apaga para guardar leña: se consume la llama despacio y quedan brasas.
+func apagar() -> void:
+	fuel = 0.0
 
 func is_burning() -> bool:
 	return fuel > 0.0

@@ -36,7 +36,7 @@ const SPOT_INFO: Dictionary = {
 	"refuge": ["Una cueva de piedra fría. De día parece un refugio; de noche, quién sabe.", "El techo gotea. Adentro la isla parece contener el aliento."],
 	"wreck": ["Maderas de otro naufragio. Otros llegaron antes que vos.", "Cuadernas rotas y tablas grises de sal. Nadie volvió a buscar esto."],
 }
-const FUEL_SECONDS: Dictionary = {"madera": 1200.0, "rama": 500.0, "paja": 180.0}
+const FUEL_SECONDS: Dictionary = {"madera": 240.0, "rama": 100.0, "paja": 36.0}   # escala 1/5: el fuego dura 20 min reales
 
 func _ready() -> void:
 	_rng.randomize()
@@ -122,6 +122,8 @@ func _process(delta: float) -> void:
 			partes.append("E: abrir el baúl")
 		elif _fire != null:
 			partes.append("E: echar leña al fuego")
+			if _fire.is_burning():
+				partes.append("N: apagar")
 		if _plant != null:
 			partes.append("Q: cortar")
 	ui.set_prompt("    ".join(partes))
@@ -130,6 +132,10 @@ func _process(delta: float) -> void:
 			_cambiar(-1)
 		if _edge(KEY_DOWN):
 			_cambiar(1)
+	if _edge(KEY_N) and _fire != null and _fire.is_burning() and not _craft_open and player.controllable and not player.menu_lock:
+		_fire.apagar()
+		_sonido("crack", _fire.global_position, -10.0)
+		ui.message("Apagás el fuego. Quedan brasas.")
 	if _edge(KEY_C):
 		_craft_open = not _craft_open
 		_craft_idx = clampi(_craft_idx, 0, Recipes.LIST.size() - 1)
