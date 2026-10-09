@@ -465,3 +465,22 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - HUD: marcos de madera (scripts/pirate_ui.gd), iconos pintados de hambre (coco) y sed (cantimplora), corazon pirata, vidas como gemas en laton, rotulo Refugio bajo la barra.
 - Nota tecnica: draw_texture_rect dejo un cuadrado blanco con los iconos de necesidades; se uso draw_set_transform + draw_texture.
 - Pendiente: ver de noche la luna del medallon y el menu de dormir en juego; probar el baul.
+
+## Resumen de la sesion (Bloque 5 completo + Bloque 7, look-v7 a look-v9)
+### Hecho
+- look-v7: 5.1 a 5.6, baul con mouse, refugio y dormir (scripts/objetos/refugio.gd, scripts/sueno.gd), 20 telas grandes en la isla, refugios guardados 2 vidas.
+- look-v8: HUD apilado, recetas centradas con scroll (5 visibles), aviso de receta, icono de la cana de pescar.
+- look-v9: medallon de fases (scripts/ui/medallon_fases.gd), sueno sin reloj, paneles estilo naufragio (ui_theme.gd, pirate_ui.gd), iconos pintados hambre/sed, corazon pirata, vidas como gemas.
+- Arranque en pantalla completa (display/window/size/mode = 3); F11 no funcionaba.
+- Se retiro el codigo de prueba TEMPTEST del sueno (armaba un refugio solo a los 15 s).
+### Errores y soluciones
+- Refugio/sueno: errores de indentacion al crear por script; se recreo el archivo limpio.
+- Los iconos de necesidades salian blancos con draw_texture_rect; se resolvio con draw_set_transform + draw_texture.
+- run_scene falla a veces con 'viewport never produced a frame': reintentar con menos duracion.
+### Sin probar a mano
+- Dormir de noche y el medallon con la luna, baul con el estilo nuevo, semillas, cocina, frio, agua, huellas, aviso de receta, fps con todo.
+### Siguiente
+- Medallon a ~120 px si el cielo se ve chico; juntas de tablones.
+- 5.8 restante; elegir de los consejos de jugabilidad en DESIGN.md.
+- Antes de publicar: quitar herramientas dev (ver DESIGN.md).
+- Puntos de retorno: git checkout look-v7 / look-v8 / look-v9 -- .

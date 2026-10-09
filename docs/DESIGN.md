@@ -3,7 +3,7 @@
 > Documento de diseño vivo. Leer junto con `PROGRESS.md` al empezar cada sesión.
 
 ## Concepto
-Juego 3D low-poly de supervivencia (Godot 4.7, Forward+, Mac M1/Metal). Un náufrago (pelo largo, barba, túnica blanca rota) llega en una barca arrastrada por la corriente a una isla **viva**, con un "cerebro" que piensa, lo estudia y no lo quiere ahí.
+Juego 3D low-poly de supervivencia (Godot 4.7, renderer Mobile, Mac M1/Metal). Un náufrago (pelo largo, barba, túnica blanca rota) llega en una barca arrastrada por la corriente a una isla **viva**, con un "cerebro" que piensa, lo estudia y no lo quiere ahí.
 La isla es un NPC más: tiene carácter, memoria y voz. **Primero es misterio; nunca ataca porque sí, solo si el jugador le hace mal.**
 
 ## Historia y final (definido por el usuario)
@@ -30,7 +30,7 @@ La isla es un NPC más: tiene carácter, memoria y voz. **Primero es misterio; n
 - Arte: low-poly, solo primitivas, sin modelos con esqueleto. Pixel art NO.
 - La isla NO tiene voz hablada (solo texto).
 - Sonidos 100 % sintetizados por código ("por ahora usaremos esos sonidos").
-- El reloj en pantalla es TEMPORAL (el usuario lo va a sacar).
+- No hay reloj en la isla: el tiempo se muestra solo con el medallón de fases sol/luna (arriba a la izquierda). Nada de horas en pantalla.
 - No agregar jugabilidad que no pidió.
 
 ## Mundo
@@ -47,10 +47,10 @@ La isla es un NPC más: tiene carácter, memoria y voz. **Primero es misterio; n
 - El sonido de la isla sube de menos a más al acercarse (olas, viento, grillos, pájaros). Navegando se oyen crujidos de madera.
 
 ## Jugador (Castaway)
-- CharacterBody3D con animación procedural. Controles: WASD (X retroceder), Shift correr, Espacio saltar, mouse cámara, Tab/M vista aérea, I panel de mente de la isla, Esc suelta mouse, F8 silencio, F9 +1 h, F10 mirar la luna, F11 pantalla completa.
+- CharacterBody3D con animación procedural. Controles: WASD (X retroceder), Shift correr, Espacio saltar, mouse cámara, Tab/M vista aérea, I panel de mente de la isla, Esc suelta mouse, F8 silencio, F9 +1 h, F10 mirar la luna. (F11 no funcionó: el juego arranca en pantalla completa por configuración del proyecto.) Controles actuales: T usar objeto en mano, Q cortar, V sentarse, Z zoom, E baúl/recoger/dormir, I mente de la isla, F investigar, N apagar fogata, K clima (dev), O cámara del cielo (dev), G comer crudo, C armar.
 - Sube escalones bajos (~40 cm) automáticamente.
 - Salud con regeneración (más rápida en el refugio = cueva de día). `take_damage`, `heal`, `apply_slow`, `add_shake`.
-- HUD de salud: corazón generado, marco azul, relleno rojo, rastro de daño, número y etiqueta "Refugio"; abajo a la izquierda, escala 0.85. Opción `segmented`.
+- HUD (estética naufragio pirata): abajo a la izquierda, apilado: hambre y sed (íconos pintados) sobre la barra de vida con 7 gemas de vidas; marcos de madera con latón y muescas de cuerda; rótulo "Refugio" bajo la barra. Arriba a la izquierda, medallón de fases.
 
 ## El cerebro de la isla (`island_brain.gd`) — IA procedural LOCAL (no es un LLM)
 ### Principios
@@ -266,7 +266,7 @@ Baúl de madera fijo en la playa de llegada, vacío, con la inscripción 'Welcom
 - Dormir: refugio simple (tela, madera, hojas), eleccion de minutos de la isla, pantalla de sueño con reloj acelerado, -2 % hambre y sed, mensajes de la isla segun su animo, pose fetal con Z grandes y marca brillante. El refugio dura 2 vidas.
 - Regla de arte: nada nuevo puede cambiar el look; sin luces nuevas, solo piezas simples y sprites aditivos.
 
-## Bloque 7 - Rediseño del GUI (pendiente, para mas adelante)
+## Bloque 7 - Rediseño del GUI (HECHO; ver estado abajo)
 - Rediseñar los inventarios, el baul y el menu de recetas (C): hoy se superponen con la vida, el hambre/sed, la hotbar y el texto de hora/sol (la lista de recetas queda debajo de esos elementos y se pisa).
 - Ideas: paneles con anclas y margenes propios, la lista de recetas con scroll y que no cubra el HUD, ocultar o atenuar el HUD al abrir un menu, y revisar a distintas resoluciones y en pantalla completa.
 - Captura de referencia: el menu de recetas con 'Refugio' tapado por la barra de vida.
@@ -284,3 +284,27 @@ Baúl de madera fijo en la playa de llegada, vacío, con la inscripción 'Welcom
 - HUD: marcos de madera (scripts/pirate_ui.gd), iconos pintados de hambre (coco) y sed (cantimplora), corazon pirata, vidas como gemas en laton, rotulo Refugio bajo la barra.
 - Nota tecnica: draw_texture_rect dejo un cuadrado blanco con los iconos de necesidades; se uso draw_set_transform + draw_texture.
 - Pendiente: ver de noche la luna del medallon y el menu de dormir en juego; probar el baul.
+
+## Estado actual del diseño y consejos de jugabilidad (revisión)
+### Qué es el juego hoy
+- Bucle: llegás, sobrevivís (hambre, sed, frío, agua), armás herramientas y refugio, y convivís con una isla que te estudia. Morís hasta 7 veces; la isla recuerda; al final se calcula convivir o no y te volvés la isla.
+- Pilares ya implementados: cerebro de la isla y voz (frases, 5.7), vínculo oculto, salud de zonas (5.1), semillas y replantar (5.2), fuego/calor/cocina (5.3), agua (5.4), ofrendas y ofensas por bioma (5.5), huellas de náufragos (5.6), refugio y dormir, clima como filtro, noche con sonido, HUD pirata con medallón.
+- Falta de 5.8: pescar, marcar caminos con piedras, sentarse a observar con fauna que se acerca, sonido según la salud de la zona.
+
+### Consejos de jugabilidad con diseño (propuestas, nada implementado; a elegir con el usuario)
+1. **Primeros 10 minutos (onboarding sin guía):** el jugador no sabe qué hacer. Sin tutorial, pero con el mundo enseñando: la barca trae cuerda y una cuchilla vieja en el cajón; el primer "Podés armar" aparece con 2 piedras; la isla susurra una pista poética sobre agua dulce. Evitar texto largo.
+2. **Ritmo de necesidades:** hambre, sed y frío bajan juntos y abruman. Mejor escalonar: la sed manda primero (hay estanque cerca), el hambre después, el frío solo de noche o mojado. Un solo aviso a la vez, nunca tres.
+3. **Dormir como decisión:** dormir cura pero cuesta hambre/sed y deja el cuerpo expuesto. Sugerencia: dormir fuera del refugio es posible pero pesadillas y menos curación; refugio junto a un fuego da mejor descanso. La isla comenta distinto si dormís en zona sana o dañada.
+4. **Que construir tenga consecuencias:** cada cosa que armás es un evento que la isla ve. Un refugio en claro sagrado ofende; en la costa es neutro; junto a tu planta es cuidado. Así el diseño de convivencia es una decisión de lugar, no de menú.
+5. **Convivir como juego, no como castigo:** además de evitar daño, dar verbos positivos con respuesta visible: plantar, ofrecer, sentarse a observar, marcar caminos sin dañar, devolver basura. Cada uno con una reacción pequeña y bella (luz, aves, flores) y nunca un número.
+6. **Vidas con arco narrativo:** cada vida debería sentirse distinta. Ideas: vida 1-2 aprendés; 3-4 la isla cambia reglas (clima, fauna) según tu estilo; 5-6 aparecen señales del final; 7 es despedida. Las huellas de náufragos pueden ser vidas pasadas del jugador, no solo ajenas.
+7. **La muerte no debe frustrar:** las muertes duelen poco (ataques nunca matan). Si morís es por hambre, sed, frío o agua: que el mensaje de muerte diga qué pasó, con tono poético, y que la isla recuerde dónde.
+8. **Riesgo y recompensa:** zonas peligrosas (cueva de noche, roquedal, agua honda) con recompensas únicas (cristales, perlas, semillas azules) para que explorar valga la pena sin forzar combate.
+9. **Mapa y orientación:** sin minimapa. Orientarse con el medallón (posición del sol), el faro, las estelas y marcas con piedras propias. La vista aérea (M) debería costar algo o limitarse.
+10. **Legibilidad de la UI:** una sola ventana a la vez (recetas, baúl, dormir), HUD atenuado al abrir menús, y avisos agrupados (máximo uno en pantalla). Íconos pintados para todo lo que se pueda recoger; los que faltan hoy usan modelo 3D.
+11. **Dificultad y confort:** opciones de accesibilidad: tamaño de texto del HUD, avisos de frío/hambre más o menos frecuentes, y modo "contemplativo" sin pérdida de vida por necesidades para quien solo quiere explorar.
+12. **Rendimiento como diseño:** límite de objetos construibles (refugios 5 m entre sí, fogatas pocas) y dispersión de recogibles para mantener 60 fps; todo efecto nuevo sin luces ni sombras.
+
+### Pendientes antes de publicar (sin cambios)
+- Quitar herramientas de desarrollo: cámara del cielo (O), panel Clima (K), atajos F2–F10 (incluido F4), `START_HOUR`/`VINCULO_INICIO` de prueba, `fps_meter.gd`; modo de pantalla final; medir en calidad alta fuera del editor; limpiar assets sin uso.
+- Probar a mano: dormir de noche con la luna del medallón, baúl con el estilo nuevo, semillas, cocina, frío, inmersión en agua, huellas, aviso de receta.
