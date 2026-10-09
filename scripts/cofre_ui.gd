@@ -152,11 +152,7 @@ func _on_gui(event: InputEvent) -> void:
 # ------------------------------------------------------------------ dibujo
 
 func _draw_slot(r: Rect2, e: Variant, hover: bool) -> void:
-	var edge: Color = UiTheme.C_TEAL if hover else Color(UiTheme.C_BRASS, 0.55)
-	_root.draw_style_box(UiTheme.panel_style(10, edge, Color(0.03, 0.07, 0.09, 0.9), 3 if hover else 1), r)
-	_root.draw_texture_rect(UiTheme.WOOD, r.grow(-3.0), true, Color(1, 1, 1, 0.25))
-	if hover:
-		_root.draw_rect(r.grow(2.0), Color(UiTheme.C_TEAL, 0.25 + 0.1 * sin(_pulse * 3.0)), false, 3.0)
+	UiTheme.draw_slot(_root, r, hover, (0.25 + 0.1 * sin(_pulse * 3.0)) if hover else 0.0)
 	if e == null:
 		return
 	var tex: Texture2D = UiTheme.icon(str(e["id"]))
@@ -168,10 +164,10 @@ func _draw_slot(r: Rect2, e: Variant, hover: bool) -> void:
 func _draw_all() -> void:
 	_root.draw_rect(Rect2(Vector2.ZERO, _root.size), Color(0, 0, 0, 0.55))
 	var pn: Rect2 = _panel()
-	UiTheme.draw_panel(_root, pn, UiTheme.C_BRASS)
-	UiTheme.text(_root, UiTheme.TITLE, pn.position + Vector2(30, 50), "BAÚL", 32, UiTheme.C_BRASS, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 5)
-	UiTheme.text(_root, UiTheme.BODY, pn.position + Vector2(160, 36), "Clic o arrastrar: pasa la pila al otro lado     Clic derecho: una unidad", 18, UiTheme.C_DIM, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 3)
-	UiTheme.text(_root, UiTheme.BODY, pn.position + Vector2(160, 58), "Teclas 1-0: guardar esa casilla de la barra (Shift: una sola)", 18, UiTheme.C_DIM, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 3)
+	UiTheme.draw_panel(_root, pn, UiTheme.C_BRASS, true)
+	UiTheme.text(_root, UiTheme.TITLE, pn.position + Vector2(34, 52), "BAÚL DEL NÁUFRAGO", 28, UiTheme.C_BRASS, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 5)
+	UiTheme.text(_root, UiTheme.BODY, pn.position + Vector2(400, 40), "Clic o arrastrar: pasar pila   ·   Clic der.: una unidad", 17, UiTheme.C_DIM, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 3)
+	UiTheme.text(_root, UiTheme.BODY, pn.position + Vector2(400, 62), "1-0: guardar casilla (Shift: una sola)", 17, UiTheme.C_DIM, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 3)
 	var rc: Rect2 = _rect_cerrar()
 	_root.draw_style_box(UiTheme.panel_style(10, UiTheme.C_TEAL if _hover_cerrar else Color(UiTheme.C_BRASS, 0.6), Color(0.05, 0.1, 0.12, 0.9), 2), rc)
 	UiTheme.text(_root, UiTheme.BOLD, rc.position + Vector2(0, 28), "Cerrar  (E)", 22, UiTheme.C_TEXT, rc.size.x, HORIZONTAL_ALIGNMENT_CENTER, 4)

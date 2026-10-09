@@ -1,13 +1,17 @@
 class_name NeedsBar
 extends Control
 
-## Medidores de necesidades (hambre, sed...). Verdes; al llegar al 10 % o menos se ponen rojos y titilan.
+## Medidores de necesidades (hambre, sed...). Hambre ocre/verde, sed turquesa, marco de madera de naufragio; al llegar al 10 % o menos se ponen rojos y titilan.
 ## Para sumar otro medidor: agregar una entrada a METERS y la propiedad (0..100) en el jugador.
 
 const METERS: Array[Dictionary] = [
-	{"prop": "hambre", "icon": "apple", "label": "Hambre"},
-	{"prop": "sed", "icon": "drop", "label": "Sed"},
+	{"prop": "hambre", "icon": "res://assets/generated/ui_icon_hambre.png", "label": "Hambre", "col": Color(0.58, 0.62, 0.28)},
+	{"prop": "sed", "icon": "res://assets/generated/ui_icon_sed.png", "label": "Sed", "col": Color(0.2, 0.6, 0.6)},
 ]
+const ICONOS: Dictionary = {
+	"hambre": preload("res://assets/generated/ui_icon_hambre.png"),
+	"sed": preload("res://assets/generated/ui_icon_sed.png"),
+}
 const BAR_W: float = 170.0
 const BAR_H: float = 20.0
 const ROW: float = 34.0
@@ -31,7 +35,9 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _draw() -> void:
-	UiTheme.draw_panel(self, Rect2(Vector2.ZERO, size), UiTheme.C_BRASS)
+	var full: Rect2 = Rect2(Vector2.ZERO, size)
+	draw_rect(full, PirateUi.WOOD_DARK)
+	PirateUi.draw_wood_frame(self, full, full.grow(-6.0))
 	for i in METERS.size():
 		var m: Dictionary = METERS[i]
 		var p: String = str(m["prop"])
@@ -39,26 +45,23 @@ func _draw() -> void:
 		var low: bool = float(player.get(p)) <= LOW if player != null else false
 		var y: float = 8.0 + float(i) * ROW
 		var blink: float = 0.5 + 0.5 * sin(_t * 7.0)
-		var col: Color = Color(0.46, 0.74, 0.5)
+		var col: Color = m["col"]
 		if low:
-			col = Color(0.95, 0.15, 0.15).lerp(Color(1.0, 0.5, 0.45), blink * 0.5)
-		_icon(str(m["icon"]), Vector2(26.0, y + 17.0), col)
-		var r := Rect2(52.0, y + 6.0, BAR_W, BAR_H)
-		draw_style_box(UiTheme.panel_style(6, Color(0.27, 0.35, 0.5, 0.9) if not low else Color(0.85, 0.2, 0.2, 0.95), Color(0.02, 0.04, 0.08, 0.95), 2), r)
-		var fill := Rect2(r.position + Vector2(3, 3), Vector2((BAR_W - 6.0) * v / 100.0, BAR_H - 6.0))
+			col = Color(0.78, 0.18, 0.15).lerp(Color(0.95, 0.42, 0.32), blink * 0.5)
+		var tex: Texture2D = ICONOS[p]
+		if tex != null:
+			var ib: float = 1.0 + (0.08 * blink if low else 0.0)
+			var ip: Vector2 = Vector2(12.0, y + 1.0) - Vector2.ONE * (ib - 1.0) * 14.0
+			draw_set_transform(ip, 0.0, Vector2.ONE * (30.0 * ib / 128.0))
+			draw_texture(tex, Vector2.ZERO, Color(1, 1, 1, 1))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		var r := Rect2(56.0, y + 6.0, BAR_W, BAR_H)
+		draw_rect(r, Color(0.04, 0.025, 0.015))
+		var fill := Rect2(r.position, Vector2(BAR_W * v / 100.0, BAR_H))
 		if fill.size.x > 0.5:
 			draw_rect(fill, col)
-			draw_rect(Rect2(fill.position, Vector2(fill.size.x, 4.0)), Color(1, 1, 1, 0.22))
-		var mx: float = r.position.x + BAR_W * LOW / 100.0
-		draw_line(Vector2(mx, r.position.y + 2.0), Vector2(mx, r.end.y - 2.0), Color(1, 1, 1, 0.3), 1.0)
-		UiTheme.text(self, UiTheme.BOLD, Vector2(r.end.x + 10.0, r.position.y + 17.0), "%d" % int(round(v)), 20, UiTheme.C_BAD if low else UiTheme.C_TEXT, 44.0, HORIZONTAL_ALIGNMENT_LEFT, 4)
-
-func _icon(kind: String, c: Vector2, col: Color) -> void:
-	if kind == "apple":
-		draw_circle(c + Vector2(-3, 1), 7.0, col)
-		draw_circle(c + Vector2(3, 1), 7.0, col)
-		draw_line(c + Vector2(0, -5), c + Vector2(2, -10), Color(0.45, 0.3, 0.15), 2.0)
-		draw_colored_polygon(PackedVector2Array([c + Vector2(2, -9), c + Vector2(9, -10), c + Vector2(4, -5)]), Color(0.3, 0.7, 0.3))
-	else:
-		draw_colored_polygon(PackedVector2Array([c + Vector2(0, -11), c + Vector2(8, 2), c + Vector2(6, 8), c + Vector2(0, 10), c + Vector2(-6, 8), c + Vector2(-8, 2)]), col)
-		draw_circle(c + Vector2(-2, 3), 2.2, Color(1, 1, 1, 0.4))
+			draw_rect(Rect2(fill.position, Vector2(fill.size.x, 3.0)), Color(1, 1, 0.9, 0.16))
+			draw_rect(Rect2(fill.position + Vector2(0.0, BAR_H - 4.0), Vector2(fill.size.x, 4.0)), Color(0, 0, 0, 0.18))
+		PirateUi.draw_notches(self, r, 10)
+		PirateUi.draw_wood_frame(self, r.grow(4.0), r)
+		UiTheme.text(self, UiTheme.BOLD, Vector2(r.end.x + 12.0, r.position.y + 17.0), "%d" % int(round(v)), 18, UiTheme.C_BAD if low else Color(0.96, 0.9, 0.74), 40.0, HORIZONTAL_ALIGNMENT_LEFT, 4)

@@ -34,18 +34,25 @@ func _gem(center: Vector2, r: float) -> PackedVector2Array:
 func _draw() -> void:
 	for i in TOTAL:
 		var c: Vector2 = Vector2(12.0 + float(i) * STEP, 13.0)
+		var current: bool = i == alive - 1
+		# engarce de latón
+		draw_circle(c + Vector2(1.5, 2.0), 12.0, Color(0, 0, 0, 0.4))
+		draw_circle(c, 12.0, PirateUi.BRASS_DARK)
+		draw_arc(c, 11.0, 0.0, TAU, 24, PirateUi.BRASS, 2.2, true)
+		draw_circle(c, 9.0, Color(0.05, 0.04, 0.03))
 		if i < alive:
-			var current: bool = i == alive - 1
-			var r: float = 10.5 * (1.0 + (0.1 * sin(_t * 3.0) if current else 0.0))
-			draw_colored_polygon(_gem(c + Vector2(1.5, 2.0), r), Color(0, 0, 0, 0.35))
-			draw_colored_polygon(_gem(c, r), Color(0.2, 0.85, 0.78))
-			draw_colored_polygon(_gem(c + Vector2(-1.0, -2.0), r * 0.5), Color(0.8, 1.0, 0.97, 0.85))
+			var r: float = 7.0 * (1.0 + (0.1 * sin(_t * 3.0) if current else 0.0))
+			draw_colored_polygon(_gem(c, r), Color(0.16, 0.7, 0.66))
+			draw_colored_polygon(_gem(c + Vector2(-0.8, -1.5), r * 0.5), Color(0.8, 1.0, 0.97, 0.8))
 			var edge: PackedVector2Array = _gem(c, r)
 			edge.append(edge[0])
-			draw_polyline(edge, Color(0.85, 1.0, 0.98) if current else Color(0.05, 0.3, 0.32), 1.6, true)
+			draw_polyline(edge, Color(0.85, 1.0, 0.98) if current else Color(0.04, 0.3, 0.3), 1.2, true)
+			for k in 4:
+				var ang: float = float(k) * TAU / 4.0 + PI / 4.0
+				draw_circle(c + Vector2.from_angle(ang) * 10.0, 1.1, PirateUi.BRASS)
 		else:
-			var e: PackedVector2Array = _gem(c, 9.0)
+			var e: PackedVector2Array = _gem(c, 6.0)
 			e.append(e[0])
-			draw_polyline(e, Color(0.55, 0.6, 0.65, 0.5), 1.4, true)
+			draw_polyline(e, Color(0.45, 0.4, 0.35, 0.6), 1.2, true)
 			if _burst[i] > 0.0:
 				draw_circle(c, 6.0 + (1.0 - _burst[i]) * 16.0, Color(1.0, 0.3, 0.3, _burst[i] * 0.6))

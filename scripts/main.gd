@@ -331,7 +331,7 @@ func _make_hint() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	_hint = Label.new()
-	_hint.position = Vector2(24, 20)
+	_hint.position = Vector2(124, 44)
 	_hint.add_theme_font_override("font", UiTheme.BOLD)
 	_hint.add_theme_font_size_override("font_size", 26)
 	_hint.add_theme_color_override("font_outline_color", Color.BLACK)

@@ -169,7 +169,7 @@ func aviso_receta(nombre: String, icono: String) -> void:
 func _draw_rn() -> void:
 	var w: float = 112.0 + UiTheme.BOLD.get_string_size(_rn_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x
 	var r := Rect2(0, 0, w, 60)
-	_rn.draw_style_box(UiTheme.panel_style(14, Color(UiTheme.C_TEAL, 0.7), Color(0.02, 0.06, 0.08, 0.82), 1), r)
+	UiTheme.draw_panel(_rn, r, Color(UiTheme.C_TEAL, 0.8))
 	var tex: Texture2D = UiTheme.icon(_rn_icon)
 	if tex != null:
 		_rn.draw_texture_rect(tex, Rect2(10, 8, 44, 44), false)
@@ -257,12 +257,7 @@ func _draw_bar() -> void:
 	for i in Inventario.ESPACIOS:
 		var r := Rect2(float(i) * (SLOT + GAP), 0.0, SLOT, SLOT)
 		var sel: bool = i == Inventario.seleccionado
-		var edge: Color = UiTheme.C_TEAL if sel else Color(UiTheme.C_BRASS, 0.55)
-		_bar.draw_style_box(UiTheme.panel_style(10, edge, Color(0.03, 0.07, 0.09, 0.9), 3 if sel else 1), r)
-		_bar.draw_texture_rect(UiTheme.WOOD, r.grow(-3.0), true, Color(1, 1, 1, 0.25))
-		if sel:
-			var glow: float = 0.25 + 0.1 * sin(_pulse * 3.0)
-			_bar.draw_rect(r.grow(2.0), Color(UiTheme.C_TEAL, glow), false, 3.0)
+		UiTheme.draw_slot(_bar, r, sel, (0.25 + 0.1 * sin(_pulse * 3.0)) if sel else 0.0)
 		UiTheme.text(_bar, UiTheme.BODY, r.position + Vector2(7, 18), str((i + 1) % 10), 15, Color(0.72, 0.8, 0.82, 0.8), -1.0, HORIZONTAL_ALIGNMENT_LEFT, 3)
 		var e: Variant = Inventario.espacios[i]
 		if e == null:
@@ -281,9 +276,9 @@ func _draw_craft() -> void:
 	var h: float = 86.0 + 84.0 * float(vis) + 24.0
 	_craft.offset_top = -h * 0.5
 	_craft.offset_bottom = h * 0.5
-	UiTheme.draw_panel(_craft, Rect2(0, 0, 600, h), UiTheme.C_TEAL)
-	UiTheme.text(_craft, UiTheme.TITLE, Vector2(28, 46), "COMBINAR", 30, UiTheme.C_TEAL, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 5)
-	UiTheme.text(_craft, UiTheme.BODY, Vector2(0, 46), "Rueda o ↑↓: elegir     E: fabricar     C: cerrar", 17, UiTheme.C_DIM, 572.0, HORIZONTAL_ALIGNMENT_RIGHT, 3)
+	UiTheme.draw_panel(_craft, Rect2(0, 0, 600, h), UiTheme.C_TEAL, true)
+	UiTheme.text(_craft, UiTheme.TITLE, Vector2(28, 46), "ARMAR", 30, UiTheme.C_TEAL, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 5)
+	UiTheme.text(_craft, UiTheme.BODY, Vector2(0, 46), "↑↓: elegir   E: armar   C: cerrar", 17, UiTheme.C_DIM, 572.0, HORIZONTAL_ALIGNMENT_RIGHT, 3)
 	for n in vis:
 		var i: int = first + n
 		var rc: Dictionary = _recipes[i]
@@ -292,7 +287,7 @@ func _draw_craft() -> void:
 		var ok: bool = bool(rc["ok"])
 		var row := Rect2(14, y, 572, 78)
 		if sel:
-			_craft.draw_style_box(UiTheme.panel_style(10, UiTheme.C_TEAL, Color(0.1, 0.28, 0.3, 0.55), 2), row)
+			UiTheme.draw_parchment(_craft, row)
 		var tex: Texture2D = UiTheme.icon(str(rc["icon"]))
 		if tex != null:
 			_craft.draw_texture_rect(tex, Rect2(24, y + 9, 58, 58), false, Color.WHITE if ok else Color(0.55, 0.55, 0.6, 0.7))

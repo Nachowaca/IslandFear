@@ -35,7 +35,7 @@ var _env: Environment
 var _sky_mat: ShaderMaterial
 var _moon: DirectionalLight3D
 var _starlight: DirectionalLight3D
-var _clock: Label
+var _medallon: MedallonFases
 var _f9_was_down: bool = false
 var _f10_was_down: bool = false
 var _lighthouse: Lighthouse
@@ -87,15 +87,11 @@ func _ready() -> void:
 
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	_clock = Label.new()
-	_clock.anchor_top = 1.0
-	_clock.anchor_bottom = 1.0
-	_clock.offset_left = 20.0
-	_clock.offset_top = -70.0
-	_clock.add_theme_font_size_override("font_size", 18)
-	_clock.add_theme_color_override("font_outline_color", Color.BLACK)
-	_clock.add_theme_constant_override("outline_size", 5)
-	layer.add_child(_clock)
+	_medallon = MedallonFases.new()
+	_medallon.name = "MedallonFases"
+	_medallon.position = Vector2(16.0, 16.0)
+	_medallon.diametro = 96.0
+	layer.add_child(_medallon)
 	look = LookDirector.new()
 	look.name = "Look"
 	look.daynight = self
@@ -264,11 +260,7 @@ func _update(refresh_slow: bool) -> void:
 	_sky_mat.set_shader_parameter("star_z", star_z)
 
 	# Reloj
-	var hh: int = int(hour)
-	var mm: int = int((hour - float(hh)) * 60.0)
-	_clock.text = "%02d:%02d  (hora de la isla)\nSol %d°  Luna %d° (%d%% iluminada)" % [
-		hh, mm,
-		roundi(rad_to_deg(asin(sun_dir.y))), roundi(rad_to_deg(asin(moon_dir.y))), roundi(moon_phase * 100.0)]
+	_medallon.actualizar(hour, moon_phase)
 
 	if refresh_slow:
 		_apply_slow(day, night)

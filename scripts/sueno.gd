@@ -1,6 +1,6 @@
 extends CanvasLayer
 
-## Dormir en un refugio (E cerca). Se elige cuántos minutos; la pantalla se oscurece, el reloj corre rápido
+## Dormir en un refugio (E cerca). Se elige cuántos minutos; la pantalla se oscurece, el tiempo corre rápido (sin reloj: un medallón de fases)
 ## y el sol o la luna cruzan el cielo. Se pierde un 2 % de hambre y de sed, se recupera vida y calor.
 ## La isla dice algo al dormirte y al despertar, según su ánimo. Se crea desde main.gd.
 
@@ -21,7 +21,10 @@ var _prev: Dictionary = {}
 var _veil: ColorRect
 var _veil_goal: float = 0.0
 var _texto: Label
-var _reloj: Label
+var _frase: Label
+var _medallon: Control
+var _arco: ColorRect
+var _arco_fondo: ColorRect
 var _p: float = 0.0
 var _dur: float = 6.0
 var _e_prev: float = 0.0
@@ -53,8 +56,10 @@ func _ready() -> void:
 	_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_veil)
 	_texto = _label(root, 34, 0.38)
-	_reloj = _label(root, 84, 0.13)
-	_reloj.visible = false
+	_frase = _label(root, 30, 0.45)
+	_frase.add_theme_color_override("font_color", Color(0.85, 0.93, 0.9))
+	_construir_medallon(root)
+	_mostrar_sueno(false)
 	if player != null:
 		player.damaged.connect(_on_damaged)
 
@@ -106,16 +111,122 @@ func abrir() -> void:
 	_veil_goal = 0.45
 	_actualizar_texto()
 
-func _hora_txt(h: float) -> String:
-	var hh: int = int(floor(h)) % 24
-	var mm: int = int(floor((h - floor(h)) * 60.0))
-	return "%02d:%02d" % [hh, mm]
+func _hora_actual() -> float:
+	if daynight == null:
+		return 12.0
+	if daynight.has_method("_current_hour"):
+		return float(daynight.call("_current_hour"))
+	return float(daynight.get("hour"))
+
+func _luz_luna() -> float:
+	if daynight != null and "moon_phase" in daynight:
+		return clampf(float(daynight.get("moon_phase")), 0.0, 1.0)
+	return 0.6
+
+## Descripción poética del momento en que despertarías (sin números de hora).
+func _momento_txt(h: float) -> String:
+	if h >= 5.0 and h < 7.5:
+		return "al amanecer"
+	if h >= 7.5 and h < 11.0:
+		return "con la mañana ya alta"
+	if h >= 11.0 and h < 15.0:
+		return "con el sol en lo más alto"
+	if h >= 15.0 and h < 18.5:
+		return "a media tarde"
+	if h >= 18.5 and h < 20.5:
+		return "al caer el sol"
+	if h >= 20.5 or h < 1.0:
+		return "de noche cerrada"
+	return "en plena madrugada oscura"
+
+func _frase_hora(h: float) -> String:
+	if h >= 5.0 and h < 7.5:
+		return "Clarea el cielo..."
+	if h >= 7.5 and h < 16.0:
+		return "El sol sigue su camino..."
+	if h >= 16.0 and h < 20.0:
+		return "Cae la tarde..."
+	if h >= 20.0 and h < 23.0:
+		return "La noche se cierra..."
+	if h >= 23.0 or h < 3.5:
+		return "Algo se mueve en la oscuridad..."
+	return "El frío anuncia el alba..."
 
 func _actualizar_texto() -> void:
 	var m: int = OPCIONES[_idx]
-	var h: float = float(daynight.get("hour")) if daynight != null else 0.0
-	var dur_txt: String = ("%d min" % m) if m < 60 else ("%d h" % int(float(m) / 60.0))
-	_texto.text = "¿Cuánto querés dormir?\n◄   %s   ►\nDespertarías a las %s\nEnter: dormir     Esc: cancelar" % [dur_txt, _hora_txt(fposmod(h + float(m) / 60.0, 24.0))]
+	var h: float = _hora_actual()
+	var dur_txt: String = "Una siesta" if m < 60 else ("1 hora" if m == 60 else "%d horas" % int(float(m) / 60.0))
+	if m < 60:
+		dur_txt = "Una siesta (%d min)" % m
+	_texto.text = "¿Cuánto querés dormir?\n◄   %s   ►\nDespertarías %s\nEnter: dormir     Esc: cancelar" % [dur_txt, _momento_txt(fposmod(h + float(m) / 60.0, 24.0))]
+
+func _construir_medallon(root: Control) -> void:
+	var holder := Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.anchor_left = 0.5
+	holder.anchor_right = 0.5
+	holder.anchor_top = 0.0
+	holder.anchor_bottom = 0.0
+	holder.offset_left = -110.0
+	holder.offset_right = 110.0
+	holder.offset_top = 36.0
+	holder.offset_bottom = 256.0
+	root.add_child(holder)
+	var ruta: String = "res://scripts/ui/medallon_fases.gd"
+	if ResourceLoader.exists(ruta) or FileAccess.file_exists(ruta):
+		var sc: Script = load(ruta) as Script
+		if sc != null:
+			_medallon = sc.new() as Control
+	if _medallon == null:
+		_medallon = MedallonRespaldo.new()
+	if "diametro" in _medallon:
+		_medallon.set("diametro", 220.0)
+	_medallon.custom_minimum_size = Vector2(220.0, 220.0)
+	_medallon.size = Vector2(220.0, 220.0)
+	_medallon.position = Vector2.ZERO
+	_medallon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(_medallon)
+	_arco_fondo = ColorRect.new()
+	_arco_fondo.color = Color(0.1, 0.12, 0.14, 0.45)
+	_arco_fondo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_arco_fondo.position = Vector2(40.0, 232.0)
+	_arco_fondo.size = Vector2(140.0, 3.0)
+	holder.add_child(_arco_fondo)
+	_arco = ColorRect.new()
+	_arco.color = Color(0.35, 0.8, 0.78, 0.7)
+	_arco.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_arco.size = Vector2(0.0, 3.0)
+	_arco_fondo.add_child(_arco)
+	holder.name = "MedallonSueno"
+
+func _mostrar_sueno(v: bool) -> void:
+	_frase.visible = v
+	if _medallon != null:
+		_medallon.get_parent().visible = v
+	if v:
+		_actualizar_cielo()
+
+func _actualizar_cielo() -> void:
+	var h: float = _hora_actual()
+	if _medallon != null and _medallon.has_method("actualizar"):
+		_medallon.call("actualizar", fposmod(h, 24.0), _luz_luna())
+	_frase.text = _frase_hora(fposmod(h, 24.0))
+
+## Respaldo simple si aún no existe MedallonFases: círculo oscuro con sol o luna.
+class MedallonRespaldo extends Control:
+	var _h: float = 12.0
+	func actualizar(hora: float, _luz_luna: float) -> void:
+		_h = hora
+		queue_redraw()
+	func _draw() -> void:
+		var c: Vector2 = size * 0.5
+		var r: float = minf(size.x, size.y) * 0.5
+		draw_circle(c, r, Color(0.05, 0.08, 0.14))
+		draw_arc(c, r - 2.0, 0.0, TAU, 48, Color(0.75, 0.6, 0.3), 3.0)
+		var dia: bool = _h >= 6.0 and _h < 18.0
+		var ang: float = (_h - 6.0) / 12.0 * PI if dia else (fposmod(_h - 18.0, 24.0)) / 12.0 * PI
+		var p: Vector2 = c + Vector2(-cos(ang), -sin(ang)) * r * 0.55
+		draw_circle(p, r * 0.16, Color(1.0, 0.85, 0.4) if dia else Color(0.88, 0.92, 1.0))
 
 func _cerrar_menu() -> void:
 	estado = Estado.NADA
@@ -141,7 +252,7 @@ func _empezar() -> void:
 	player.add_need("sed", -COSTO_NECESIDAD)
 	_veil_goal = 0.62
 	_texto.text = ""
-	_reloj.visible = true
+	_mostrar_sueno(true)
 	_decir(FRASES_DORMIR)
 
 func _despertar() -> void:
@@ -161,7 +272,7 @@ func _despertar() -> void:
 	player.global_position = pos
 	player.velocity = Vector3.ZERO
 	_veil_goal = 0.0
-	_reloj.visible = false
+	_mostrar_sueno(false)
 	_texto.text = ""
 	_cd = 0.6
 	Isla.registrar_evento("contemplar", pos, 2.0)
@@ -205,11 +316,8 @@ func _process(delta: float) -> void:
 			_dormido_min += dm
 			if daynight != null:
 				daynight.call("avanzar_horas", dm / 60.0)
-				var h: float = float(daynight.call("_current_hour"))
-				var hh: int = int(floor(h)) % 24
-				var mm: int = int(floor((h - floor(h)) * 60.0))
-				var ss: int = int(floor(fposmod(h * 3600.0, 60.0)))
-				_reloj.text = "%02d:%02d:%02d" % [hh, mm, ss]
+				_actualizar_cielo()
+			_arco.size.x = _arco_fondo.size.x * _p
 			if _p >= 1.0:
 				_despertar()
 			elif _t_dormido > 2.0 and (_edge(KEY_E) or _edge(KEY_SPACE) or _edge(KEY_ESCAPE) or _edge(KEY_W) or _edge(KEY_S)):

@@ -457,3 +457,11 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Aviso 'Podes armar: X' (icono + C) arriba a la izquierda, 6 s, una vez por receta (inventory_ui.aviso_receta).
 - Baul: casillas de 66 px y fondo mas oscuro. Colores del HUD mas apagados (vida, corazon, marco latón, barras).
 - Pendiente: probar aviso y baul en juego; iconos flojos (cana de pescar, hacha).
+
+### Bloque 7 parte 2 - estetica pirata (look-v9)
+- Medallon redondo de fases sol/luna arriba a la izquierda (scripts/ui/medallon_fases.gd, marco ui_medallon_marco.png); reemplaza el texto de hora. No hay reloj en la isla.
+- Sueno sin reloj: medallon grande, frases poeticas, 'despertarias al amanecer...' (sueno.gd).
+- Paneles de naufragio: madera, cuerda, esquinas de laton (ui_theme.gd draw_panel/draw_slot, ui_madera_naufragio, ui_pergamino). 'COMBINAR' -> 'ARMAR'; baul 'BAUL DEL NAUFRAGO'.
+- HUD: marcos de madera (scripts/pirate_ui.gd), iconos pintados de hambre (coco) y sed (cantimplora), corazon pirata, vidas como gemas en laton, rotulo Refugio bajo la barra.
+- Nota tecnica: draw_texture_rect dejo un cuadrado blanco con los iconos de necesidades; se uso draw_set_transform + draw_texture.
+- Pendiente: ver de noche la luna del medallon y el menu de dormir en juego; probar el baul.

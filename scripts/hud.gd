@@ -3,7 +3,7 @@ extends CanvasLayer
 
 ## Interfaz: barra de salud moderna, mensajes de la isla, panel de su mente (tecla I) y pantalla de muerte.
 
-const HEART_TEX: Texture2D = preload("res://assets/generated/ui_heart.png")
+const HEART_TEX: Texture2D = preload("res://assets/generated/ui_heart_pirata.png")
 
 ## false = barra lisa con brillo; true = barra segmentada (12 tramos)
 @export var segmented: bool = false
@@ -162,17 +162,17 @@ func _build_health() -> void:
 	add_child(_hp_root)
 
 	# marco oscuro redondeado con borde azul
-	var frame: Panel = _panel_node(_hp_root, Vector2(34, 18), FRAME_SIZE - Vector2(34, 0), _style(Color(0.03, 0.07, 0.09, 0.9), 13, Color(UiTheme.C_BRASS, 0.75), 2))
+	var frame: Panel = _panel_node(_hp_root, Vector2(34, 18), FRAME_SIZE - Vector2(34, 0), _style(Color(0.05, 0.03, 0.02, 1.0), 3))
 	frame.size = Vector2(FRAME_SIZE.x - 34.0, FRAME_SIZE.y)
 	var inner: Vector2 = INNER_SIZE - Vector2(34.0, 0.0)
 
 	# estela de daño (clara) y relleno brillante
-	_ghost = _panel_node(frame, Vector2(INNER_POS.x - 24.0, INNER_POS.y), Vector2(inner.x, inner.y), _style(Color(1.0, 0.78, 0.82, 0.55), 10))
-	_fill_style = _style(Color(0.8, 0.2, 0.28), 10)
-	_fill_style.shadow_color = Color(0.9, 0.3, 0.35, 0.25)
-	_fill_style.shadow_size = 4
+	_ghost = _panel_node(frame, Vector2(INNER_POS.x - 24.0, INNER_POS.y), Vector2(inner.x, inner.y), _style(Color(0.9, 0.7, 0.55, 0.5), 2))
+	_fill_style = _style(Color(0.6, 0.17, 0.17), 2)
+	_fill_style.shadow_color = Color(0.7, 0.2, 0.2, 0.15)
+	_fill_style.shadow_size = 2
 	_fill = _panel_node(frame, Vector2(INNER_POS.x - 24.0, INNER_POS.y), Vector2(inner.x, inner.y), _fill_style)
-	_gloss = _panel_node(_fill, Vector2(6, 3), Vector2(inner.x - 12.0, 8), _style(Color(1.0, 0.7, 0.78, 0.5), 5))
+	_gloss = _panel_node(_fill, Vector2(6, 3), Vector2(inner.x - 12.0, 8), _style(Color(1.0, 0.8, 0.7, 0.18), 3))
 
 	# modo segmentado
 	var seg_w: float = (inner.x - float(SEG_COUNT - 1) * 4.0) / float(SEG_COUNT)
@@ -181,13 +181,21 @@ func _build_health() -> void:
 		sp.visible = false
 		_segs.append(sp)
 
+	# marco de madera de naufragio con remaches y muescas
+	var wood := PirateUi.new()
+	wood.position = Vector2.ZERO
+	wood.size = frame.size
+	wood.track = Rect2(INNER_POS.x - 24.0, INNER_POS.y, inner.x, inner.y)
+	frame.add_child(wood)
+
 	# número
 	_hp_text = Label.new()
 	_hp_text.position = Vector2(frame.size.x - 74.0, 5.0)
 	_hp_text.size = Vector2(64.0, 22.0)
 	_hp_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_hp_text.add_theme_font_size_override("font_size", 13)
-	_hp_text.add_theme_color_override("font_outline_color", Color(0.05, 0.0, 0.1))
+	_hp_text.add_theme_color_override("font_color", Color(0.96, 0.9, 0.74))
+	_hp_text.add_theme_color_override("font_outline_color", Color(0.1, 0.05, 0.02))
 	_hp_text.add_theme_constant_override("outline_size", 4)
 	_hp_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	frame.add_child(_hp_text)
@@ -205,9 +213,9 @@ func _build_health() -> void:
 
 	# indicador de refugio
 	_refuge_label = Label.new()
-	_refuge_label.position = Vector2(46, 56)
-	_refuge_label.add_theme_font_size_override("font_size", 13)
-	_refuge_label.add_theme_color_override("font_color", Color(0.45, 0.95, 0.9))
+	_refuge_label.position = Vector2(46, 54)
+	_refuge_label.add_theme_font_size_override("font_size", 11)
+	_refuge_label.add_theme_color_override("font_color", Color(0.5, 0.88, 0.82))
 	_refuge_label.add_theme_color_override("font_outline_color", Color.BLACK)
 	_refuge_label.add_theme_constant_override("outline_size", 4)
 	_refuge_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -308,9 +316,9 @@ func _update_health(delta: float) -> void:
 		# color: rojo vivo, más oscuro y titilante con poca salud
 		var low: float = clampf((0.35 - k) / 0.35, 0.0, 1.0)
 		var blink: float = 0.5 + 0.5 * sin(_beat * TAU * 1.0)
-		var base: Color = Color(0.8, 0.2, 0.28).lerp(Color(0.66, 0.1, 0.16), low)
-		_fill_style.bg_color = base.lerp(Color(1.0, 0.35, 0.4), low * blink * 0.5)
-		_fill_style.shadow_color = Color(1.0, 0.2, 0.3, 0.3 + 0.3 * low * blink)
+		var base: Color = Color(0.6, 0.17, 0.17).lerp(Color(0.5, 0.1, 0.12), low)
+		_fill_style.bg_color = base.lerp(Color(0.85, 0.3, 0.28), low * blink * 0.5)
+		_fill_style.shadow_color = Color(0.9, 0.2, 0.2, 0.15 + 0.25 * low * blink)
 	else:
 		var lit: int = int(ceil(k * float(SEG_COUNT) - 0.001))
 		for i in SEG_COUNT:
@@ -330,7 +338,7 @@ func _update_health(delta: float) -> void:
 	var s: float = 1.0 + thump * lerpf(0.05, 0.16, low_k) + _pulse
 	_heart.scale = Vector2(s, s)
 	var tint: float = 1.0 - clampf(_pulse * 1.5, 0.0, 0.5)
-	_heart.modulate = Color(0.92, 0.8 * tint, 0.8 * tint)
+	_heart.modulate = Color(1.0, tint, tint)
 	if player.dead:
 		_heart.modulate = Color(0.4, 0.4, 0.45)
 
