@@ -15,8 +15,6 @@ var cofre: Array = []           ## baúl de la playa: 30 celdas, cada una null o
 var descubiertos: Dictionary = {}   ## item_id -> true (investigados)
 var linterna_carga: float = 0.0     ## segundos de luz que le quedan a la batería puesta
 var linterna_on: bool = false
-var antorcha_carga: float = 600.0    ## segundos de llama que le quedan a la antorcha (una sola a la vez)
-var antorcha_on: bool = false
 
 const COFRE_PATH: String = "user://cofre.json"
 
@@ -33,8 +31,6 @@ func vaciar() -> void:
 	descubiertos.clear()
 	linterna_carga = 0.0
 	linterna_on = false
-	antorcha_carga = 600.0
-	antorcha_on = false
 	cambiado.emit()
 
 ## Vacía el baúl (solo al empezar un ciclo nuevo de 7 vidas).

@@ -8,6 +8,7 @@ extends SkeletonModifier3D
 var crouch: float = 0.0     ## 0..1
 var act: String = ""        ## "pickup", "eat", "drink" o ""
 var act_w: float = 0.0      ## intensidad 0..1 de la acción
+var hand_local: Transform3D = Transform3D.IDENTITY   ## mano derecha en espacio del esqueleto, con la pose final
 var hold: float = 0.0          ## 0..1: brazo derecho levantado sosteniendo un objeto
 var use_w: float = 0.0        ## 0..1: pulso de uso del objeto en mano (un gesto corto)
 
@@ -104,3 +105,7 @@ func _process_modification() -> void:
 		_rot(sk, "UpperArm.R", -0.5 * act_w)
 		_rot(sk, "LowerArm.R", -2.0 * act_w)
 		_rot(sk, "Head", (-0.3 if act == "drink" else 0.12) * act_w)
+	# Mano derecha ya con la pose final (fuera de este modificador, Skeleton3D devuelve la pose sin modificar).
+	var hb: int = sk.find_bone("MiddleHand.R")
+	if hb >= 0:
+		hand_local = sk.get_bone_global_pose(hb)

@@ -176,10 +176,7 @@ func pulse_use() -> void:
 func hand_transform() -> Transform3D:
 	if _rig == null or _rig.sk == null:
 		return global_transform
-	var bi: int = _rig.sk.find_bone("MiddleHand.R")
-	if bi < 0:
-		return global_transform
-	return _rig.sk.global_transform * _rig.sk.get_bone_global_pose(bi)
+	return _rig.sk.global_transform * _rig.pose.hand_local
 
 var _yaw: float = 0.0
 var _pitch: float = -0.05

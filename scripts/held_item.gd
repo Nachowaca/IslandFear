@@ -8,23 +8,20 @@ extends Node
 ## rot: giro (grados) del modelo respecto del cuerpo; off: desplazamiento desde la mano (en ejes del cuerpo).
 ## El modelo de suelo tiene su eje largo en X y la punta en -X: con rot Y = -90 la punta mira hacia adelante.
 const HAND: Dictionary = {
-	"linterna": {"rot": Vector3(0, -90, 0), "off": Vector3(0.0, 0.02, -0.06)},
-	"hacha": {"rot": Vector3(0, -90, 0), "off": Vector3(0.0, 0.0, -0.1), "tilt": 0.5},
-	"lanza": {"rot": Vector3(0, -90, 0), "off": Vector3(0.0, 0.0, -0.1), "tilt": 0.6},
-	"pala_concha": {"rot": Vector3(0, -90, 0), "off": Vector3(0.0, 0.0, -0.1)},
-	"piedra_afilada": {"rot": Vector3(0, -90, 0), "off": Vector3(0.0, 0.0, -0.05)},
-	"botella_vacia": {"rot": Vector3(0, -90, 0), "off": Vector3(0.0, 0.0, -0.06)},
-	"botella_agua": {"rot": Vector3(0, -90, 0), "off": Vector3(0.0, 0.0, -0.06)},
-	"antorcha": {"rot": Vector3(0, -90, 0), "off": Vector3(0.0, 0.0, -0.1), "tilt": 0.75},
-	"cana_pescar": {"rot": Vector3(0, -90, 0), "off": Vector3(0.0, 0.0, -0.1), "tilt": 0.6},
+	"linterna": {"rot": Vector3(0, -90, 0), "grip": Vector3(0.05, 0.0, 0.0)},
+	"hacha": {"rot": Vector3(0, 0, 0), "grip": Vector3(0.0, 0.05, 0.22), "tilt": 0.9},
+	"lanza": {"rot": Vector3(0, 0, 0), "grip": Vector3(0.0, 0.05, 0.4), "tilt": 0.9},
+	"pala_concha": {"rot": Vector3(0, 0, 0), "grip": Vector3(0.0, 0.04, 0.25), "tilt": 0.9},
+	"piedra_afilada": {"rot": Vector3(0, -90, 0), "grip": Vector3(0.12, 0.04, 0.0), "tilt": 0.4},
+	"botella_vacia": {"rot": Vector3(0, -90, 0), "grip": Vector3(0.0, 0.0, 0.06)},
+	"botella_agua": {"rot": Vector3(0, -90, 0), "grip": Vector3(0.0, 0.0, 0.06)},
+	"cana_pescar": {"rot": Vector3(0, -90, 0), "grip": Vector3(0.0, 0.0, 0.0), "tilt": 0.7},
 }
 ## Cómo se agarra cada objeto (ver CastawayPose.hold_kind): "luz", "herramienta" o "caña".
 const KIND: Dictionary = {
-	"linterna": "luz", "antorcha": "luz", "hacha": "herramienta", "lanza": "herramienta", "pala_concha": "herramienta",
+	"linterna": "luz", "hacha": "herramienta", "lanza": "herramienta", "pala_concha": "herramienta",
 	"piedra_afilada": "herramienta", "cana_pescar": "caña",
 }
-const TORCH_TIME: float = 600.0       ## segundos de llama de una antorcha
-const TORCH_ENERGY: float = 1.9
 const CARGA_BATERIA: float = 300.0     ## segundos de luz por batería
 const LUZ_ENERGIA: float = 3.2
 
@@ -41,11 +38,6 @@ var _energy: float = 0.0
 var _t: float = 0.0
 var inter: Interaccion
 var _pesca: Node
-var _flame: Node3D
-var _flame_light: OmniLight3D
-var _flame_fx: CPUParticles3D
-var _flame_core: MeshInstance3D
-var _flame_e: float = 0.0
 var _insp: Node3D
 var _insp_t: float = 0.0
 
@@ -96,31 +88,27 @@ func _process(delta: float) -> void:
 	if _shown != "":
 		var cfg: Dictionary = HAND[_shown]
 		var rot: Vector3 = cfg["rot"]
-		var off: Vector3 = cfg["off"]
+		var grip: Vector3 = cfg["grip"]
 		var body: Basis = player.global_transform.basis
 		var hand: Transform3D = player.hand_transform()
 		var tilt: float = float(cfg.get("tilt", 0.0))
-		_holder.global_transform = Transform3D(body * Basis(Vector3.RIGHT, tilt) * Basis.from_euler(rot * (PI / 180.0)), hand.origin + body * (off + player.hold_sway()))
+		var bas: Basis = body * Basis(Vector3.RIGHT, tilt) * Basis.from_euler(rot * (PI / 180.0))
+		# La base del objeto (el agarre) queda pegada a la mano; el resto sale desde ahí.
+		_holder.global_transform = Transform3D(bas, hand.origin + body * player.hold_sway() - bas * grip)
 	if _edge(KEY_T) and player.controllable and not player.dead and not player.menu_lock:
 		_usar()
 	_luz(delta)
-	_antorcha(delta)
 	_inspeccion(delta)
 
 func _cambiar_visual(id: String) -> void:
 	for c: Node in _holder.get_children():
 		c.queue_free()
-	_flame = null
 	if _pesca != null and _shown == "cana_pescar":
 		_pesca.call("cancelar")
-	if Inventario.antorcha_on:
-		Inventario.antorcha_on = false       # guardar la antorcha la apaga
 	_shown = id
 	player.set_hold_kind(str(KIND.get(id, "")))
 	if id != "":
 		_holder.add_child(ItemDB.make_visual(id))
-	if id == "antorcha":
-		_hacer_llama()
 
 func _usar() -> void:
 	var e: Variant = Inventario.item_seleccionado()
@@ -201,8 +189,6 @@ func _usar_mano() -> void:
 				ui.message("Ponés una batería. La linterna se enciende.")
 			else:
 				ui.message("La linterna no tiene pilas.")
-		"antorcha":
-			_usar_antorcha()
 		"cana_pescar":
 			if _pesca == null:
 				_pesca = (load("res://scripts/pesca.gd") as GDScript).new() as Node
@@ -255,119 +241,6 @@ func _gastada() -> void:
 	player.get_parent().add_child(it)
 	it.global_position = player.global_position + Vector3(0, 0.1, 0) - player.global_transform.basis.z * 0.8
 	ui.message("La batería se agotó. No tenés lugar: la dejás en el suelo.")
-
-# ------------------------------------------------------------------ antorcha
-
-func _hacer_llama() -> void:
-	_flame = Node3D.new()
-	_flame.name = "Llama"
-	_flame.position = Vector3(-0.44, 0.07, 0.0)
-	_flame.visible = false
-	_holder.add_child(_flame)
-	var fm := StandardMaterial3D.new()
-	fm.albedo_color = Color(1.0, 0.65, 0.2)
-	fm.emission_enabled = true
-	fm.emission = Color(1.0, 0.5, 0.12)
-	fm.emission_energy_multiplier = 2.5
-	fm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	var core := SphereMesh.new()
-	core.radius = 0.06
-	core.height = 0.2
-	core.radial_segments = 6
-	core.rings = 3
-	core.material = fm
-	_flame_core = MeshInstance3D.new()
-	_flame_core.mesh = core
-	_flame_core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_flame.add_child(_flame_core)
-	_flame_fx = CPUParticles3D.new()
-	var pm := SphereMesh.new()
-	pm.radius = 0.025
-	pm.height = 0.05
-	pm.radial_segments = 4
-	pm.rings = 2
-	var pmat := StandardMaterial3D.new()
-	pmat.albedo_color = Color(1.0, 0.55, 0.15)
-	pmat.emission_enabled = true
-	pmat.emission = Color(1.0, 0.45, 0.1)
-	pmat.emission_energy_multiplier = 2.0
-	pmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	pm.material = pmat
-	_flame_fx.mesh = pm
-	_flame_fx.amount = 14
-	_flame_fx.lifetime = 0.7
-	_flame_fx.local_coords = false
-	_flame_fx.direction = Vector3.UP
-	_flame_fx.spread = 25.0
-	_flame_fx.gravity = Vector3(0, 1.5, 0)
-	_flame_fx.initial_velocity_min = 0.3
-	_flame_fx.initial_velocity_max = 0.8
-	_flame_fx.scale_amount_min = 0.5
-	_flame_fx.scale_amount_max = 1.2
-	_flame_fx.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_flame.add_child(_flame_fx)
-	_flame_light = OmniLight3D.new()
-	_flame_light.light_color = Color(1.0, 0.62, 0.28)
-	_flame_light.omni_range = 11.0
-	_flame_light.omni_attenuation = 1.3
-	_flame_light.light_energy = 0.0
-	_flame_light.shadow_enabled = false
-	_flame_light.position = Vector3(0, 0.15, 0)
-	_flame.add_child(_flame_light)
-
-func _fogata_encendida_cerca() -> bool:
-	for n: Node in get_tree().get_nodes_in_group("campfire"):
-		var cf: Campfire = n as Campfire
-		if cf != null and cf.is_burning() and cf.global_position.distance_to(player.global_position) < 3.5:
-			return true
-	return false
-
-func _en_agua() -> bool:
-	return terrain != null and terrain.height_at(player.global_position.x, player.global_position.z) < 0.38
-
-func _usar_antorcha() -> void:
-	player.pulse_use()
-	if Inventario.antorcha_on:
-		Inventario.antorcha_on = false
-		ui.message("Apagás la antorcha.")
-		return
-	if _en_agua():
-		ui.message("Con el agua no prende.")
-		return
-	if _fogata_encendida_cerca():
-		Inventario.antorcha_on = true
-		ui.message("Encendés la antorcha en la fogata.")
-	elif Inventario.cantidad("piedra") >= 2:
-		Inventario.antorcha_on = true
-		AudioManager.play(get_tree(), "crack", player.global_position, -10.0)
-		ui.message("Chocás dos piedras: la paja prende.")
-	else:
-		ui.message("Para encenderla hace falta una fogata cerca o dos piedras para la chispa.")
-
-func _antorcha(delta: float) -> void:
-	var activa: bool = Inventario.antorcha_on and _shown == "antorcha" and not player.dead
-	if activa and _en_agua():
-		Inventario.antorcha_on = false
-		activa = false
-		ui.message("El agua apaga la antorcha.")
-	if activa:
-		Inventario.antorcha_carga -= delta
-		if Inventario.antorcha_carga <= 0.0:
-			Inventario.antorcha_on = false
-			Inventario.antorcha_carga = TORCH_TIME
-			activa = false
-			Inventario.quitar("antorcha", 1)
-			ui.message("La antorcha se consumió del todo.")
-	if _flame == null or not is_instance_valid(_flame):
-		return
-	var flick: float = 1.0 + 0.18 * sin(_t * 17.0) * sin(_t * 5.3) + 0.08 * sin(_t * 41.0)
-	if Inventario.antorcha_carga < 60.0:
-		flick *= 0.75 + 0.25 * sin(_t * 9.0)
-	_flame_e = lerpf(_flame_e, TORCH_ENERGY * flick if activa else 0.0, 1.0 - exp(-9.0 * delta))
-	_flame_light.light_energy = _flame_e
-	_flame.visible = activa or _flame_e > 0.05
-	_flame_fx.emitting = activa
-	_flame_core.scale = Vector3(1.0, 1.0 + 0.25 * sin(_t * 23.0), 1.0) * clampf(_flame_e / TORCH_ENERGY, 0.0, 1.2)
 
 # ------------------------------------------------------------------ inspeccionar en mano
 
