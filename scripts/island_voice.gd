@@ -113,6 +113,64 @@ const R_VERB: Array = ["recuerda", "guarda", "susurra", "esconde", "espera", "co
 const R_OBJ: Array = ["tu nombre", "tus pasos", "lo que buscás", "el camino de vuelta", "un secreto", "tu miedo", "lo que dejaste atrás", "a los que llegaron antes", "la hora exacta en que llegaste", "lo que todavía no hiciste"]
 const R_FORM: Array = ["{s} {v} {o}.", "{s} {v} {o}. Yo también.", "¿Sabías que {s_l} {v} {o}?", "{s} {v} {o}... pero no a vos.", "Dicen que {s_l} {v} {o}."]
 
+## Frases ya dichas (sobreviven a las vidas): no se repiten hasta agotar las del grupo.
+static var s_dichas: Dictionary = {}
+
+## Frase nueva según la voz (curiosa, seria, confiada, feliz, contemplativa) y los temas que aplican ahora.
+## Prefiere las de tema específico; con solo_tema no usa las genéricas ("any"). Devuelve "" si no hay.
+func ambient(voz: String, temas: Array, solo_tema: bool = false) -> String:
+	var esp: Array[String] = []
+	var gen: Array[String] = []
+	var esp_todas: Array[String] = []
+	for row: Array in IslandPhrases.DATA:
+		if str(row[0]) != voz:
+			continue
+		var tema: String = str(row[1])
+		if tema == "pista":
+			continue
+		var txt: String = str(row[2])
+		if tema == "any":
+			if not s_dichas.has(txt):
+				gen.append(txt)
+		elif temas.has(tema):
+			esp_todas.append(txt)
+			if not s_dichas.has(txt):
+				esp.append(txt)
+	var pool: Array[String] = []
+	if not esp.is_empty() and (solo_tema or rng.randf() < 0.7):
+		pool = esp
+	elif not solo_tema and not gen.is_empty():
+		pool = gen
+	elif not esp.is_empty():
+		pool = esp
+	elif not esp_todas.is_empty() and rng.randf() < 0.3:
+		for x: String in esp_todas:
+			s_dichas.erase(x)
+		pool = esp_todas
+	if pool.is_empty():
+		return ""
+	var out: String = pool[rng.randi() % pool.size()]
+	s_dichas[out] = true
+	return out
+
+## Pista sutil (solo voces confiada o feliz). Cada pista se dice una sola vez por vida.
+func pista() -> String:
+	var pool: Array[String] = []
+	for row: Array in IslandPhrases.DATA:
+		if str(row[1]) == "pista" and not s_dichas.has(str(row[2])):
+			pool.append(str(row[2]))
+	if pool.is_empty():
+		return ""
+	var out: String = pool[rng.randi() % pool.size()]
+	s_dichas[out] = true
+	return out
+
+## Nueva vida: las pistas vuelven a poder decirse.
+static func olvidar_pistas() -> void:
+	for row: Array in IslandPhrases.DATA:
+		if str(row[1]) == "pista":
+			s_dichas.erase(str(row[2]))
+
 ## Frase críptica armada con piezas sueltas: casi nunca sale dos veces igual.
 func riddle(_ctx: Dictionary = {}) -> String:
 	var t: String = ""

@@ -345,3 +345,10 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
   Cambios: luna 2 cortes/70 m (`day_night.gd`), árboles visibles hasta 110 m (`TREE_VIS` en `island_terrain.gd`), recogibles ocultos a 60 m (`island_life.gd::_mesh`), agua 200x200 subdivisiones. Playa: 60 fps, ~3.400 draws, 2.7 M tri. Bosque (usuario): ~50 fps.
 - Pendiente rendimiento: recogibles en MultiMesh, distancia de pasto/arbustos, medir en calidad Alta y fuera del editor.
 - DEV a quitar: `fps_meter.gd` (F12) + 1 línea en `main.gd`; cámara del cielo.
+
+## 5.7 Voz de la isla (Pasos A y B hechos, a corregir jugando)
+- `scripts/island_phrases.gd`: 200 frases nuevas `[voz, tema, texto]` (curiosa 45, seria 35, confiada 45 con 15 pistas, feliz 35, contemplativa 20, clima 20 dormidas). Corregirlas es editar ese archivo.
+- `island_voice.gd`: `ambient(voz, temas, solo_tema)` (prefiere tema específico, no repite hasta agotar el grupo; `s_dichas` persiste entre vidas) y `pista()` (una vez por vida).
+- `island_brain.gd`: `_voz()` (seria si enojo>=35 o etapa<=1; contemplativa si sentado/zoom/quieto y calma; feliz etapa>=4; confiada etapa 3; si no curiosa), `_temas()` (hora, niebla, bioma, cueva, sentado, zoom, quieto, correr, fruto, animal, agua), `_director()` (silencio mínimo por voz: seria 45-90 s, curiosa 70-130, confiada 100-170, feliz 120-200, contemplativa 200-320; 25% de las veces calla más; sentarse = 50% de una frase; pistas cada >=240 s solo confiada/feliz, 40%). Toda frase (`_say`) reinicia el silencio. La acción "susurrar" respeta el silencio.
+- Las reacciones a tala/fuego/ofrenda usan 60% frase nueva por voz. Frases viejas siguen en `POOLS`, sin reclasificar por voz.
+- Pendiente: tema `pesca` sin detección; clima dormido hasta que exista; revisar frases jugando.

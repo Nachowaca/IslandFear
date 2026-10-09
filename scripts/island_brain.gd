@@ -98,6 +98,11 @@ var _fog_tween: Tween
 var _gust_tween: Tween
 var _catalogo: Array[AccionIsla] = []
 var _t_ultima_accion: float = 0.0
+var _t_voz: float = 0.0                         ## segundos desde que la isla habló por última vez
+var _gap_voz: float = 60.0                       ## silencio que quiere guardar antes de la próxima frase suelta
+var _t_pista: float = 120.0                      ## segundos desde la última pista (la primera tarda)
+var _dir_timer: float = 3.0
+var _sentado_dicho: bool = false
 var _hueco: float = 6.0                          ## silencio mínimo antes de la próxima acción (cola larga)
 var decision_log: Array[String] = []
 const LOG_PATH: String = "user://isla_decisiones.log"
@@ -106,6 +111,8 @@ func _ready() -> void:
 	_rng.randomize()
 	_world = get_parent() as Node3D
 	voice.rng.randomize()
+	IslandVoice.olvidar_pistas()
+	_gap_voz = _nuevo_gap()
 	Isla.evento_registrado.connect(_on_evento)
 	Isla.etapa_cambiada.connect(_on_etapa)
 	s_deaths = maxi(s_deaths, Isla.vida - 1)       # las vidas gastadas sobreviven al cerrar el juego
@@ -193,6 +200,7 @@ func _process(delta: float) -> void:
 		_say(voice.line("greet"), "whisper")
 
 	_t_ultima_accion += delta
+	_director(delta)
 	_think_timer -= delta
 	if _think_timer <= 0.0:
 		_think_timer = _rng.randf_range(1.0, 2.0)      # decide cada 1-2 s
@@ -646,7 +654,7 @@ func _execute(a: AccionIsla) -> void:
 		_attack_rest = day_length_seconds * _rng.randf_range(1.0, 3.0) * lerpf(1.3, 0.6, enojo)
 	match id:
 		"whisper":
-			_say(_speak_about_player(), "whisper")
+			_hablar_observando()
 		"tremor":
 			_say(voice.line("tremor"), "omen")
 			_do_tremor()
@@ -705,11 +713,133 @@ func _reason(id: String) -> String:
 # ------------------------------------------------------------------ acciones
 
 func _say(text: String, kind: String) -> void:
+	if text == "":
+		return
+	_t_voz = 0.0
+	_gap_voz = _nuevo_gap()
 	last_thought = text
 	log_lines.append(text)
 	if log_lines.size() > 7:
 		log_lines.pop_front()
 	thought.emit(text, kind)
+
+# ------------------------------------------------------------------ voz y silencio
+
+## Con qué voz habla la isla ahora (según vínculo, enojo y lo que hacés).
+func _voz() -> String:
+	var eff: float = _effective_hostility()
+	var e: int = Isla.etapa_idx()
+	if eff >= 35.0 or e <= 1:
+		return "seria"
+	if eff < 25.0 and (player.sitting or player.zoom_fov > 0.0 or _still_time > 25.0):
+		return "contemplativa"
+	if e >= 4 and eff < 25.0:
+		return "feliz"
+	if e == 3 and eff < 35.0:
+		return "confiada"
+	return "curiosa"
+
+## Temas que aplican en este momento (hora, bioma, cueva, lo que está haciendo el jugador).
+func _temas() -> Array:
+	var out: Array = []
+	var dn: Node = get_tree().get_first_node_in_group("daynight")
+	var hora: float = 12.0
+	if dn != null:
+		hora = float(dn.get("hour"))
+		if float(dn.get("fog_boost")) > 0.003:
+			out.append("niebla")
+	if _night > 0.5:
+		out.append("noche")
+	elif hora >= 5.0 and hora < 8.0:
+		out.append("alba")
+	elif hora >= 17.0 and hora < 20.0:
+		out.append("tarde")
+	else:
+		out.append("dia")
+	if _in_cave:
+		out.append("cueva")
+	elif eco != null:
+		out.append(eco.get_bioma_nombre(player.global_position).replace("zona árida", "arido"))
+	if player.sitting:
+		out.append("sentado")
+	if player.zoom_fov > 0.0:
+		out.append("zoom")
+	if _still_time > 12.0:
+		out.append("quieto")
+	if float(_win.get("run", 0.0)) > 3.0:
+		out.append("correr")
+	if float(_win.get("taken", 0.0)) > 0.0:
+		out.append("fruto")
+	if float(_win.get("animals", 0.0)) > 0.0:
+		out.append("animal")
+	if terrain != null and not _in_cave and terrain.height_at(player.global_position.x, player.global_position.z) < 0.45:
+		out.append("agua")
+	return out
+
+## Cuánto quiere callar la isla antes de la próxima frase suelta, según su voz.
+func _nuevo_gap() -> float:
+	var rango: Vector2 = Vector2(70.0, 130.0)
+	if player != null and is_instance_valid(player):
+		match _voz():
+			"seria":
+				rango = Vector2(45.0, 90.0)
+			"confiada":
+				rango = Vector2(100.0, 170.0)
+			"feliz":
+				rango = Vector2(120.0, 200.0)
+			"contemplativa":
+				rango = Vector2(200.0, 320.0)
+	return _rng.randf_range(rango.x, rango.y)
+
+## Director del silencio: la isla solo habla suelta cuando pasó su tiempo callada; a veces calla mucho más.
+func _director(delta: float) -> void:
+	_t_voz += delta
+	_t_pista += delta
+	if not player.sitting:
+		_sentado_dicho = false
+	_dir_timer -= delta
+	if _dir_timer > 0.0 or _trap_active or not _first_words:
+		return
+	_dir_timer = 2.0
+	# sentarse a contemplar: una frase suelta (o ninguna) por cada vez que te sentás
+	if player.sitting and not _sentado_dicho and _t_voz > 15.0:
+		_sentado_dicho = true
+		if _rng.randf() < 0.5:
+			_say(voice.ambient("contemplativa" if _effective_hostility() < 25.0 else "seria", ["sentado"], true), "whisper")
+			return
+	if _t_voz < _gap_voz:
+		return
+	_hablar_ambiente()
+
+## Frase suelta: de ambiente, de lo que hacés o (rara vez, con confianza) una pista poética.
+func _hablar_ambiente() -> void:
+	var v: String = _voz()
+	if _rng.randf() < 0.25:
+		_gap_voz = _nuevo_gap() * 0.5          # a veces prefiere seguir callada un rato más
+		_t_voz = 0.0
+		return
+	if (v == "confiada" or v == "feliz") and _t_pista >= 240.0 and _rng.randf() < 0.4:
+		var pk: String = voice.pista()
+		if pk != "":
+			_t_pista = 0.0
+			_say(pk, "info")
+			return
+	_say(voice.ambient(v, _temas()), "whisper")
+
+## La acción "susurrar" del catálogo: respeta el silencio y la voz.
+func _hablar_observando() -> void:
+	if _t_voz < _gap_voz * 0.5:
+		return
+	var v: String = _voz()
+	var txt: String = ""
+	if v == "curiosa" or v == "seria":
+		if _rng.randf() < 0.5:
+			txt = _speak_about_player()
+		else:
+			txt = voice.ambient(v, _temas())
+	else:
+		txt = voice.ambient(v, _temas())
+	_say(txt, "whisper")
 
 func _pick(arr: Array) -> String:
 	return arr[_rng.randi() % arr.size()]
@@ -1040,7 +1170,13 @@ func _on_evento(tipo: String, _zona: Vector3, intensidad: float) -> void:
 		return
 	_t_react = now
 	_t_ultima_accion = 0.0                  # lo que acaba de decir cuenta como acción: se calla un rato
-	_say(voice.line(topic, {"who": _who()}, _tone()), "omen" if tipo != "ofrenda" else "whisper")
+	var tema_ev: String = {"react_trees": "tala", "react_fire": "fuego", "react_offering": "ofrenda"}.get(topic, "")
+	var frase: String = ""
+	if tema_ev != "" and _rng.randf() < 0.6:
+		frase = voice.ambient(_voz(), [tema_ev], true)
+	if frase == "":
+		frase = voice.line(topic, {"who": _who()}, _tone())
+	_say(frase, "omen" if tipo != "ofrenda" else "whisper")
 
 func notify_death() -> void:
 	s_deaths += 1
