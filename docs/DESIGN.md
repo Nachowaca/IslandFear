@@ -251,3 +251,12 @@ Antes de finalizar el juego: borrar la cámara del cielo (sky_cam.gd) o inventar
 
 ## Baúl de la playa (diseño aplicado)
 Baúl de madera fijo en la playa de llegada, vacío, con la inscripción 'Welcome!'. 30 celdas separadas, mismo estilo de GUI que el inventario. Lo que no entra en la mochila se guarda solo en el baúl. Pendiente a decidir: si el contenido sobrevive a la muerte, y si la isla lo toma como algo tuyo.
+
+## Decisiones técnicas recientes (arte y rendimiento)
+- Objetivo 60 fps, <1.5 GB; hoy ~50 fps en el bosque (editor). Presupuesto: sombras de la luna 2 cortes/70 m; árboles visibles hasta 110 m; recogibles hasta 60 m; agua 200x200.
+- Rocas de la isla con el pack de piedras estilizadas (cueva y caminos con las viejas).
+- Barco hundido y decorado del mar: estáticos, sin colisión, lejos de la costa.
+- Fogata: solo la que construye el personaje; combustible máx 100 min con barra visible.
+- Fauna chica (mariposas): propuesta pendiente de OK = ~20 en un MultiMesh con movimiento en shader, reemplazando las ~30 con script propio.
+- Agua: el usuario la quiere como está; más suciedad/transparencia queda para cuando se diseñe el clima.
+- Clima/lluvia: aplazado. Herramientas DEV (F12 fps, cámara del cielo) se quitan antes de terminar.
