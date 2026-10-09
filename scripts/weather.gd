@@ -177,7 +177,7 @@ func _objetivos() -> Dictionary:
 			return {"cloud": 1.0, "rain": 1.0, "wind": 0.8}
 		S.CLAREANDO:
 			return {"cloud": 0.25, "rain": 0.0, "wind": 0.1}
-	return {"cloud": 0.0, "rain": 0.0, "wind": 0.0}
+	return {"cloud": 0.15, "rain": 0.0, "wind": 0.0}
 
 func _process(delta: float) -> void:
 	if _dn == null or not is_instance_valid(_dn):

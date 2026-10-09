@@ -1216,6 +1216,32 @@ const GROUND_KIT: Array = [
 	["Pebble_Square_2", 90, 0.9, 3.5, 0.8, 1.6],
 ]
 
+## Tinte del verde de las matas planas según cuánta sombra tiene el lugar: abierto, arboleda, bosque cerrado.
+const SHADE_TINTS: Array[Color] = [Color(0.8, 0.9, 0.62), Color(0.6, 0.76, 0.48), Color(0.42, 0.57, 0.45)]
+const SHADE_BACKLIGHT: Array[float] = [0.45, 0.25, 0.12]
+
+func _is_flat_ground_plant(model: String) -> bool:
+	return model.begins_with("UQ:Petals") or model.ends_with("_Clump") or model.begins_with("Clover") or model == "UQ:Plant_Flowers"
+
+func _shade_bucket(pos: Vector3) -> int:
+	var g: float = smoothstep(-0.14, 0.1, terrain.forest_value(pos.x, pos.z))   # 0 claro, 1 arboleda
+	var bw: PackedFloat32Array = terrain.eco.get_bioma_pesos(pos)
+	var dense: float = g * (0.55 + 0.45 * clampf(bw[2] + bw[3] * 0.7, 0.0, 1.0)) + terrain.moisture_at(pos.x, pos.z) * 0.15
+	if dense < 0.3:
+		return 0
+	return 1 if dense < 0.7 else 2
+
+func _dim_backlight(mmi: MultiMeshInstance3D, amt: float) -> void:
+	var mesh: Mesh = mmi.multimesh.mesh
+	for si in mesh.get_surface_count():
+		var sm: ShaderMaterial = mesh.surface_get_material(si) as ShaderMaterial
+		if sm == null or sm.shader == null or not sm.shader.code.contains("backlight_amt"):
+			continue
+		var d: ShaderMaterial = sm.duplicate() as ShaderMaterial
+		d.set_shader_parameter("backlight_amt", amt)
+		Wind.register(d)
+		mesh.surface_set_material(si, d)
+
 func _spawn_kit_ground() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value * 977 + 13
@@ -1241,7 +1267,23 @@ func _spawn_kit_ground() -> void:
 			var s: float = rng.randf_range(float(entry[4]), float(entry[5]))
 			var b := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * s)
 			xf.append(Transform3D(b, p - Vector3(0, 0.03, 0)))
-		var m: MultiMeshInstance3D = NatureKit.multi(model, xf, 75.0 if xf.size() > 300 else 120.0)
+		var vis: float = 75.0 if xf.size() > 300 else 120.0
+		if _is_flat_ground_plant(model):
+			# matas planas del suelo: 3 grados de sombra según el entorno (claro abierto / arboleda / bosque cerrado)
+			var buckets: Array = [[] as Array[Transform3D], [] as Array[Transform3D], [] as Array[Transform3D]]
+			for t: Transform3D in xf:
+				var sh_i: int = _shade_bucket(t.origin)
+				(buckets[sh_i] as Array[Transform3D]).append(t)
+			for bi in 3:
+				var arr: Array[Transform3D] = buckets[bi]
+				if arr.is_empty():
+					continue
+				var mb: MultiMeshInstance3D = NatureKit.multi(model, arr, vis, SHADE_TINTS[bi])
+				if mb != null:
+					_dim_backlight(mb, SHADE_BACKLIGHT[bi])
+					root.add_child(mb)
+			continue
+		var m: MultiMeshInstance3D = NatureKit.multi(model, xf, vis)
 		if m != null:
 			root.add_child(m)
 

@@ -55,8 +55,8 @@ static func _crear(nom: String, alto: Color, horiz: Color, sol: Color, e_sol: fl
 
 ## Azul lunar desaturado, puntos cálidos emisivos.
 static func noche() -> AmbientePreset:
-	return _crear("Noche", Color(0.015, 0.1, 0.17), Color(0.05, 0.25, 0.3), Color(1.0, 0.5, 0.22), 0.0,
-		Color(0.05, 0.25, 0.3), 0.0024, Color(0.14, 0.3, 0.62), 0.85, 0.8, 0.8, 1.0, 0.03, 0.95, 1.15, 1.08)
+	return _crear("Noche", Color(0.01, 0.045, 0.14), Color(0.04, 0.14, 0.28), Color(1.0, 0.5, 0.22), 0.0,
+		Color(0.04, 0.12, 0.24), 0.0034, Color(0.14, 0.3, 0.62), 0.6, 0.8, 0.8, 1.0, 0.07, 0.95, 1.05, 1.08)
 
 ## Rosado y ámbar suave, bruma de la mañana.
 static func amanecer() -> AmbientePreset:
@@ -65,8 +65,8 @@ static func amanecer() -> AmbientePreset:
 
 ## Cálido y saturado, sombras azuladas.
 static func dia() -> AmbientePreset:
-	return _crear("Día", Color(0.2, 0.45, 0.82), Color(0.72, 0.84, 0.93), Color(1.0, 0.95, 0.86), 1.25,
-		Color(0.72, 0.84, 0.93), 0.0012, Color(0.5, 0.62, 0.92), 0.7, 0.72, 0.7, 0.3, 0.0, 0.95, 1.12, 1.1)
+	return _crear("Día", Color(0.14, 0.42, 0.9), Color(0.62, 0.8, 0.96), Color(0.96, 0.95, 0.9), 0.9,
+		Color(0.62, 0.8, 0.96), 0.0024, Color(0.62, 0.7, 0.82), 0.7, 0.5, 0.7, 0.3, 0.04, 0.95, 0.92, 1.05)
 
 ## Ámbar y rosado, haces largos.
 static func atardecer() -> AmbientePreset:

@@ -395,3 +395,10 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - NatureKit.add_box_colliders/add_box_collider: caja por piedra de sendero (RockPath, Rock_) en path_decor, island_features (senda naufragio) e island_marks.
 - bird.gd: posadas dentro de la copa, huyen si talan el arbol, estado ROAM (vuelo libre 3-5 puntos), gaviotas con orbita que deriva.
 - Pendiente: mariposas e insectos; guijarros (Pebble) siguen sin colision.
+
+## Sesion arte (look del dia/noche) - EN AJUSTE
+- Shader hojas wind_leaf: oscurece, desatura, autosombra por altura, sin specular. Haces: look_haz.gdshader tenia error de sintaxis (rectangulos), corregido.
+- Cielo/niebla dia y noche retocados en ambiente_preset.gd; noche aprobada por el usuario. Luna 1.0.
+- Dia NO convence: amarillento/fluor en pastos y flores. Ultimo ajuste: sat 0.92, contraste 1.05, sol 0.9. Revisar color propio del pasto/flores y terreno.
+- Troncos: tono calido (0.8,0.76,0.68) en nature_kit._bark_tone.
+- Calidad Alta (F4) da look fluor: usar Media (look.cfg calidad=1). Evitar F4.

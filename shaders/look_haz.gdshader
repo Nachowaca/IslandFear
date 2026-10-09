@@ -18,11 +18,13 @@ void vertex() {
 }
 
 void fragment() {
-	float across = smoothstep(0.0, 0.55, 1.0 - abs(UV.x * 2.0 - 1.0));
+	float ax = (UV.x * 2.0 - 1.0);
+	float across = exp(-ax * ax * 3.2) * (1.0 - smoothstep(0.45, 0.95, abs(ax)));   // degradé gaussiano: sin borde de tubo
+	float streak = 0.55 + 0.45 * sin(wpos.x * 0.9 + wpos.z * 0.7 + ax * 4.0 + TIME * 0.15) * sin(wpos.z * 0.6 - wpos.x * 0.4 + UV.y * 3.0);
 	float along = smoothstep(0.0, 0.12, UV.y) * (1.0 - smoothstep(0.5, 1.0, UV.y));
 	float facing = smoothstep(0.12, 0.65, abs(dot(normalize(NORMAL), normalize(VIEW))));
 	float shimmer = 0.78 + 0.22 * sin(TIME * 0.5 + wpos.x * 0.35 + wpos.z * 0.27 + UV.y * 5.0);
 	float dfade = smoothstep(fade_near, fade_near + 5.0, dist) * (1.0 - smoothstep(fade_far * 0.55, fade_far, dist));
 	ALBEDO = color;
-	ALPHA = across * along * facing * shimmer * dfade * intensity * 0.3;
+	ALPHA = across * streak * along * facing * shimmer * dfade * intensity * 0.26;
 }

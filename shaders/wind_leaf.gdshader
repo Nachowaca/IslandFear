@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode cull_disabled, specular_schlick_ggx;
+render_mode cull_disabled, specular_disabled, diffuse_lambert_wrap;
 #include "res://shaders/foliage_push.gdshaderinc"
 
 // Follaje del MegaKit con textura (hojas recortadas) que se mece con el viento.
@@ -16,6 +16,10 @@ uniform float push = 1.0;          // reacción al roce del jugador (0 = árbole
 uniform float reach = 1.0;         // alcance del roce (plantas altas o anchas > 1)
 uniform float tall = 1.0;          // cuanto sigue creciendo el balanceo por encima de height_ref (plantas altas)
 uniform float near_fade = 0.0;     // follaje que desaparece (con trama) cerca de la cámara; 0 = apagado
+uniform float backlight_amt = 1.0;  // brillo por transparencia (plantas del suelo: bajo)
+uniform float leaf_dark = 0.85;      // oscurecido general de las hojas
+uniform float shade_low = 0.72;      // cuanto se oscurece la parte baja/interior (sombreado propio)
+varying float v_hk;
 uniform float mood = 0.0;          // ánimo de la isla: -1 tensa/enojada … +1 serena (muy sutil)
 
 void vertex() {
@@ -34,6 +38,7 @@ void vertex() {
 	float hk = clamp((VERTEX.y - base_y) / max(height_ref, 0.01), 0.0, 1.0);
 	vec3 vwp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	off += foliage_push_v(wp, vwp, sqrt(hk), push, reach);
+	v_hk = hk;
 	VERTEX += (inverse(mat3(MODEL_MATRIX)) * off);
 }
 
@@ -52,9 +57,11 @@ void fragment() {
 	c = mix(c, vec3(dot(c, vec3(0.3, 0.59, 0.11))), tn * 0.3);   // tensa: se apaga y pierde color
 	c *= 1.0 - tn * 0.14 + cm * 0.05;
 	c = mix(c, c * vec3(1.06, 1.03, 0.9), cm * 0.5);             // serena: un poco más cálida y viva
+	c = mix(vec3(dot(c, vec3(0.3, 0.59, 0.11))), c, 0.88) * leaf_dark * mix(shade_low, 1.0, smoothstep(0.0, 0.85, v_hk));
 	ALBEDO = c;
 	ALPHA = t.a;
 	ALPHA_SCISSOR_THRESHOLD = 0.5;
 	ROUGHNESS = 1.0;
-	BACKLIGHT = vec3(0.12, 0.2, 0.06);
+	SPECULAR = 0.0;
+	BACKLIGHT = vec3(0.04, 0.07, 0.025) * backlight_amt;
 }

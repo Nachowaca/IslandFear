@@ -74,6 +74,7 @@ func _ready() -> void:
 	_moon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	_moon.directional_shadow_max_distance = 70.0
 	_moon.shadow_normal_bias = 1.5
+	_moon.shadow_opacity = 0.6
 	sun.get_parent().add_child(_moon)
 
 	# Luz tenue de estrellas / cielo nocturno: evita la oscuridad total cuando la luna no está
@@ -213,7 +214,7 @@ func _update(refresh_slow: bool) -> void:
 	var moon_pos: Vector3 = moon_dir
 	var moon_up: float = clampf(moon_pos.y, 0.0, 1.0)
 	_moon.global_transform = Transform3D(_look_basis(-moon_pos), moon_pos * 80.0)
-	_moon.light_energy = 1.5 * night * (0.55 + 0.45 * moon_phase * moon_phase) * smoothstep(0.0, 0.25, moon_up)
+	_moon.light_energy = 1.0 * night * (0.55 + 0.45 * moon_phase * moon_phase) * smoothstep(0.0, 0.25, moon_up)
 	_moon.light_specular = 0.5   # reflejo plateado sobre el agua
 	# luz de luna real: blanco frío, poco saturado
 	var mt: float = float(Time.get_ticks_msec()) * 0.001

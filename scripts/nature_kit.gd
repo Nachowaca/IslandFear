@@ -156,6 +156,9 @@ static func _fixed(m: Material, tint: Color, kind: String = "") -> Material:
 			sh.shader = LEAF_SHADER
 			sh.set_shader_parameter("albedo_tex", sm.albedo_texture)
 			sh.set_shader_parameter("tint", tint if m.resource_name != "Flowers" else Color.WHITE)
+			if kind == "bush" and m.resource_name.begins_with("Leaves"):
+				sh.set_shader_parameter("tint", tint * Color(0.85, 0.92, 0.75))
+				sh.set_shader_parameter("backlight_amt", 0.3)
 			var pr: Dictionary = WIND_PARAMS[kind]
 			for k: String in pr.keys():
 				sh.set_shader_parameter(k, pr[k])
@@ -192,11 +195,11 @@ static func rock_tint(rng: RandomNumberGenerator) -> Color:
 
 ## Tono del tronco según el tinte del árbol (6 variantes fijas, así se comparten materiales).
 static func _bark_tone(tint: Color, birch: bool) -> Color:
-	var tones: Array[Color] = [Color(1, 1, 1), Color(0.72, 0.66, 0.6), Color(1.25, 1.12, 0.95), Color(0.85, 0.85, 0.95), Color(1.15, 0.85, 0.75), Color(0.55, 0.5, 0.45)]
+	var tones: Array[Color] = [Color(1, 1, 1), Color(0.72, 0.66, 0.6), Color(1.25, 1.12, 0.95), Color(1.0, 0.92, 0.85), Color(1.15, 0.85, 0.75), Color(0.55, 0.5, 0.45)]
 	var i: int = absi(hash(tint.to_html())) % tones.size()
 	if birch:
 		return Color(1, 1, 1).lerp(tones[i], 0.4)
-	return tones[i]
+	return tones[i] * Color(0.8, 0.76, 0.68)   # corteza cálida: bajo cielo azul el gris/marrón se vuelve azulado
 
 ## Instancia un modelo del pack Ultimate Stylized Nature. Los de `FBX/` (palmeras, rocas…) están en centímetros
 ## (el nodo ya trae escala 100); los de `glTF/` (abedul, arce, arbustos, flores…) en metros.
@@ -302,6 +305,9 @@ static func _uq_mat(nm: String, tint: Color, fbx: bool, kind: String) -> Materia
 		else:
 			sh.set_shader_parameter("albedo_tex", load(g + nm + ".png"))
 			sh.set_shader_parameter("tint", Color(0.9, 1.0, 0.8) * tint if nm == "BirchTree_Leaves" else tint)
+		if nm.begins_with("Bush"):   # el verde de fábrica de los arbustos es lima plano: lo bajamos y apagamos
+			sh.set_shader_parameter("tint", (sh.get_shader_parameter("tint") as Color) * Color(0.85, 0.92, 0.75))
+			sh.set_shader_parameter("backlight_amt", 0.3)
 		var pr: Dictionary = WIND_PARAMS.get(kind if kind != "" else "tree")
 		sh.set_shader_parameter("sway", float(pr["sway"]) * (1.8 if nm.begins_with("Palm") else 1.0))
 		sh.set_shader_parameter("base_y", float(pr["base_y"]) * (1.0 if nm.begins_with("Palm") else 1.0) * (1.4 if nm.begins_with("Palm") else 1.0) * u)

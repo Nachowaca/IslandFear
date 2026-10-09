@@ -39,8 +39,8 @@ func _ready() -> void:
 		mi.material_override = _shaft_mat
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mi.visible = false
-		mi.set_meta("w", _rng.randf_range(2.6, 5.2))
-		mi.set_meta("l", _rng.randf_range(14.0, 26.0))
+		mi.set_meta("w", _rng.randf_range(6.0, 12.0))
+		mi.set_meta("l", _rng.randf_range(18.0, 32.0))
 		add_child(mi)
 		mi.global_position = Vector3(0, -500, 0)
 		_shafts.append(mi)

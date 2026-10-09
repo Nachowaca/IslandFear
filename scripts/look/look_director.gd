@@ -122,7 +122,7 @@ func aplicar(day: float, dusk: float, golden: float, e: float, manana: bool) -> 
 	sun.light_color = p.color_sol
 	sun.light_energy = p.energia_sol * smoothstep(-0.03, 0.22, e) * lerpf(1.0, 0.18, nub)
 	sun.visible = sun.light_energy > 0.01
-	sun.shadow_opacity = 0.9 if on else 1.0
+	sun.shadow_opacity = 0.72 if on else 1.0
 
 	# visibilidad nocturna local: luna tapada, bosque cerrado o cueva = más oscuro; playa y claros = más claro
 	var vis: float = 1.0
