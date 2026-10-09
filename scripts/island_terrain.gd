@@ -580,26 +580,40 @@ func _scatter_flora() -> void:
 	var palm_target: int = int(palm_count * 0.3)
 	made = 0
 	tries = 0
-	while made < palm_target and tries < palm_target * 14:
+	while made < palm_target and tries < palm_target * 40:
 		tries += 1
-		var pos: Vector3 = _random_spot(rng, 1.3, 3.2)
-		if pos.y < -90.0 or _cliff_mask(pos.x, pos.z) > 0.25 or _near_path(pos.x, pos.z, 0.8):
+		var cpos: Vector3 = _random_spot(rng, 1.3, 3.2)
+		if cpos.y < -90.0 or _cliff_mask(cpos.x, cpos.z) > 0.25 or _near_path(cpos.x, cpos.z, 0.8):
 			continue
-		if rng.randf() > smoothstep(-0.3, 0.2, forest_value(pos.x, pos.z)) + 0.15:
+		# palmerales en tramos de costa; el resto de la orilla queda despejada
+		if rng.randf() > smoothstep(0.0, 0.3, _stand_value(cpos.x + 500.0, cpos.z - 300.0)) + 0.04:
 			continue
-		var palm := Node3D.new()
-		palm.position = pos
-		palm.rotation.y = rng.randf() * TAU
-		palm.scale = Vector3.ONE * rng.randf_range(0.85, 1.25)
-		var coast_visual: Node3D = _palm_visual(rng)
-		coast_visual.rotation.x = rng.randf_range(0.04, 0.14)   # el viento del mar los inclina
-		palm.add_child(coast_visual)
-		_flora.add_child(palm)
-		_add_solid(palm, trunk_shape_palm, Vector3(0.1, 1.5, 0))
-		palm.set_meta("hojas", 4)
-		palm_nodes.append(palm)
-		palm_positions.append(pos)
-		made += 1
+		var to_sea: Vector3 = _water_dir(cpos)
+		var n_cl: int = rng.randi_range(2, 3)
+		for gi in n_cl:
+			var pos: Vector3 = cpos
+			if gi > 0:
+				var ang: float = rng.randf() * TAU
+				var rr: float = rng.randf_range(2.8, 4.6)
+				pos = Vector3(cpos.x + cos(ang) * rr, 0.0, cpos.z + sin(ang) * rr)
+				pos.y = _height(pos.x, pos.z)
+				if pos.y < 1.3 or pos.y > 3.4 or _cliff_mask(pos.x, pos.z) > 0.25 or _near_path(pos.x, pos.z, 0.8) or is_in_pond_area(pos.x, pos.z, 1.15) or is_in_cave_area(pos.x, pos.z, 1.0):
+					continue
+			if _too_close(pos, 3.0):
+				continue
+			var palm := Node3D.new()
+			palm.position = pos
+			palm.rotation.y = atan2(to_sea.x, to_sea.z) + rng.randf_range(-0.5, 0.5)   # +Z mira al mar: se inclinan hacia el agua
+			palm.scale = Vector3.ONE * rng.randf_range(0.85, 1.25)
+			var coast_visual: Node3D = _palm_visual(rng)
+			coast_visual.rotation.x = rng.randf_range(0.06, 0.2)
+			palm.add_child(coast_visual)
+			_flora.add_child(palm)
+			_add_solid(palm, trunk_shape_palm, Vector3(0.1, 1.5, 0))
+			palm.set_meta("hojas", 4)
+			palm_nodes.append(palm)
+			palm_positions.append(pos)
+			made += 1
 	# bosque: densidad por manchas (claros y arboledas), más denso donde hay humedad, ralo y de coníferas en altura
 	made = 0
 	tries = 0
@@ -625,22 +639,39 @@ func _scatter_flora() -> void:
 			continue
 		if _near_path(pos2.x, pos2.z, 1.3):
 			continue
-		if _too_close(pos2, lerpf(3.4, 2.3, grove)):
-			continue                                                  # separación: más juntos en la arboleda, más aire en los bordes
+		# rodales: la especie la decide un ruido de baja frecuencia (manchas de ~50 m), no un dado por árbol
+		var stand: float = _stand_value(pos2.x, pos2.z)
+		var dom: float = maxf(maxf(bw[2], bw[3]), maxf(bw[4], maxf(bw[0], maxf(bw[1], bw[5]))))
+		var edge_b: float = smoothstep(0.4, 0.8, dom)                   # 0 = borde entre biomas, 1 = corazón del bioma
+		var jungle: bool = bw[2] > 0.45
+		var scrub: bool = (bw[4] + bw[5]) > 0.45
+		var gap: float = lerpf(3.4, 2.3, grove) * lerpf(1.25, 1.0, edge_b)
+		if jungle:
+			gap *= 0.8                                                # selva: muy juntos
+		elif scrub:
+			gap *= 1.4                                                # matorral: árboles sueltos
+		if _too_close(pos2, gap):
+			continue                                                  # más juntos en el centro de la arboleda, más aire en los bordes
 		var kit_name: String = "NormalTree_%d" % rng.randi_range(1, 5)
 		var sc: float = rng.randf_range(0.9, 1.3)
-		var mix: float = rng.randf()
-		sc *= 1.0 + 0.25 * bw[2]                                         # la selva tiene árboles más grandes
-		var birch_t: float = 0.08 + 0.3 * bw[3]                          # abedules y arces: sobre todo en el bosque
-		if mix < birch_t:
-			kit_name = "BirchTree_%d" % rng.randi_range(1, 5)
-			sc = rng.randf_range(0.95, 1.4)
-		elif mix < birch_t * 2.0:
-			kit_name = "MapleTree_%d" % rng.randi_range(1, 5)
-			sc = rng.randf_range(0.8, 1.2)
+		var stray: bool = rng.randf() < 0.05                           # algún árbol fuera de su rodal, para que no sea una máquina
+		if jungle:
+			sc = rng.randf_range(1.2, 1.6)                            # selva: grandes y retorcidos
+			if (stand > -0.12) != stray:
+				kit_name = "TwistedTree_%d" % rng.randi_range(1, 5)
+		elif scrub:
+			sc = rng.randf_range(0.6, 0.9)                            # matorral: bajos
+		elif bw[3] > 0.35:
+			if (stand > 0.12) != stray:
+				kit_name = "BirchTree_%d" % rng.randi_range(1, 5)
+				sc = rng.randf_range(0.95, 1.4)
+			elif (stand < -0.12) != stray:
+				kit_name = "MapleTree_%d" % rng.randi_range(1, 5)
+				sc = rng.randf_range(0.8, 1.2)
+		sc *= lerpf(0.72, 1.05, smoothstep(0.0, 0.8, grove)) * lerpf(0.85, 1.0, edge_b)   # más chicos en los bordes
 		var mys: float = eco.get_misterio(pos2)
-		if rng.randf() < 0.05 + 0.12 * bw[2] + 0.6 * mys:
-			kit_name = "TwistedTree_%d" % rng.randi_range(1, 5)      # árboles retorcidos: selva y bordes de los claros misteriosos
+		if rng.randf() < 0.6 * mys:
+			kit_name = "TwistedTree_%d" % rng.randi_range(1, 5)      # retorcidos en los bordes de los claros misteriosos
 			sc = rng.randf_range(0.9, 1.3)
 		if pos2.y > 7.0 and rng.randf() < 0.9:
 			kit_name = "PineTree_%d" % rng.randi_range(1, 5)
@@ -650,6 +681,7 @@ func _scatter_flora() -> void:
 			sc = rng.randf_range(1.4, 1.9)
 		_add_tree(rng, pos2, kit_name, sc, Color(rng.randf_range(0.85, 1.05), rng.randf_range(0.9, 1.05), rng.randf_range(0.8, 0.95)), trunk_shape, vine, false)
 		made += 1
+	_add_edge_markers(rng)
 	# sotobosque por bioma, en grupos de 1 a 6 plantas (de a 2, 3 o 6 juntas) de la misma especie casi siempre
 	made = 0
 	tries = 0
@@ -785,14 +817,77 @@ func _palm_visual(rng: RandomNumberGenerator) -> Node3D:
 	var holder := Node3D.new()
 	var m := MeshInstance3D.new()
 	m.mesh = _palm_mesh
-	m.transform = _palm_xf
+	m.transform = Transform3D(Basis(Vector3.UP, rng.randf() * TAU), Vector3.ZERO) * _palm_xf
 	m.visibility_range_end = 150.0
 	m.visibility_range_end_margin = 10.0
 	m.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	holder.add_child(m)
 	holder.scale = Vector3.ONE * rng.randf_range(0.9, 1.1)
-	holder.rotation.y = rng.randf() * TAU
 	return holder
+
+## Ruido de rodales (manchas de ~55 m, -1..1): decide qué especie domina en cada mancha.
+var _stand_noise: FastNoiseLite = null
+
+func _stand_value(x: float, z: float) -> float:
+	if _stand_noise == null:
+		_stand_noise = FastNoiseLite.new()
+		_stand_noise.seed = noise_seed + 77
+		_stand_noise.frequency = 1.0 / 55.0
+	return _stand_noise.get_noise_2d(x, z) * 2.0
+
+## Dirección horizontal hacia el agua (hacia donde baja más el terreno).
+func _water_dir(p: Vector3) -> Vector3:
+	var best: Vector3 = Vector3(0, 0, 1)
+	var lo: float = 1e9
+	for i in 8:
+		var a: float = TAU * float(i) / 8.0
+		var h: float = _height(p.x + cos(a) * 5.0, p.z + sin(a) * 5.0)
+		if h < lo:
+			lo = h
+			best = Vector3(cos(a), 0.0, sin(a))
+	return best
+
+## Marca el límite entre claro y arboleda con troncos caídos y arbustos.
+func _add_edge_markers(rng: RandomNumberGenerator) -> void:
+	var logs: int = 0
+	var bushes: int = 0
+	var tries: int = 0
+	var bark: StandardMaterial3D = StandardMaterial3D.new()
+	bark.albedo_color = Color(0.36, 0.27, 0.2)
+	bark.roughness = 1.0
+	while (logs < 14 or bushes < 26) and tries < 900:
+		tries += 1
+		var q: Vector3 = _random_spot(rng, 2.2, 9.0)
+		if q.y < -90.0 or _cliff_mask(q.x, q.z) > 0.3 or _near_path(q.x, q.z, 1.5):
+			continue
+		var g: float = smoothstep(-0.14, 0.1, forest_value(q.x, q.z))
+		if absf(g - 0.5) > 0.22 or rng.randf() > 0.5:
+			continue                                                  # solo en la franja de transición
+		if _too_close(q, 1.4):
+			continue
+		if rng.randf() < 0.35 and logs < 14:
+			var lg := MeshInstance3D.new()
+			var cm := CylinderMesh.new()
+			var rad: float = rng.randf_range(0.16, 0.26)
+			cm.top_radius = rad * 0.85
+			cm.bottom_radius = rad
+			cm.height = rng.randf_range(2.4, 4.0)
+			cm.radial_segments = 7
+			cm.rings = 1
+			lg.mesh = cm
+			lg.material_override = bark
+			lg.position = q + Vector3(0, rad * 0.7, 0)
+			lg.rotation = Vector3(rng.randf_range(-0.08, 0.08), rng.randf() * TAU, PI / 2.0)
+			lg.visibility_range_end = 90.0
+			_flora.add_child(lg)
+			logs += 1
+		elif bushes < 26:
+			var bsh: Node3D = NatureKit.make("Bush_Common", Color(rng.randf_range(0.85, 1.05), rng.randf_range(0.9, 1.1), rng.randf_range(0.8, 1.0)), 110.0)
+			bsh.position = q - Vector3(0, 0.1, 0)
+			bsh.rotation.y = rng.randf() * TAU
+			bsh.scale = Vector3.ONE * rng.randf_range(1.0, 1.5)
+			_flora.add_child(bsh)
+			bushes += 1
 
 ## Forma de una roca: 0 redondeada, 1 normal, 2 de pico fino. `spike` = probabilidad de pico.
 func _rock_shape(rng: RandomNumberGenerator, spike: float) -> int:

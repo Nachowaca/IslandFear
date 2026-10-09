@@ -385,3 +385,8 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Árboles: tope 250; el ruido de manchas separa claros (casi sin árboles) de arboledas densas; separación 3.4 m en bordes, 2.3 m en el centro.
 - Palmeras de costa: modelo assets/terrain/stylized_palm_tree_1k_pbr.glb (3 troncos, ~23k tris, escalado a ~7 m), colisión radio 0.45. Sin medir fps aún.
 - Pendiente: rodales por especie y bordes graduales.
+
+## Rodales, bordes y palmerales
+- Especie por ruido de rodales (_stand_value, ~55 m): selva torcidos/grandes/juntos, bosque manchas de abedul y arce, matorral bajos y sueltos. 5 % fuera de rodal.
+- Bordes: árboles más chicos y espaciados en transición claro/arboleda y entre biomas; troncos caídos y arbustos marcan el límite (_add_edge_markers).
+- Palmeras en grupos de 2-3 modelos, solo en tramos de costa (ruido), inclinadas hacia el agua (_water_dir). Sin medir fps.
