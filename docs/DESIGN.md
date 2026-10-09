@@ -260,3 +260,8 @@ Baúl de madera fijo en la playa de llegada, vacío, con la inscripción 'Welcom
 - Fauna chica (mariposas): propuesta pendiente de OK = ~20 en un MultiMesh con movimiento en shader, reemplazando las ~30 con script propio.
 - Agua: el usuario la quiere como está; más suciedad/transparencia queda para cuando se diseñe el clima.
 - Clima/lluvia: aplazado. Herramientas DEV (F12 fps, cámara del cielo) se quitan antes de terminar.
+
+## Bloque 5 - estado de implementacion
+- 5.1, 5.2, 5.3, 5.4, 5.5, 5.6 implementadas (sin probar en juego largo). 5.7 voces hecha antes. 5.8 parcial: refugio y dormir hechos; faltan pescar, marcar caminos, sentarse a observar con fauna, sonido por salud.
+- Dormir: refugio simple (tela, madera, hojas), eleccion de minutos de la isla, pantalla de sueño con reloj acelerado, -2 % hambre y sed, mensajes de la isla segun su animo, pose fetal con Z grandes y marca brillante. El refugio dura 2 vidas.
+- Regla de arte: nada nuevo puede cambiar el look; sin luces nuevas, solo piezas simples y sprites aditivos.

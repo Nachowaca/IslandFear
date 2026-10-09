@@ -189,6 +189,43 @@ func cantidad(id: String) -> int:
 func tiene(id: String) -> bool:
 	return cantidad(id) > 0
 
+## Cantidad en la mochila MAS el baúl (para fabricar usando los dos).
+func cantidad_total(id: String) -> int:
+	var t: int = cantidad(id)
+	for e: Variant in cofre:
+		if e != null and str(e["id"]) == id:
+			t += int(e["n"])
+	return t
+
+func tiene_total(id: String) -> bool:
+	return cantidad_total(id) > 0
+
+## Gasta primero de la mochila y despues del baúl.
+func quitar_total(id: String, n: int) -> bool:
+	if cantidad_total(id) < n:
+		return false
+	var falta: int = n
+	var de_mochila: int = mini(cantidad(id), falta)
+	if de_mochila > 0:
+		quitar(id, de_mochila)
+		falta -= de_mochila
+	var tocado: bool = false
+	for i in cofre.size():
+		if falta <= 0:
+			break
+		var e: Variant = cofre[i]
+		if e != null and str(e["id"]) == id:
+			var t: int = mini(int(e["n"]), falta)
+			e["n"] = int(e["n"]) - t
+			falta -= t
+			if int(e["n"]) <= 0:
+				cofre[i] = null
+			tocado = true
+	if tocado:
+		_cofre_guardar()
+		cambiado.emit()
+	return true
+
 func item_seleccionado() -> Variant:
 	return espacios[seleccionado]
 

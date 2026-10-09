@@ -120,7 +120,12 @@ func preparar_mundo(p_terrain: IslandTerrain, p_player: Node3D) -> void:
 # ------------------------------------------------------------------ aplicar cada frame
 
 ## day: 0 noche..1 día; dusk: cercanía al horizonte; golden: sol bajo; e: elevación del sol; mañana: antes de mediodía.
+var _salud_k: float = 1.0   ## 1 = zona sana; baja un poco la saturacion si la zona esta danada (5.1)
+
 func aplicar(day: float, dusk: float, golden: float, e: float, manana: bool) -> void:
+	if player != null:
+		var sz: float = Isla.salud_en(player.global_position)
+		_salud_k = lerpf(_salud_k, lerpf(0.82, 1.0, sz), 0.02)
 	_w_noche = 1.0 - day
 	_w_dia = day
 	_w_tw = clampf(maxf(dusk, golden * 0.75), 0.0, 1.0)
@@ -188,7 +193,7 @@ func aplicar(day: float, dusk: float, golden: float, e: float, manana: bool) -> 
 
 	# postproceso
 	env.tonemap_exposure = p.exposicion
-	env.adjustment_saturation = p.saturacion * m_sat * (1.0 if on else 0.88)
+	env.adjustment_saturation = p.saturacion * m_sat * _salud_k * (1.0 if on else 0.88)
 	env.adjustment_contrast = p.contraste
 	env.glow_enabled = on and calidad >= Calidad.MEDIA
 	env.glow_intensity = p.intensidad_bloom

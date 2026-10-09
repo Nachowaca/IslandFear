@@ -12,6 +12,7 @@ var hand_local: Transform3D = Transform3D.IDENTITY   ## mano derecha en espacio 
 var hold: float = 0.0          ## 0..1: brazo derecho levantado sosteniendo un objeto
 var use_w: float = 0.0        ## 0..1: pulso de uso del objeto en mano (un gesto corto)
 
+var lie: float = 0.0           ## 0..1: acostado de costado en posicion fetal (dormir)
 var sit: float = 0.0           ## 0..1: sentado (contemplando)
 var hold_kind: String = ""     ## "luz", "herramienta", "caña" o "" (cómo se sostiene el objeto)
 var hold_kind_w: float = 0.0   ## 0..1: cuánto pesa el matiz del tipo de objeto
@@ -94,6 +95,15 @@ func _process_modification() -> void:
 		_rot(sk, "Abdomen", -0.06 * sit)
 		_rot(sk, "Torso", 0.04 * sit)
 		_rot(sk, "Head", 0.05 * sit)
+	if lie > 0.001:
+		for s3: String in ["L", "R"]:
+			_rot(sk, "UpperLeg." + s3, -1.75 * lie)
+			_rot(sk, "LowerLeg." + s3, 1.9 * lie)
+			_rot(sk, "UpperArm." + s3, -0.8 * lie)
+			_rot(sk, "LowerArm." + s3, -1.5 * lie)
+		_rot(sk, "Abdomen", -0.35 * lie)
+		_rot(sk, "Torso", -0.25 * lie)
+		_rot(sk, "Head", -0.2 * lie)
 	if pw > 0.001:
 		_rot(sk, "Abdomen", 0.35 * pw)
 		_rot(sk, "Torso", 0.3 * pw)

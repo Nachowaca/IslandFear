@@ -73,6 +73,10 @@ func _ready() -> void:
 	objs.set("terrain", terrain)
 	objs.name = "ObjetosDecorativos"
 	add_child(objs)
+	var huellas: Node3D = (load("res://scripts/objetos/huellas_isla.gd") as GDScript).new() as Node3D
+	huellas.set("terrain", terrain)
+	huellas.name = "HuellasNaufragos"
+	add_child(huellas)
 	var rec: Node3D = (load("res://scripts/objetos/recogibles_isla.gd") as GDScript).new() as Node3D
 	rec.set("terrain", terrain)
 	rec.name = "RecogiblesUso"
@@ -931,6 +935,11 @@ func _spawn_stelas() -> void:
 			continue
 		placed.append(spot)
 		_place_stela(root, str(msgs[k]), false, spot, rng.randi())
+	for rr: Variant in Isla.refugios_vigentes():      # los refugios armados siguen en pie 2 vidas
+		var rf: Node3D = (load("res://scripts/objetos/refugio.gd") as GDScript).new() as Node3D
+		root.add_child(rf)
+		rf.position = Vector3(float(rr["x"]), terrain.height_at(float(rr["x"]), float(rr["z"])), float(rr["z"]))
+		rf.rotation.y = float(rr.get("rot", 0.0))
 	for t in Isla.tumbas:
 		var tp: Vector3 = Vector3(float(t["x"]), 0.0, float(t["z"]))
 		tp.y = terrain.height_at(tp.x, tp.z)

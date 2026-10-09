@@ -17,6 +17,7 @@ var ap: AnimationPlayer
 var sk: Skeleton3D
 var pose: CastawayPose
 
+var lie_target: float = 0.0
 var sit_target: float = 0.0            ## 0 de pie, 1 sentado (la pose interpola hacia este valor)
 var _cur: String = ""
 var _air: bool = false
@@ -95,6 +96,7 @@ func update(dt: float, h_speed: float, air: bool, dead: bool, crouch_target: flo
 	pose.hold_kind_w = lerpf(pose.hold_kind_w, 1.0 if pose.hold_kind != "" else 0.0, kk)
 	pose.run_w = lerpf(pose.run_w, clampf((h_speed - 4.5) / 3.0, 0.0, 1.0), 1.0 - exp(-7.0 * dt))
 	pose.sit = lerpf(pose.sit, sit_target, 1.0 - exp(-5.0 * dt))
+	pose.lie = lerpf(pose.lie, lie_target, 1.0 - exp(-3.0 * dt))
 	if absf(pose.sit - sit_target) < 0.003:
 		pose.sit = sit_target
 	_use_t = maxf(_use_t - dt, 0.0)

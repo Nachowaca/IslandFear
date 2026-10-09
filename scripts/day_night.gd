@@ -138,6 +138,10 @@ var _equinox_unix: float = Time.get_unix_time_from_datetime_string("2026-03-20T0
 func _game_utc_hours() -> float:
 	return fposmod(Time.get_unix_time_from_system() * TIME_SCALE / 3600.0 + _offset_hours, 24.0)
 
+## Adelanta el reloj de la isla (dormir).
+func avanzar_horas(h: float) -> void:
+	_offset_hours += h
+
 func _current_hour() -> float:
 	return fposmod(_game_utc_hours() + longitude / 15.0, 24.0)
 

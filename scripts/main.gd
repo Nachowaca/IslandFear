@@ -137,8 +137,15 @@ func _ready() -> void:
 	inter.terrain = _island
 	inter.features = features
 	inter.ui = inv_ui
+	_castaway.aviso.connect(inv_ui.message)
 	inter.cofre_ui = cofre_ui
 	add_child(inter)
+	var sueno: Node = (load("res://scripts/sueno.gd") as GDScript).new() as Node
+	sueno.name = "Sueno"
+	sueno.set("player", _castaway)
+	sueno.set("terrain", _island)
+	add_child(sueno)
+	inter.sueno = sueno
 	var mano := HeldItem.new()
 	mano.name = "ObjetoEnMano"
 	mano.player = _castaway
@@ -163,6 +170,7 @@ func _ready() -> void:
 	var daynight := DayNight.new()
 	daynight.setup($Water3D/Sun as DirectionalLight3D, $Water3D/WorldEnvironment as WorldEnvironment)
 	add_child(daynight)
+	inter.sueno.set("daynight", daynight)
 	daynight.look.eco = eco
 	daynight.look.preparar_mundo(_island, _castaway)
 	var firefly := Firefly.new()

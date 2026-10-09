@@ -140,6 +140,10 @@ func _usar() -> void:
 				ui.message("No tenés sed. Guardala: algo más puede necesitarla.")
 		"semilla_azul":
 			_plantar()
+		"semilla_arbol":
+			_plantar_arbol()
+		"pescado", "raiz", "hongo_comestible":
+			_cocinar(sel)
 		"semilla_paz":
 			player.pulse_use()
 			var tp: Node = get_tree().get_first_node_in_group("templo")
@@ -179,6 +183,43 @@ func _plantar() -> void:
 	AudioManager.play(get_tree(), "step_grass", pos, -6.0)
 	Isla.registrar_evento("cuidado", pos, 0.8)
 	ui.message("Plantás la semilla. El brote tiene sed.")
+
+## Asar comida cruda con T, junto a una fogata encendida (5.3).
+const ASADOS: Dictionary = {"pescado": "pescado_asado", "raiz": "raiz_asada", "hongo_comestible": "hongo_asado"}
+
+func _cocinar(id: String) -> void:
+	var cerca: bool = false
+	for n: Node in get_tree().get_nodes_in_group("campfire"):
+		var c: Campfire = n as Campfire
+		if c != null and c.is_burning() and c.global_position.distance_to(player.global_position) < 3.2:
+			cerca = true
+	if not cerca:
+		ui.message("Para asarlo necesitás estar junto a una fogata encendida. Comerlo crudo (G) también alimenta.")
+		return
+	player.pulse_use()
+	Inventario.transformar_en(Inventario.seleccionado, str(ASADOS[id]))
+	AudioManager.play(get_tree(), "crack", player.global_position, -8.0)
+	ui.message("Asás %s en la brasa." % ItemDB.display_name(id).to_lower())
+
+func _plantar_arbol() -> void:
+	var pos: Vector3 = player.global_position - player.global_transform.basis.z * 1.4
+	var h: float = terrain.height_at(pos.x, pos.z) if terrain != null else pos.y
+	if h < 1.1 or (terrain != null and terrain.is_in_cave_area(pos.x, pos.z)):
+		ui.message("Acá no: la semilla necesita tierra firme.")
+		return
+	for q: Vector3 in terrain.tree_positions:
+		if Vector2(q.x - pos.x, q.z - pos.z).length() < 2.2:
+			ui.message("Hay un árbol muy cerca: no le va a alcanzar la luz.")
+			return
+	var pos3: Vector3 = Vector3(pos.x, h, pos.z)
+	if not terrain.plant_tree(pos3):
+		ui.message("La semilla no despierta todavía.")
+		return
+	Inventario.quitar_en(Inventario.seleccionado, 1)
+	player.play_action("pickup")
+	AudioManager.play(get_tree(), "step_grass", pos, -6.0)
+	Isla.registrar_evento("replantar", pos3, 1.0)
+	ui.message("Plantás la semilla. Va a tardar en ser árbol.")
 
 func _usar_mano() -> void:
 	match _shown:

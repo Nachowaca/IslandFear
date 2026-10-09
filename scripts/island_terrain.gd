@@ -401,8 +401,20 @@ func _spawn_life() -> void:
 ## Árboles talados guardados como molde (fuera del árbol de escena) para que la lluvia tranquila los haga rebrotar.
 var felled: Array = []
 
+var _molde_arbol: Node3D = null    ## ultimo arbol talado (molde para replantar con semillas)
+var _molde_palma: Node3D = null
+
 func fell_tree(tree: Node3D, dir: Vector3) -> Vector3:
 	var pos: Vector3 = tree.global_position
+	var es_palma_m: bool = palm_nodes.has(tree)
+	if es_palma_m:
+		if _molde_palma != null:
+			_molde_palma.free()
+		_molde_palma = tree.duplicate() as Node3D
+	else:
+		if _molde_arbol != null:
+			_molde_arbol.free()
+		_molde_arbol = tree.duplicate() as Node3D
 	var idx: int = tree_nodes.find(tree)
 	if felled.size() < 80 and (idx >= 0 or palm_nodes.has(tree)):
 		felled.append({"node": tree.duplicate(), "palm": palm_nodes.has(tree), "pos": pos})
@@ -455,6 +467,37 @@ func regrow_tree(i: int, seconds: float = 40.0) -> Vector3:
 	var tw: Tween = tree.create_tween()
 	tw.tween_property(tree, "scale", full, seconds).set_trans(Tween.TRANS_SINE)
 	return pos
+
+## Replanta un arbol (de semilla): aparece chico en `pos` y crece por etapas. Usa palma cerca de la costa. Devuelve false si no hay molde.
+func plant_tree(pos: Vector3, seconds: float = 150.0) -> bool:
+	if _flora == null:
+		return false
+	var palma: bool = pos.y < 4.0
+	var molde: Node3D = _molde_palma if palma else _molde_arbol
+	if molde == null:
+		palma = not palma
+		molde = _molde_palma if palma else _molde_arbol
+	if molde == null:
+		return false
+	var tree: Node3D = molde.duplicate() as Node3D
+	var full: Vector3 = tree.scale
+	tree.position = _flora.to_local(pos)
+	tree.scale = full * 0.1
+	tree.set_meta("golpes", 0)
+	if palma:
+		tree.set_meta("hojas", 4)
+		palm_nodes.append(tree)
+		palm_positions.append(pos)
+	else:
+		tree_nodes.append(tree)
+		tree_positions.append(pos)
+		tree_scales.append(full.x)
+	_flora.add_child(tree)
+	var tw: Tween = tree.create_tween()
+	tw.tween_property(tree, "scale", full * 0.35, seconds * 0.3).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(tree, "scale", full * 0.7, seconds * 0.35).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(tree, "scale", full, seconds * 0.35).set_trans(Tween.TRANS_SINE)
+	return true
 
 ## Quita árboles, arbustos y rocas de un círculo (para despejar un lugar especial).
 func clear_area(center: Vector2, r: float) -> void:

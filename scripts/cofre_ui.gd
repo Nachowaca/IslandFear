@@ -17,6 +17,10 @@ var _hover_cofre: int = -1
 var _hover_mochila: int = -1
 var _hover_cerrar: bool = false
 var _pulse: float = 0.0
+var _drag_cofre: bool = false      ## arrastrando: de donde sale
+var _drag_i: int = -1
+var _drag_todo: bool = true
+var _mouse: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	layer = 21
@@ -71,7 +75,7 @@ func _process(delta: float) -> void:
 # ------------------------------------------------------------------ geometría
 
 func _panel() -> Rect2:
-	var h: float = GRID_TOP + 5.0 * (CELL + GAP) + 50.0
+	var h: float = GRID_TOP + 5.0 * (CELL + GAP) + 54.0 + CELL + 50.0
 	var sz: Vector2 = _root.size
 	return Rect2((sz.x - PW) * 0.5, (sz.y - h) * 0.5, PW, h)
 
@@ -95,24 +99,54 @@ func _rect_cerrar() -> Rect2:
 
 # ------------------------------------------------------------------ entrada
 
+func _slot_en(pos: Vector2) -> Vector2i:
+	# x: 0 = baul, 1 = mochila; y: indice (-1 = ninguna)
+	for i in Inventario.COFRE_ESPACIOS:
+		if _rect_cofre(i).has_point(pos):
+			return Vector2i(0, i)
+	for j in Inventario.ESPACIOS:
+		if _rect_mochila(j).has_point(pos):
+			return Vector2i(1, j)
+	return Vector2i(0, -1)
+
 func _on_gui(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		var pos: Vector2 = (event as InputEventMouseMotion).position
+		_mouse = pos
 		_hover_cofre = -1
 		_hover_mochila = -1
 		_hover_cerrar = _rect_cerrar().has_point(pos)
-		for i in Inventario.COFRE_ESPACIOS:
-			if _rect_cofre(i).has_point(pos):
-				_hover_cofre = i
-	elif event is InputEventMouseButton and event.pressed:
+		var sl: Vector2i = _slot_en(pos)
+		if sl.y >= 0:
+			if sl.x == 0:
+				_hover_cofre = sl.y
+			else:
+				_hover_mochila = sl.y
+	elif event is InputEventMouseButton:
 		var mb: InputEventMouseButton = event
 		if mb.button_index != MOUSE_BUTTON_LEFT and mb.button_index != MOUSE_BUTTON_RIGHT:
 			return
-		var todo: bool = mb.button_index == MOUSE_BUTTON_LEFT
-		if _rect_cerrar().has_point(mb.position):
-			cerrar()
-		elif _hover_cofre >= 0:
-			Inventario.mover(true, _hover_cofre, 99 if todo else 1)
+		var sl2: Vector2i = _slot_en(mb.position)
+		if mb.pressed:
+			if _rect_cerrar().has_point(mb.position):
+				cerrar()
+			elif sl2.y >= 0:
+				var lista: Array = Inventario.cofre if sl2.x == 0 else Inventario.espacios
+				if lista[sl2.y] != null:
+					_drag_cofre = sl2.x == 0
+					_drag_i = sl2.y
+					_drag_todo = mb.button_index == MOUSE_BUTTON_LEFT
+		elif _drag_i >= 0:
+			# soltar: sobre el otro lado (o con un clic en la misma celda) pasa al otro lado
+			var pasa: bool = false
+			if sl2.y >= 0:
+				var destino_cofre: bool = sl2.x == 0
+				pasa = destino_cofre != _drag_cofre or (sl2.y == _drag_i)
+			else:
+				pasa = false
+			if pasa:
+				Inventario.mover(_drag_cofre, _drag_i, 99 if _drag_todo else 1)
+			_drag_i = -1
 	_root.accept_event()
 
 # ------------------------------------------------------------------ dibujo
@@ -136,15 +170,26 @@ func _draw_all() -> void:
 	var pn: Rect2 = _panel()
 	UiTheme.draw_panel(_root, pn, UiTheme.C_BRASS)
 	UiTheme.text(_root, UiTheme.TITLE, pn.position + Vector2(30, 50), "BAÚL", 32, UiTheme.C_BRASS, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 5)
-	UiTheme.text(_root, UiTheme.BODY, pn.position + Vector2(160, 36), "Clic: sacar la pila     Clic derecho: sacar una", 18, UiTheme.C_DIM, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 3)
+	UiTheme.text(_root, UiTheme.BODY, pn.position + Vector2(160, 36), "Clic o arrastrar: pasa la pila al otro lado     Clic derecho: una unidad", 18, UiTheme.C_DIM, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 3)
 	UiTheme.text(_root, UiTheme.BODY, pn.position + Vector2(160, 58), "Teclas 1-0: guardar esa casilla de la barra (Shift: una sola)", 18, UiTheme.C_DIM, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 3)
 	var rc: Rect2 = _rect_cerrar()
 	_root.draw_style_box(UiTheme.panel_style(10, UiTheme.C_TEAL if _hover_cerrar else Color(UiTheme.C_BRASS, 0.6), Color(0.05, 0.1, 0.12, 0.9), 2), rc)
 	UiTheme.text(_root, UiTheme.BOLD, rc.position + Vector2(0, 28), "Cerrar  (E)", 22, UiTheme.C_TEXT, rc.size.x, HORIZONTAL_ALIGNMENT_CENTER, 4)
 	for i in Inventario.COFRE_ESPACIOS:
 		_draw_slot(_rect_cofre(i), Inventario.cofre[i], i == _hover_cofre)
+	UiTheme.text(_root, UiTheme.BOLD, _rect_mochila(0).position + Vector2(0, -10.0), "MOCHILA", 22, UiTheme.C_BRASS, -1.0, HORIZONTAL_ALIGNMENT_LEFT, 4)
+	for j in Inventario.ESPACIOS:
+		_draw_slot(_rect_mochila(j), Inventario.espacios[j], j == _hover_mochila)
+	if _drag_i >= 0:
+		var de: Variant = Inventario.cofre[_drag_i] if _drag_cofre else Inventario.espacios[_drag_i]
+		if de != null:
+			var tx: Texture2D = UiTheme.icon(str(de["id"]))
+			if tx != null:
+				_root.draw_texture_rect(tx, Rect2(_mouse - Vector2(30, 30), Vector2(60, 60)), false, Color(1, 1, 1, 0.85))
 	var sel: Variant = null
 	if _hover_cofre >= 0:
 		sel = Inventario.cofre[_hover_cofre]
+	elif _hover_mochila >= 0:
+		sel = Inventario.espacios[_hover_mochila]
 	if sel != null:
 		UiTheme.text(_root, UiTheme.BOLD, Vector2(pn.position.x, pn.end.y - 20.0), ItemDB.display_name(str(sel["id"])), 24, UiTheme.C_TEXT, pn.size.x, HORIZONTAL_ALIGNMENT_CENTER, 5)

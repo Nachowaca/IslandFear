@@ -17,6 +17,7 @@ var _cofre: CofrePlaya
 var _prev: Dictionary = {}
 var _target: WorldItem
 var _fire: Campfire
+var sueno: Node             ## sistema de dormir (lo crea main.gd)
 var _plant: Node3D
 var _stela: Stela
 var _craft_open: bool = false
@@ -112,7 +113,8 @@ func _process(delta: float) -> void:
 	_stela = _stela_delante()
 	_cofre = _cofre_delante()
 	var partes: Array[String] = []
-	if not _craft_open:
+	var durmiendo: bool = sueno != null and int(sueno.get("estado")) != 0
+	if not _craft_open and not durmiendo:
 		if _target != null:
 			partes.append("E: beber" if _target.item_id == "agua_dulce" else "E: recoger %s" % _target.display_name)
 			partes.append("F: investigar")
@@ -120,6 +122,8 @@ func _process(delta: float) -> void:
 			partes.append("F: leer la piedra")
 		elif _cofre != null:
 			partes.append("E: abrir el baúl")
+		elif sueno != null and sueno.call("cerca") != null:
+			partes.append("E: dormir en el refugio")
 		elif _fire != null:
 			partes.append("E: echar leña al fuego")
 			if _fire.is_burning():
@@ -266,6 +270,9 @@ func _sonido(id: String, pos: Vector3, db: float = -6.0) -> void:
 
 func _recoger() -> void:
 	if _target == null:
+		if sueno != null and sueno.call("cerca") != null and _cofre == null:
+			sueno.call("abrir")
+			return
 		if _cofre != null and cofre_ui != null:
 			cofre_ui.abrir(_cofre)
 		elif _fire != null:
@@ -292,6 +299,8 @@ func _recoger() -> void:
 		ui.message("Inventario lleno.")
 		return
 	var tomadas: int = it.amount - resto
+	if it.item_id == "flor_luminosa" and _en_sagrado(it.global_position):
+		Isla.registrar_evento("zona_sagrada", it.global_position, 1.5)      # arrancar una flor rara de un lugar sagrado
 	player.play_action("pickup")
 	_sonido("step_grass", it.global_position)
 	if resto > 0:
@@ -355,7 +364,7 @@ func _ofrenda(id: String, pos: Vector3, it: WorldItem = null) -> void:
 		var sn: Node3D = n as Node3D
 		if sn != null and Vector2(pos.x - sn.global_position.x, pos.z - sn.global_position.z).length() < 2.4:
 			_gesto_ofrenda(pos)
-			Isla.registrar_evento("ofrenda", pos, 0.6)
+			Isla.registrar_evento("ofrenda", pos, 0.6 * (1.6 if _es_propia(id, pos) else 1.0))
 			_calma_ofrenda(id, pos)
 			ui.message("Dejás una ofrenda ante la piedra tallada. La isla lo siente.")
 			return
@@ -365,7 +374,7 @@ func _ofrenda(id: String, pos: Vector3, it: WorldItem = null) -> void:
 		var p: Vector3 = sp["pos"]
 		if Vector2(pos.x - p.x, pos.z - p.z).length() < float(sp["radius"]) + 1.5:
 			_gesto_ofrenda(pos)
-			Isla.registrar_evento("ofrenda", pos, 1.0)
+			Isla.registrar_evento("ofrenda", pos, 1.0 * (1.6 if _es_propia(id, pos) else 1.0))
 			_calma_ofrenda(id, pos)
 			ui.message("Dejás una ofrenda en %s. La isla lo siente." % str(sp["name"]).to_lower())
 			return
@@ -375,7 +384,27 @@ const OFRENDA_BIOMA: Dictionary = {
 	"bosque": ["flor_luminosa", "fruto_dorado", "pluma"],
 	"roquedal": ["cristal_cueva", "figurilla_barro", "moneda_pirata"],
 	"costa": ["concha", "caracola", "perla", "vidrio_marino"],
+	"selva": ["botella_agua", "hierba", "semilla_arbol"],
+	"matorral": ["bayas", "raiz", "semilla_arbol", "raiz_asada"],
+	"zona árida": ["arcilla", "sal", "figurilla_barro"],
 }
+
+func _en_sagrado(pos: Vector3) -> bool:
+	if features == null:
+		return false
+	for sp: Dictionary in features.sacred_spots:
+		if str(sp["kind"]) == "refuge":
+			continue
+		var q: Vector3 = sp["pos"]
+		if Vector2(pos.x - q.x, pos.z - q.z).length() < float(sp["radius"]) + 1.0:
+			return true
+	return false
+
+func _es_propia(id: String, pos: Vector3) -> bool:
+	var bioma: String = ""
+	if Isla.eco != null:
+		bioma = str(Isla.eco.get_bioma_nombre(pos)).to_lower()
+	return OFRENDA_BIOMA.has(bioma) and (OFRENDA_BIOMA[bioma] as Array).has(id)
 
 func _calma_ofrenda(id: String, pos: Vector3) -> void:
 	var br: Node = get_tree().current_scene.get_node_or_null("IslandBrain")
@@ -406,7 +435,8 @@ func _contaminante(id: String, pos: Vector3, it: WorldItem) -> void:
 				Isla.registrar_evento("limpieza", pos, 1.0)
 				ui.message("Dejás %s en la cueva. Algo en la roca parece aflojarse." % ItemDB.display_name(id).to_lower())
 				return
-	Isla.registrar_evento("contaminacion", pos, 1.0)
+	var cerca_estanque: bool = Vector2(pos.x, pos.z).distance_to(IslandTerrain.POND_CENTER) < IslandTerrain.POND_RADIUS + 4.0
+	Isla.registrar_evento("contaminacion", pos, 2.5 if cerca_estanque else 1.0)
 
 # ------------------------------------------------------------------ probar / comer
 
@@ -521,6 +551,8 @@ func cortar_con_mano(herramienta: String) -> void:
 	ui.message("¡Cae %s!" % ("el árbol de la costa" if es_palma else "el árbol"))
 	_sonido("boom", pos, -8.0)
 	Isla.registrar_evento("arbol_cortado", pos, 1.0)
+	if _en_sagrado(pos):
+		Isla.registrar_evento("zona_sagrada", pos, 3.0)      # talar en un lugar sagrado pesa mas
 	await get_tree().create_timer(1.3).timeout
 	if not is_inside_tree():
 		return
@@ -532,6 +564,9 @@ func cortar_con_mano(herramienta: String) -> void:
 		var rp: Vector3 = pos + dir * _rng.randf_range(0.8, 3.0) + Vector3(_rng.randf_range(-1.0, 1.0), 0.0, _rng.randf_range(-1.0, 1.0))
 		rp.y = terrain.height_at(rp.x, rp.z)
 		_spawn_item("hoja_grande" if es_palma else "rama", 1, rp)
+	var sp: Vector3 = pos + dir * _rng.randf_range(1.0, 2.2) + Vector3(_rng.randf_range(-0.8, 0.8), 0.0, _rng.randf_range(-0.8, 0.8))
+	sp.y = terrain.height_at(sp.x, sp.z)
+	_spawn_item("semilla_arbol", _rng.randi_range(1, 2), sp)
 
 # ------------------------------------------------------------------ combinar (C)
 
@@ -565,7 +600,7 @@ func _refrescar_craft() -> void:
 	var list: Array[Dictionary] = []
 	for r: Dictionary in Recipes.LIST:
 		var outs: Array = (r["out"] as Dictionary).keys()
-		list.append({"name": r["name"], "desc": r["desc"], "ing": Recipes.ingredients_text(r), "ok": Recipes.can(r), "icon": str(outs[0]) if not outs.is_empty() else "fuego"})
+		list.append({"name": r["name"], "desc": r["desc"], "ing": Recipes.ingredients_text(r), "ok": Recipes.can(r), "icon": str(outs[0]) if not outs.is_empty() else str(r.get("icon", "fuego"))})
 	ui.show_recipes(list, _craft_idx)
 
 func _crear() -> void:
@@ -587,8 +622,11 @@ func _terminar_crear(r: Dictionary) -> void:
 	if str(r.get("special", "")) == "fuego":
 		_encender()
 		return
+	if str(r.get("special", "")) == "refugio":
+		_armar_refugio(r)
+		return
 	for id: String in (r["consume"] as Dictionary).keys():
-		Inventario.quitar(id, int(r["consume"][id]))
+		Inventario.quitar_total(id, int(r["consume"][id]))
 	for id2: String in (r["out"] as Dictionary).keys():
 		var resto: int = Inventario.agregar(id2, int(r["out"][id2]))
 		if resto > 0:
@@ -601,6 +639,35 @@ func _terminar_crear(r: Dictionary) -> void:
 	ui.message("Fabricás: %s" % str(r["name"]))
 	_refrescar_craft()
 
+## Arma un refugio (techito de tela + cama de hojas) delante del personaje.
+func _armar_refugio(r: Dictionary) -> void:
+	var pos: Vector3 = player.global_position - player.global_transform.basis.z * 2.3
+	var h: float = terrain.height_at(pos.x, pos.z)
+	if h < 1.2 or terrain.is_in_cave_area(pos.x, pos.z):
+		ui.message("Acá no: buscá tierra firme y seca para el refugio.")
+		return
+	for n: Node in get_tree().get_nodes_in_group("refugio"):
+		if (n as Node3D).global_position.distance_to(pos) < 5.0:
+			ui.message("Ya hay un refugio muy cerca.")
+			return
+	for tp: Vector3 in terrain.tree_positions:
+		if Vector2(tp.x - pos.x, tp.z - pos.z).length() < 1.6:
+			ui.message("Hay un árbol en el medio: correte un poco.")
+			return
+	for id: String in (r["consume"] as Dictionary).keys():
+		Inventario.quitar_total(id, int(r["consume"][id]))
+	var rf: Node3D = (load("res://scripts/objetos/refugio.gd") as GDScript).new() as Node3D
+	get_parent().add_child(rf)
+	rf.global_position = Vector3(pos.x, h, pos.z)
+	rf.rotation.y = player.rotation.y + PI
+	Isla.refugios.append({"x": pos.x, "y": h, "z": pos.z, "vida": Isla.vida, "rot": rf.rotation.y})
+	Isla.guardar()
+	_craft_open = false
+	ui.hide_recipes()
+	_sonido("crack", pos, -6.0)
+	player.express("determined", 1.2)
+	ui.message("Armás un refugio. Con E te acostás a dormir.")
+
 ## Chocar dos piedras junto a paja o leña. La paja prende casi siempre; solo con leña cuesta más.
 func _encender() -> void:
 	var fwd: Vector3 = -player.global_transform.basis.z
@@ -610,22 +677,22 @@ func _encender() -> void:
 		ui.message("Acá el suelo está mojado: no prende.")
 		return
 	pos.y = h
-	var paja: bool = Inventario.tiene("paja")
-	var lena: String = "rama" if Inventario.tiene("rama") else ("madera" if Inventario.tiene("madera") else "")
+	var paja: bool = Inventario.tiene_total("paja")
+	var lena: String = "rama" if Inventario.tiene_total("rama") else ("madera" if Inventario.tiene_total("madera") else "")
 	var chance: float = 0.95 if (paja and lena != "") else (0.85 if paja else 0.3)
 	_sonido("crack", player.global_position, -2.0)
 	player.express("determined", 1.0)
 	if _rng.randf() > chance:
 		if paja and _rng.randf() < 0.5:
-			Inventario.quitar("paja", 1)
+			Inventario.quitar_total("paja", 1)
 		ui.message("Las chispas saltan pero no prenden. Probá de nuevo.")
 		return
 	var seg: float = 0.0
 	if paja:
-		Inventario.quitar("paja", 1)
+		Inventario.quitar_total("paja", 1)
 		seg += float(FUEL_SECONDS["paja"])
 	if lena != "":
-		Inventario.quitar(lena, 1)
+		Inventario.quitar_total(lena, 1)
 		seg += float(FUEL_SECONDS[lena])
 	var fire := Campfire.new()
 	fire.fuel = seg
@@ -634,7 +701,9 @@ func _encender() -> void:
 	_craft_open = false
 	ui.hide_recipes()
 	ui.message("¡El fuego prende!")
-	Isla.registrar_evento("fuego", pos, 1.0)
+	# en selva o bosque humedo ofende mas; en costa o claro casi nada
+	var bn: String = Isla.eco.get_bioma_nombre(pos) if Isla.eco != null else ""
+	Isla.registrar_evento("fuego", pos, 1.0 if (bn == "selva" or bn == "bosque") else 0.35)
 
 ## Echar leña a una fogata cercana con el objeto elegido (madera, rama o paja).
 func _avivar() -> void:
@@ -665,6 +734,11 @@ func _investigar() -> void:
 		var linea: String = _stela.text.replace("\n", " · ")
 		texto = ("Una tumba tallada. " if _stela.is_tomb else "Una piedra con marcas talladas por alguien que llegó antes que vos. ") + "Dice: «%s»" % linea
 		pos = _stela.global_position
+	elif _huella_cerca() != null:
+		var hn: Node3D = _huella_cerca()
+		var tx: Array = hn.get_meta("textos") as Array
+		texto = str(tx[_rng.randi() % tx.size()])
+		pos = hn.global_position
 	elif _fire != null:
 		texto = "Una fogata. Da luz y calor, y se apaga si no le echás leña." + (" Todavía arde (durabilidad %d %%)." % roundi(_fire.durability()) if _fire.is_burning() else " Ya no arde: solo quedan brasas.")
 	elif _plant != null:
@@ -694,6 +768,20 @@ func _investigar() -> void:
 				return
 	ui.show_info(texto)
 	Isla.registrar_evento("explorar", pos, 0.3)      # investigar despierta la curiosidad de la isla
+
+## Huella de otro náufrago a menos de 2.4 m (5.6).
+func _huella_cerca() -> Node3D:
+	var best: Node3D = null
+	var bd: float = 2.4
+	for n: Node in get_tree().get_nodes_in_group("huella"):
+		var h: Node3D = n as Node3D
+		if h == null:
+			continue
+		var d: float = Vector2(h.global_position.x - player.global_position.x, h.global_position.z - player.global_position.z).length()
+		if d < bd:
+			bd = d
+			best = h
+	return best
 
 func _lugar_cercano() -> Dictionary:
 	if features == null:

@@ -1216,6 +1216,10 @@ func status_lines() -> Array[String]:
 	lines.append("Emociones: %s" % Isla.resumen())
 	lines.append("Agravios: %.1f (solo suben si le hacés mal)   Curiosidad: %d%%   Humor: %d%%" % [offense, int(_curiosity * 100.0), int(_noise * 100.0)])
 	lines.append("Hostilidad: %d / 100" % int(_effective_hostility()))
+	var sz: PackedStringArray = PackedStringArray()
+	for bn: String in Isla.salud_zona.keys():
+		sz.append("%s %d%%" % [bn, int(float(Isla.salud_zona[bn]) * 100.0)])
+	lines.append("Salud de zonas: %s" % (", ".join(sz) if sz.size() > 0 else "todas sanas"))
 	lines.append("Energía: %d / 100" % int(energy))
 	lines.append("Rencor: %d" % int(grudge))
 	lines.append("Hora: %s" % ("noche" if _night > 0.5 else "día"))

@@ -16,7 +16,7 @@ const ETAPA_LIMITES: Array[float] = [-40.0, -10.0, 15.0, 45.0, 75.0]
 const VINCULO_FX: Dictionary = {
 	"arbol_cortado": -8.0, "fuego": -3.0, "animal_cazado": -12.0, "animal_molestado": -0.6,
 	"fruto_tomado": -0.15, "zona_sagrada": -0.5,
-	"ofrenda": 7.0, "cuidado": 1.0, "contemplar": 0.3, "explorar": 0.2, "limpieza": 3.0, "contaminacion": -0.5,
+	"ofrenda": 7.0, "replantar": 3.0, "cuidado": 1.0, "contemplar": 0.3, "explorar": 0.2, "limpieza": 3.0, "contaminacion": -0.5,
 }
 const PAZ_TOPE: float = 40.0                 ## la paz sola no pasa de aquí: para más hacen falta gestos (ofrendas)
 
@@ -71,14 +71,31 @@ const EVENTOS: Dictionary = {
 	"limpieza": {"cont": "", "fx": {"confianza": 0.10, "enojo": -0.08, "miedo": -0.03}, "dano": false},
 	"contaminacion": {"cont": "", "fx": {"enojo": 0.04, "confianza": -0.02}, "dano": false},
 	"explorar": {"cont": "", "fx": {"curiosidad": 0.05, "miedo": -0.01}, "dano": false},
+	"replantar": {"cont": "", "fx": {"confianza": 0.08, "enojo": -0.05, "miedo": -0.02}, "dano": false},
 	"cuidado": {"cont": "", "fx": {"confianza": 0.05, "enojo": -0.03}, "dano": false},
 	"cofre": {"cont": "", "fx": {"curiosidad": 0.02}, "dano": false},
 	"contemplar": {"cont": "", "fx": {"confianza": 0.03, "enojo": -0.02, "miedo": -0.02}, "dano": false},
 	"muerte_jugador": {"cont": "muertes", "fx": {"curiosidad": 0.15, "enojo": -0.12, "miedo": 0.05}, "dano": false},
 }
 
+## Salud de zona (5.1): cuanto sube o baja la salud del bioma por cada unidad de cada evento.
+const SALUD_FX: Dictionary = {"arbol_cortado": -0.02, "fuego": -0.015, "animal_cazado": -0.03, "animal_molestado": -0.01, "zona_sagrada": -0.01, "contaminacion": -0.03, "ofrenda": 0.06, "replantar": 0.08, "limpieza": 0.05, "cuidado": 0.03}
+const SALUD_REGEN: float = 0.0002        ## por segundo, solo en paz (90 s sin ofensas)
+
 const VIDAS_MAX: int = 7
 const VINCULO_INICIO: float = 30.0     ## vínculo mínimo al abrir el juego (Tolerante: la luciérnaga viene)
+
+var refugios: Array = []                ## refugios armados: {x, y, z, vida}; duran la vida en que se arman y la siguiente
+const REFUGIO_VIDAS: int = 2
+
+## Refugios que siguen en pie en la vida actual (los demas se pierden).
+func refugios_vigentes() -> Array:
+	var out: Array = []
+	for r: Variant in refugios:
+		if vida - int(r["vida"]) < REFUGIO_VIDAS:
+			out.append(r)
+	refugios = out
+	return out
 
 var tumbas: Array = []                  ## piedras de las vidas pasadas del ciclo: {x, y, z, texto}
 
@@ -103,6 +120,7 @@ var calor_dano: Dictionary = {}         ## Vector2i -> daño que causó ahí
 var eco: EcoMap                          ## mapa ecológico (lo asigna main.gd)
 var bioma_tiempo: Dictionary = {}       ## nombre de bioma -> segundos que pasó el jugador ahí
 var bioma_eventos: Dictionary = {}      ## nombre de bioma -> {tipo de evento: cantidad}
+var salud_zona: Dictionary = {}          ## nombre de bioma -> salud 0..1 (1 = sana; no se muestra al jugador)
 
 var _emitido: Dictionary = {}
 var _guardar_t: float = 30.0
@@ -132,6 +150,9 @@ func _personalidad_inicial() -> void:
 
 func _process(delta: float) -> void:
 	_t_dano += delta
+	if _t_dano > 90.0:
+		for bn: String in salud_zona.keys():
+			salud_zona[bn] = minf(float(salud_zona[bn]) + SALUD_REGEN * delta, 1.0)
 	for e: String in EMOCIONES:
 		var v: float = float(valor[e])
 		v = lerpf(v, float(base[e]), 1.0 - exp(-float(DECAIMIENTO[e]) * delta))
@@ -176,6 +197,8 @@ func registrar_evento(tipo: String, zona: Variant = Vector2i.ZERO, intensidad: f
 		var ev_b: Dictionary = bioma_eventos.get(bn, {})
 		ev_b[tipo] = float(ev_b.get(tipo, 0.0)) + intensidad
 		bioma_eventos[bn] = ev_b
+		if SALUD_FX.has(tipo):
+			salud_zona[bn] = clampf(float(salud_zona.get(bn, 1.0)) + float(SALUD_FX[tipo]) * intensidad, 0.0, 1.0)
 	evento_registrado.emit(tipo, pos3, intensidad)
 
 ## Para contadores que son tiempo (tiempo_corriendo, tiempo_explorando...).
@@ -204,6 +227,12 @@ func bioma_favorito(min_segundos: float = 60.0) -> Dictionary:
 ## Cuánto de un tipo de evento ocurrió en un bioma (tala, fuego, fruto tomado...).
 func eventos_en_bioma(nombre: String, tipo: String) -> float:
 	return float((bioma_eventos.get(nombre, {}) as Dictionary).get(tipo, 0.0))
+
+## Salud (0..1) de la zona donde está `pos`. 1 = sana.
+func salud_en(pos: Vector3) -> float:
+	if eco == null or not is_instance_valid(eco):
+		return 1.0
+	return float(salud_zona.get(eco.get_bioma_nombre(pos), 1.0))
 
 func sumar_paso(pos: Vector3, segundos: float) -> void:
 	var cell: Vector2i = celda_de(pos)
@@ -268,6 +297,7 @@ func nuevo_ciclo(tipo_final: String) -> void:
 	ciclo += 1
 	vida = 1
 	tumbas.clear()
+	refugios.clear()
 	vinculo = 0.0
 	_etapa_prev = etapa_idx()
 	ultimo_final = tipo_final
@@ -303,6 +333,7 @@ func reiniciar_memoria() -> void:
 	calor_dano.clear()
 	bioma_tiempo.clear()
 	bioma_eventos.clear()
+	salud_zona.clear()
 	base = {"confianza": 0.45, "enojo": 0.15, "miedo": 0.1, "curiosidad": 0.5}
 	_personalidad_inicial()
 	guardar()
@@ -344,10 +375,10 @@ func _celdas(d: Dictionary) -> Dictionary:
 
 func guardar() -> void:
 	var data: Dictionary = {
-		"vida": vida, "ciclo": ciclo, "ultimo_final": ultimo_final, "vinculo": vinculo, "tumbas": tumbas, "base": base, "valor": valor, "sensibilidad": sensibilidad,
+		"vida": vida, "ciclo": ciclo, "ultimo_final": ultimo_final, "vinculo": vinculo, "tumbas": tumbas, "refugios": refugios, "base": base, "valor": valor, "sensibilidad": sensibilidad,
 		"total": total, "vida_actual": vida_actual,
 		"calor_paso": _claves(calor_paso), "calor_dano": _claves(calor_dano),
-		"bioma_tiempo": bioma_tiempo, "bioma_eventos": bioma_eventos,
+		"bioma_tiempo": bioma_tiempo, "bioma_eventos": bioma_eventos, "salud_zona": salud_zona,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f != null:
@@ -366,6 +397,7 @@ func cargar() -> bool:
 	ultimo_final = str(d.get("ultimo_final", ""))
 	vinculo = float(d.get("vinculo", 0.0))
 	tumbas = d.get("tumbas", []) as Array
+	refugios = d.get("refugios", []) as Array
 	_etapa_prev = etapa_idx()
 	sensibilidad = float(d.get("sensibilidad", 1.0))
 	for e: String in EMOCIONES:
@@ -378,5 +410,6 @@ func cargar() -> bool:
 	calor_dano = _celdas(d.get("calor_dano", {}))
 	bioma_tiempo = d.get("bioma_tiempo", {}) as Dictionary
 	bioma_eventos = d.get("bioma_eventos", {}) as Dictionary
+	salud_zona = d.get("salud_zona", {}) as Dictionary
 	return true
 

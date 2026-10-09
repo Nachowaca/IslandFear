@@ -295,7 +295,7 @@ func _events(delta: float, p: Vector3, day: float, hostile: float, shore: float)
 		# el escenario refleja la relación: más pájaros si la isla confía, silencio hostil si no
 		var mood: float = brain.ambient_mood() if brain != null else 0.0
 		var warmth: float = (1.0 + 0.4 * maxf(mood, 0.0)) * (1.0 - 0.85 * maxf(-mood, 0.0))
-		if _rng.randf() < (0.3 + 0.7 * _forest) * (1.0 - 0.8 * hostile) * _close * warmth:
+		if _rng.randf() < (0.3 + 0.7 * _forest) * (1.0 - 0.8 * hostile) * _close * warmth * lerpf(0.3, 1.0, Isla.salud_en(p)):
 			_play3d("bird", _around(p, 8.0, 30.0, 4.0, 9.0), _rng.randf_range(-9.0, -3.0), _rng.randf_range(0.9, 1.15), BUS_AMB, 8.0, 80.0)
 	if _tick("gull", delta, 6.0, 15.0) and day > 0.3 and outside:
 		if _rng.randf() < (0.4 + 0.6 * shore) * (0.35 + 0.65 * _close):

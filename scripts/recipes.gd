@@ -19,18 +19,20 @@ const LIST: Array[Dictionary] = [
 		"in": {"rama": 1, "cuerda": 1, "espina": 1}, "consume": {"rama": 1, "cuerda": 1, "espina": 1}, "out": {"cana_pescar": 1}},
 	{"id": "figurilla_barro", "name": "Figurilla de barro", "desc": "Modelás arcilla con las manos, con paciencia.",
 		"in": {"arcilla": 2}, "consume": {"arcilla": 2}, "out": {"figurilla_barro": 1}},
+	{"id": "refugio", "name": "Refugio", "desc": "Un techito de tela y una cama de hojas para dormir.", "icon": "tela_grande",
+		"in": {"tela_grande": 1, "madera": 2, "hoja_grande": 3}, "consume": {"tela_grande": 1, "madera": 2, "hoja_grande": 3}, "out": {}, "special": "refugio"},
 	{"id": "fuego", "name": "Encender fuego", "desc": "Chocás dos piedras junto a paja seca o leña.",
 		"in": {"piedra": 2}, "any": ["paja", "rama", "madera"], "consume": {}, "out": {}, "special": "fuego"},
 ]
 
 static func can(r: Dictionary) -> bool:
 	for id: String in (r["in"] as Dictionary).keys():
-		if Inventario.cantidad(id) < int(r["in"][id]):
+		if Inventario.cantidad_total(id) < int(r["in"][id]):
 			return false
 	if r.has("any"):
 		var ok: bool = false
 		for id2: String in r["any"]:
-			if Inventario.cantidad(id2) > 0:
+			if Inventario.cantidad_total(id2) > 0:
 				ok = true
 		return ok
 	return true

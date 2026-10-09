@@ -25,6 +25,7 @@ extends CharacterBody3D
 
 signal damaged(amount: float, source: String)
 signal died
+signal aviso(texto: String)
 signal stepped(surface: String, power: float)
 
 @export_group("Salud")
@@ -106,9 +107,78 @@ func drain_health(amount: float, source: String = "") -> void:
 		controllable = false
 		died.emit()
 
+## Agua (5.4): `mojado` 0..1 sube en el agua y se seca de a poco (el fuego lo va a acelerar en 5.3).
+## Quedarse mucho tiempo en agua honda enfria y baja la vida de a poco.
+const INMERSION_AVISO: float = 25.0
+const INMERSION_DANO: float = 45.0
+var mojado: float = 0.0
+var temp: float = 100.0         ## temperatura corporal 0..100: baja con la noche y estando mojado, sube junto al fuego
+var cerca_fuego: float = 0.0
+var _avisado_frio: bool = false
+var _dn_ref: Node
+var en_agua: bool = false
+var _inmersion: float = 0.0
+var _avisado_agua: bool = false
+
+func _update_calor(delta: float) -> void:
+	if _dn_ref == null:
+		_dn_ref = get_tree().get_first_node_in_group("daynight")
+	var noche: float = float(_dn_ref.get("night_amount")) if _dn_ref != null else 0.0
+	cerca_fuego = 0.0
+	for n: Node in get_tree().get_nodes_in_group("campfire"):
+		var c: Campfire = n as Campfire
+		if c != null and c.is_burning():
+			cerca_fuego = maxf(cerca_fuego, 1.0 - clampf(c.global_position.distance_to(global_position) / 6.0, 0.0, 1.0))
+	if cerca_fuego > 0.0:
+		mojado = maxf(mojado - delta / 40.0 * cerca_fuego, 0.0)      # el fuego seca la ropa
+	var frio_p: float = noche * 0.35 + mojado * 0.5
+	if cerca_fuego > 0.05:
+		temp = minf(temp + 3.0 * cerca_fuego * delta, 100.0)
+	elif frio_p > 0.2:
+		temp = maxf(temp - (frio_p - 0.2) * 0.5 * delta, 0.0)
+	else:
+		temp = minf(temp + 0.6 * delta, 100.0)
+	if temp < 35.0 and not _avisado_frio:
+		_avisado_frio = true
+		aviso.emit("Tenés frío. Un fuego te vendría bien.")
+	if temp > 60.0:
+		_avisado_frio = false
+	if temp <= 0.0:
+		drain_health(0.5 * delta, "frio")
+
+func _update_agua(delta: float) -> void:
+	if terrain == null:
+		return
+	var px: float = global_position.x
+	var pz: float = global_position.z
+	var h: float = terrain.height_at(px, pz)
+	var prof: float = 0.0
+	if Vector2(px, pz).distance_to(IslandTerrain.POND_CENTER) < IslandTerrain.POND_RADIUS + 1.0:
+		prof = terrain.pond_water_level - h
+	else:
+		prof = 0.35 - h
+	en_agua = prof > 0.1
+	if en_agua:
+		mojado = minf(mojado + delta / 6.0, 1.0)
+	else:
+		mojado = maxf(mojado - delta / 150.0, 0.0)
+	if prof > 0.25:
+		_inmersion += delta
+	else:
+		_inmersion = maxf(_inmersion - delta * 2.0, 0.0)
+		if _inmersion <= 0.0:
+			_avisado_agua = false
+	if _inmersion > INMERSION_AVISO and not _avisado_agua:
+		_avisado_agua = true
+		aviso.emit("El agua te va enfriando los huesos. Salí un rato.")
+	if _inmersion > INMERSION_DANO:
+		drain_health(0.4 * delta, "frio")
+
 func _update_needs(delta: float) -> void:
 	if dead or not controllable:
 		return
+	_update_agua(delta)
+	_update_calor(delta)
 	# el gasto depende de lo que hacés: correr y trabajar gastan más, estar sentado casi nada;
 	# y si una necesidad está vacía el cuerpo débil gasta la otra más rápido
 	_effort = maxf(_effort - delta, 0.0)
@@ -142,6 +212,8 @@ var _cam_shape: SphereShape3D = SphereShape3D.new()
 
 var _rig: CastawayModel
 var observar: Observar
+var sleeping: bool = false       ## durmiendo en un refugio (lo maneja Sueno): acostado de costado
+var _lie_k: float = 0.0
 var sitting: bool = false        ## sentado contemplando (lo maneja Observar): no procesa movimiento
 var zoom_fov: float = 0.0        ## 0 = sin zoom; >0 = FOV objetivo de la vista de ojos (lo controla Observar)
 var eye_view: float = 0.0        ## 0..1: cuánto está la cámara en "vista de ojos" (lo controla Observar)
@@ -317,7 +389,7 @@ var menu_lock: bool = false   ## con un menú abierto las flechas eligen y no mu
 
 ## Teclas leídas directo: W adelante, S o X atrás, A izquierda, D derecha (+ flechas y acciones del Input Map).
 func _read_move_input() -> Vector2:
-	if ui_lock or sitting:
+	if ui_lock or sitting or sleeping:
 		return Vector2.ZERO
 	var v: Vector2 = Vector2.ZERO if menu_lock else Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if _key(KEY_A):
@@ -420,6 +492,10 @@ func _animate(delta: float) -> void:
 		_emit_step(10.0)
 	_prev_grounded = _grounded
 	_rig.sit_target = 1.0 if (sitting and not dead) else 0.0
+	_rig.lie_target = 1.0 if (sleeping and not dead) else 0.0
+	_lie_k = lerpf(_lie_k, 1.0 if (sleeping and not dead) else 0.0, 1.0 - exp(-3.0 * delta))
+	_model.rotation.z = -PI * 0.5 * _lie_k
+	_model.position = Vector3(-0.78 * _lie_k, 0.2 * _lie_k, 0.0)
 	_rig.update(delta, h_speed, air, dead, 1.0 if _crouching else 0.0)
 
 	# Balanceo del objeto en mano, sincronizado con el ciclo de paso

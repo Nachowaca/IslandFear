@@ -17,7 +17,7 @@ const REPARTO: Dictionary = {
 	"bateria": [["paseo", 3], ["bosque", 3], ["cueva", 1], ["playa_alta", 1]],
 	"semilla_azul": [["bosque", 3], ["estanque", 2], ["cueva", 1]],
 	"botella_vacia": [["playa", 3], ["estanque", 1]],
-	"tela_grande": [["playa", 1], ["paseo", 1], ["bosque", 1]],
+	"tela_grande": [["playa", 10], ["playa_alta", 3], ["paseo", 3], ["bosque", 4]],
 	"tela_chica": [["playa", 1], ["paseo", 2], ["bosque", 2]],
 	"resina": [["bosque", 4], ["paseo", 1]],
 	"espina": [["playa_alta", 2], ["bosque", 2]],

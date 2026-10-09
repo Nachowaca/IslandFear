@@ -432,3 +432,17 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 ## look-v6: aire + sonido nocturno
 - Mas insectos/mariposas, destellos de sol, grillos reales (assets/audio/Crickets Sound 1_1.mp3) por bioma, olas segun distancia a costa, buhos/ranas/llamada lejana, canto de la manta cada 4 min.
 - Restaurar: git checkout look-v6 -- .
+
+## Bloque 5 (5.1 a 5.6) + dormir (sesion look-v7)
+- 5.1 Salud de zonas: Isla.salud_zona (por bioma, 0..1, guardada en isla.json). Eventos bajan/suben (Isla.SALUD_FX); regen lenta en paz (SALUD_REGEN). Efecto sutil: saturacion (look_director._salud_k, lerp 0.82..1) y menos pajaros (audio_manager). Linea 'Salud de zonas' en el panel I.
+- 5.2 Semillas: al talar caen 1-2 'semilla_arbol'; T las planta (held_item._plantar_arbol, terrain.plant_tree copia el ultimo arbol talado, crece 150 s por etapas). Evento 'replantar' (+salud, +vinculo).
+- Baul: la mochila se dibuja y se arrastra con el mouse; recetas y fuego cuentan mochila+baul (Inventario.cantidad_total / quitar_total).
+- 5.4 Agua: castaway.mojado, en_agua, inmersion larga en agua honda enfria y baja vida (aviso).
+- 5.3 Calor y cocina: castaway.temp (baja de noche y mojado, sube junto al fuego); cocinar con T junto a fogata: pescado, raiz, hongo pardo -> asados. El fuego ofende mas en selva/bosque.
+- 5.5 Ofrendas por bioma completas (selva, matorral, zona arida); la propia vale x1.6; talar en sagrado x3; flor luminosa en sagrado; basura cerca del estanque x2.5.
+- 5.6 Huellas: scripts/objetos/huellas_isla.gd (9 piezas simples, grupo 'huella', F lee texto). Sin luces.
+- Dormir: receta Refugio (C): tela_grande + 2 madera + 3 hoja_grande. scripts/objetos/refugio.gd (techo de tela con shader de viento, cama de hojas, Z grandes y marca dorada al dormir). scripts/sueno.gd (E cerca: elegir 30/60/120/240/480 min, reloj acelerado, -2 hambre/sed, +vida/temp, frases de la isla al dormir y despertar). Pose acostada: castaway.sleeping, CastawayPose.lie. Refugios guardados en Isla.refugios, duran 2 vidas.
+- Tela grande por la isla: 20 (10 en playa).
+- Aire/sonido: grillos con mp3 real (assets/audio), olas segun distancia a costa, buhos/ranas extra, canto de la manta cada 4 min, destellos de sol, mas insectos.
+- Clima como filtro (look-v5), lluvia/tormenta ajustadas.
+- Pendiente: 5.8 extras (cama ya hecha; pescar, marcar caminos, sentarse a observar, sonido segun salud), codigo del agua del estanque y playa, probar todo en juego.
