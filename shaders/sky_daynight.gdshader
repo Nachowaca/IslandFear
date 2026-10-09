@@ -8,6 +8,9 @@ uniform vec3 moon_dir = vec3(0.0, -1.0, 0.0);
 uniform float sun_amount = 1.0;
 uniform float moon_amount = 0.0;
 uniform float star_amount = 0.0;
+uniform float cloud_cover = 0.42;               // 0 despejado .. 1 cubierto (pocas nubes por defecto)
+uniform float cloud_soft = 0.22;                // blandura del borde
+uniform float cloud_speed = 0.006;
 uniform float moon_phase = 1.0;                 // fracción iluminada 0..1
 uniform vec3 star_x = vec3(1.0, 0.0, 0.0);      // base ecuatorial en coordenadas del mundo
 uniform vec3 star_y = vec3(0.0, 0.0, 1.0);
@@ -66,6 +69,24 @@ void sky() {
 		}
 		col += vec3(0.3, 0.45, 0.8) * (pow(md, 60.0) * 0.28 + pow(md, 600.0) * 0.5 + pow(md, 14.0) * 0.08) * moon_amount * moon_phase;
 		col += vec3(0.55, 0.4, 0.8) * pow(md, 200.0) * 0.12 * moon_amount;
+	}
+
+	// nubes: pocas, blandas, proyectadas en un plano alto; se iluminan con el sol y se tiñen con el horizonte
+	if (h > 0.015) {
+		vec2 uv = d.xz / (h + 0.22) * 1.6 + vec2(TIME * cloud_speed, TIME * cloud_speed * 0.4);
+		float n = vn3(vec3(uv, 1.0)) * 0.55 + vn3(vec3(uv * 2.3, 5.0)) * 0.3 + vn3(vec3(uv * 5.1, 9.0)) * 0.15;
+		float thr = 1.0 - cloud_cover;
+		float dens = smoothstep(thr, thr + cloud_soft, n);
+		float n2 = vn3(vec3(uv * 1.0 + normalize(sun_dir).xz * 0.12, 1.0)) * 0.55 + vn3(vec3((uv + normalize(sun_dir).xz * 0.05) * 2.3, 5.0)) * 0.3 + vn3(vec3(uv * 5.1, 9.0)) * 0.15;
+		float lit_c = clamp(0.5 + (n - n2) * 6.0, 0.0, 1.0);
+		float day = clamp(sun_amount, 0.0, 1.0);
+		vec3 shade = mix(horizon_color * 0.55, horizon_color * 0.85, day);
+		vec3 bright = mix(horizon_color * 0.8, vec3(1.0, 0.98, 0.94), day);
+		vec3 ccol = mix(shade, bright, lit_c);
+		float sd2 = max(dot(d, normalize(sun_dir)), 0.0);
+		ccol += vec3(1.0, 0.85, 0.6) * pow(sd2, 6.0) * 0.35 * sun_amount;
+		float fade = smoothstep(0.015, 0.2, h);
+		col = mix(col, ccol, dens * fade * 0.92);
 	}
 
 	// estrellas (giran con el cielo real)

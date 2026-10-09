@@ -402,3 +402,9 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Dia NO convence: amarillento/fluor en pastos y flores. Ultimo ajuste: sat 0.92, contraste 1.05, sol 0.9. Revisar color propio del pasto/flores y terreno.
 - Troncos: tono calido (0.8,0.76,0.68) en nature_kit._bark_tone.
 - Calidad Alta (F4) da look fluor: usar Media (look.cfg calidad=1). Evitar F4.
+
+## PRESET DE LUZ GUARDADO: look-v1 (dia y noche) - usuario conforme
+- Cielo con nubes procedurales (sky_daynight.gdshader: cloud_cover 0.42, cloud_soft 0.22, cloud_speed 0.006). Ventana 1600x900 (modo ventana).
+- Dia: ambiente_preset.gd dia() sat 0.92, contraste 1.05, sol 0.9. Noche aprobada. Calidad Media (look.cfg calidad=1).
+- Para volver a este punto: git checkout look-v1 -- scripts/look shaders scripts/day_night.gd scripts/weather.gd
+- Proximos pasos: separar clima del color del mundo (nub), sol suave/brillante segun humedad, mas bruma de noche, pasto/flores fluor.
