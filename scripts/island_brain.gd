@@ -35,6 +35,7 @@ var _win: Dictionary = {}                       ## observaciones desde el últim
 var _animal_timer: float = 0.0
 var _pickup_count: int = -1
 static var s_grievance: String = ""
+static var s_rencor: float = 0.0              ## enojo que la isla guarda para la próxima vida (profanar el templo)
 
 # --- carácter propio (distinto en cada partida) y variables no lineales ---
 var offense: float = 0.0                        ## "agravios" acumulados: SOLO sube si hacés algo malo
@@ -121,6 +122,9 @@ func _ready() -> void:
 	if lf != null:
 		lf.close()
 	hostility = 0.0
+	if s_rencor > 0.0:
+		offense = s_rencor
+		s_rencor = 0.0
 	_forgive = _rng.randf_range(0.6, 1.6)
 	_sens = _rng.randf_range(0.7, 1.4)
 	_noise = _rng.randf()
@@ -1133,6 +1137,7 @@ static func olvidar_todo() -> void:
 	s_lead = 0.8
 	s_deaths = 0
 	s_grievance = ""
+	s_rencor = 0.0
 
 var _t_react: float = 0.0
 

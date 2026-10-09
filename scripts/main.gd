@@ -38,7 +38,8 @@ func _on_player_died() -> void:
 			break
 		tomb_pos += toward * 0.5
 	tomb_pos.y = _island.height_at(tomb_pos.x, tomb_pos.z)
-	Isla.registrar_tumba(tomb_pos, _castaway.death_cause)
+	if _castaway.death_cause != "ofensa":
+		Isla.registrar_tumba(tomb_pos, _castaway.death_cause)
 	var res: Dictionary = Isla.cerrar_vida()          # la personalidad de la isla se desplaza según cómo jugó
 	_hud.refresh_lives()
 	if bool(res["fin"]):
@@ -51,7 +52,10 @@ func _on_player_died() -> void:
 		IslandBrain.olvidar_todo()
 	else:
 		var n: int = int(res["vidas_restantes"])
-		_hud.show_death("La isla ganó esta vez.\nRecuerda cómo lo hizo.\n\n%s" % ("Te queda 1 vida." if n == 1 else "Te quedan %d vidas." % n))
+		var intro: String = "La isla ganó esta vez.\nRecuerda cómo lo hizo."
+		if _castaway.death_cause == "ofensa":
+			intro = "Ofendiste a la isla.\nTe devolvió al mar."
+		_hud.show_death("%s\n\n%s" % [intro, "Te queda 1 vida." if n == 1 else "Te quedan %d vidas." % n])
 		await get_tree().create_timer(5.0).timeout
 	get_tree().reload_current_scene()
 
@@ -90,6 +94,13 @@ func _ready() -> void:
 	brain.player = _castaway
 	add_child(brain)
 	_brain = brain
+	var templo: Node = (load("res://scripts/templo_castigo.gd") as GDScript).new() as Node
+	templo.name = "TemploCastigo"
+	templo.set("player", _castaway)
+	templo.set("brain", brain)
+	templo.set("features", features)
+	templo.set("boat", _boat)
+	add_child(templo)
 	var weather := Weather.new()
 	weather.name = "Weather"
 	weather.player = _castaway
@@ -201,6 +212,7 @@ func _build_chest() -> void:
 	chest.rotation.y = atan2(-inland.x, -inland.z)
 
 ## Corales, cardúmenes y dos boyas (una frente al desembarco, otra junto al faro).
+
 
 
 

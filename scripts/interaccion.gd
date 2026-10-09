@@ -350,6 +350,7 @@ func _ofrenda(id: String, pos: Vector3, it: WorldItem = null) -> void:
 		if sn != null and Vector2(pos.x - sn.global_position.x, pos.z - sn.global_position.z).length() < 2.4:
 			_gesto_ofrenda(pos)
 			Isla.registrar_evento("ofrenda", pos, 0.6)
+			_calma_ofrenda(id, pos)
 			ui.message("Dejás una ofrenda ante la piedra tallada. La isla lo siente.")
 			return
 	for sp: Dictionary in features.sacred_spots:
@@ -359,8 +360,31 @@ func _ofrenda(id: String, pos: Vector3, it: WorldItem = null) -> void:
 		if Vector2(pos.x - p.x, pos.z - p.z).length() < float(sp["radius"]) + 1.5:
 			_gesto_ofrenda(pos)
 			Isla.registrar_evento("ofrenda", pos, 1.0)
+			_calma_ofrenda(id, pos)
 			ui.message("Dejás una ofrenda en %s. La isla lo siente." % str(sp["name"]).to_lower())
 			return
+
+## Una ofrenda baja la ofensa. La del bioma donde se deja vale más; si la isla está furiosa, una común casi no alcanza.
+const OFRENDA_BIOMA: Dictionary = {
+	"bosque": ["flor_luminosa", "fruto_dorado", "pluma"],
+	"roquedal": ["cristal_cueva", "figurilla_barro", "moneda_pirata"],
+	"costa": ["concha", "caracola", "perla", "vidrio_marino"],
+}
+
+func _calma_ofrenda(id: String, pos: Vector3) -> void:
+	var br: Node = get_tree().current_scene.get_node_or_null("IslandBrain")
+	if br == null:
+		return
+	var bioma: String = ""
+	var eco_map: Variant = Isla.eco
+	if eco_map != null:
+		bioma = str(eco_map.call("get_bioma_nombre", pos)).to_lower()
+	var propia: bool = OFRENDA_BIOMA.has(bioma) and (OFRENDA_BIOMA[bioma] as Array).has(id)
+	var of: float = float(br.get("offense"))
+	var baja: float = 10.0 if propia else 4.0
+	if of > 70.0 and not propia:
+		baja = 1.5
+	br.set("offense", maxf(of - baja, 0.0))
 
 ## Los contaminantes no son de la isla. Llevados a la cueva y dejados allí se retiran; tirados por ahí la molestan un poco.
 func _contaminante(id: String, pos: Vector3, it: WorldItem) -> void:

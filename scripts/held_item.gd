@@ -140,6 +140,13 @@ func _usar() -> void:
 				ui.message("No tenés sed. Guardala: algo más puede necesitarla.")
 		"semilla_azul":
 			_plantar()
+		"semilla_paz":
+			player.pulse_use()
+			var tp: Node = get_tree().get_first_node_in_group("templo")
+			if tp != null and bool(tp.call("calmar")):
+				Inventario.quitar_en(Inventario.seleccionado, 1)
+			else:
+				ui.message("Sólo tiene sentido en el corazón de la isla.")
 		_:
 			_usar_mano()
 

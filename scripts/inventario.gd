@@ -117,6 +117,17 @@ func _agregar_a(arr: Array, id: String, n: int) -> int:
 	return resto
 
 ## Guarda en el baúl. Devuelve lo que NO entró.
+## Una vez por vida la isla deja una semilla de paz en el baúl (si no hay ya una en la mochila o el baúl).
+func sembrar_paz() -> void:
+	if cantidad("semilla_paz") > 0:
+		return
+	for e: Variant in cofre:
+		if e != null and str(e["id"]) == "semilla_paz":
+			return
+	if _agregar_a(cofre, "semilla_paz", 1) < 1:
+		_cofre_guardar()
+		cambiado.emit()
+
 func cofre_agregar(id: String, n: int) -> int:
 	var resto: int = _agregar_a(cofre, id, n)
 	if resto < n:

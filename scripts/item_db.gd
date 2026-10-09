@@ -54,6 +54,8 @@ const DEFS: Dictionary = {
 		"hint": "Una botella de vidrio con tapón. Podría llevar agua: con T cerca del estanque la llenás."},
 	"semilla_azul": {"name": "Semilla brillante", "color": Color(0.3, 0.7, 1.0), "shape": "seed", "food": false, "offering": false,
 		"hint": "Una semilla con un brillo azul tenue. Está viva. Con T la plantás en tierra firme. Va a necesitar agua."},
+	"semilla_paz": {"name": "Semilla de paz", "color": Color(1.0, 0.95, 0.75), "shape": "seed", "food": false, "offering": false,
+		"hint": "Una semilla tibia, casi blanca. La isla la dejó para vos. Con T, en el corazón de la isla, pide perdón."},
 	"resina": {"name": "Resina", "color": Color(0.8, 0.5, 0.1), "shape": "resin", "food": false, "offering": false,
 		"hint": "Una gota dura de savia ámbar. Pegajosa si se la calienta."},
 	"espina": {"name": "Espina larga", "color": Color(0.9, 0.88, 0.78), "shape": "thorn", "food": false, "offering": false,

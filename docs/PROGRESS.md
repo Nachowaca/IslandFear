@@ -352,3 +352,11 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - `island_brain.gd`: `_voz()` (seria si enojo>=35 o etapa<=1; contemplativa si sentado/zoom/quieto y calma; feliz etapa>=4; confiada etapa 3; si no curiosa), `_temas()` (hora, niebla, bioma, cueva, sentado, zoom, quieto, correr, fruto, animal, agua), `_director()` (silencio mínimo por voz: seria 45-90 s, curiosa 70-130, confiada 100-170, feliz 120-200, contemplativa 200-320; 25% de las veces calla más; sentarse = 50% de una frase; pistas cada >=240 s solo confiada/feliz, 40%). Toda frase (`_say`) reinicia el silencio. La acción "susurrar" respeta el silencio.
 - Las reacciones a tala/fuego/ofrenda usan 60% frase nueva por voz. Frases viejas siguen en `POOLS`, sin reclasificar por voz.
 - Pendiente: tema `pesca` sin detección; clima dormido hasta que exista; revisar frases jugando.
+
+## Castigo del templo y calma (offense/calm)
+- `scripts/templo_castigo.gd` (nodo `TemploCastigo`, grupo "templo", creado en main.gd). Templo = sacred_spots kind "heart".
+- Quieto 20 s en el templo: aviso "Ya verás lo que es ofender a la isla." y 6 s para irse (si se va: +12 ofensa, sin castigo). Fuego en el templo: aviso 3 s, sin escape, castigo más largo y rencor mayor.
+- Castigo: temblor + tormenta (oscuro, lluvia, rayos, trueno sintetizado) -> el personaje asciende con luz blanca hacia el bote -> `died` con `death_cause "ofensa"` (sin tumba, cartel "Ofendiste a la isla") -> -1 vida. `IslandBrain.s_rencor` hace que la próxima vida empiece con ofensa.
+- Calma: item `semilla_paz` (una por vida, `Inventario.sembrar_paz()` la deja en el baúl). T en el templo: ofensa/hostilidad/rencor a 0, ofrenda +, se consume.
+- Ofrendas (`interaccion._calma_ofrenda`): la del bioma baja ofensa 10, otra 4, y 1.5 si la isla está furiosa (>70).
+- NO probado en vivo: tiempos reales, fuego en el templo, uso de la semilla, ofrendas por bioma. Clima real queda para después.
