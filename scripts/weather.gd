@@ -216,7 +216,7 @@ func _process(delta: float) -> void:
 	# cielo, niebla y viento (reusa DayNight / LookDirector / Wind)
 	if _dn != null:
 		_dn.cloud = cloud
-		_dn.fog_clima = cloud * 0.004 + intensity * 0.004
+		_dn.fog_clima = cloud * 0.004 + intensity * 0.003 + intensity * intensity * 0.009   # tormenta: poca visibilidad lejana
 	Wind.set_clima(wind)
 
 	# lluvia visible
@@ -224,6 +224,13 @@ func _process(delta: float) -> void:
 	_drops.emitting = exposed > 0.05
 	_drop_mat.albedo_color.a = lerpf(0.15, 0.55, clampf(exposed, 0.0, 1.0))
 	_drops.direction = Vector3(0.12 + wind * 0.35, -1.0, 0.05)
+	# llovizna: gotas chicas y lentas; tormenta: grandes y muy rapidas
+	var ik: float = clampf(intensity, 0.0, 1.0)
+	_drops.scale_amount_min = lerpf(0.45, 1.1, ik)
+	_drops.scale_amount_max = lerpf(0.55, 1.3, ik)
+	_drops.initial_velocity_min = lerpf(7.0, 24.0, ik)
+	_drops.initial_velocity_max = lerpf(9.0, 30.0, ik)
+	_drops.gravity = Vector3(0.0, lerpf(-10.0, -36.0, ik), 0.0)
 	if cam != null:
 		_drops.global_position = cam.global_position + Vector3(0.0, 13.0, 0.0)
 

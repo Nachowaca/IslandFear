@@ -422,3 +422,9 @@ main.gd (llegada, vista aérea) · castaway.gd · boat.gd · island_terrain.gd �
 - Copias fuera del proyecto: /Users/avisamacstudio/islander-fear-look-congelado/ (ambiente_preset.gd, look_director.gd, sky_daynight.gdshader).
 - Regla: el clima NO toca los presets; solo fog_clima, cloud y set_modificador, con multiplicadores temporales que vuelven a 1.0.
 - Restaurar: git checkout look-v4 -- .
+
+## Cierre de sesion de arte (look-v5)
+- Clima como filtro temporal en look_director.aplicar (bloque CLIMA: m_sol, m_amb, m_sat, g_cielo, g_niebla, tinte); presets intactos.
+- Lluvia: llovizna gotas chicas y lentas; tormenta rapidas, grandes y mas niebla (weather.gd).
+- Ventana de prueba 1760x990.
+- Restaurar: git checkout look-v5 -- .

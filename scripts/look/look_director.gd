@@ -131,14 +131,21 @@ func aplicar(day: float, dusk: float, golden: float, e: float, manana: bool) -> 
 
 	# cielo
 	var nub: float = daynight.cloud
+	# --- CLIMA: filtro temporal sobre el look (no toca los presets). Todo vale 1.0 / 0.0 sin nubes ni lluvia. ---
+	var m_sol: float = lerpf(1.0, 0.18, nub) * float(_modificador.get("energia_sol", 1.0))
+	var m_amb: float = lerpf(1.0, 0.88, nub)
+	var m_sat: float = lerpf(1.0, 0.92, nub)
+	var g_cielo: float = nub * 0.5       # cuanto se grisea el cielo
+	var g_niebla: float = nub * 0.3      # cuanto se grisea la niebla
+	var tinte: Color = _modificador.get("tinte", Color.WHITE) as Color
 	# humedad del dia (0 seco .. 1 muy humedo): decide suavidad del sol, rayos y niebla juntos
 	var dd0: Dictionary = Time.get_date_dict_from_system()
 	var hd0: float = fposmod(sin(float(int(dd0.year) * 400 + int(dd0.month) * 31 + int(dd0.day)) * 12.9898) * 43758.5453, 1.0)
 	var hum_n: float = hd0
 	var gris_t: Color = Color(0.36, 0.4, 0.45).lerp(p.color_cielo_alto, 0.25 * (1.0 - _w_dia) + 0.1) * lerpf(1.0, 0.35, _w_noche)
 	var gris_h: Color = Color(0.55, 0.58, 0.6) * lerpf(1.0, 0.3, _w_noche)
-	var cielo_alto: Color = p.color_cielo_alto.lerp(gris_t, nub * 0.5)
-	var cielo_hor: Color = p.color_cielo_horizonte.lerp(gris_h, nub * 0.5)
+	var cielo_alto: Color = p.color_cielo_alto.lerp(gris_t, g_cielo)
+	var cielo_hor: Color = p.color_cielo_horizonte.lerp(gris_h, g_cielo)
 	sky_mat.set_shader_parameter("top_color", cielo_alto)
 	sky_mat.set_shader_parameter("cloud_cover", clampf(0.15 + nub * 0.75, 0.0, 1.0))
 	sky_mat.set_shader_parameter("horizon_color", cielo_hor)
@@ -146,7 +153,7 @@ func aplicar(day: float, dusk: float, golden: float, e: float, manana: bool) -> 
 
 	# sol
 	sun.light_color = p.color_sol
-	sun.light_energy = p.energia_sol * smoothstep(-0.03, 0.22, e) * lerpf(1.0, 0.18, nub) * lerpf(1.08, 0.95, hum_n * _w_dia + (1.0 - _w_dia) * 0.5)
+	sun.light_energy = p.energia_sol * smoothstep(-0.03, 0.22, e) * m_sol * lerpf(1.08, 0.95, hum_n * _w_dia + (1.0 - _w_dia) * 0.5)
 	sun.visible = sun.light_energy > 0.01
 	sun.shadow_opacity = 1.0
 	sun.shadow_blur = 0.55 if on else 1.0     # sombras mas definidas (la del personaje)
@@ -162,12 +169,12 @@ func aplicar(day: float, dusk: float, golden: float, e: float, manana: bool) -> 
 	# ambiente: el cielo ilumina; el tinte da color a las sombras
 	var luna_alta: float = smoothstep(0.0, 0.45, daynight.moon_dir.y) * (0.4 + 0.6 * daynight.moon_phase)   # luna alta y llena = más luz de cielo
 	env.ambient_light_energy = p.energia_ambiente * lerpf(1.0, lerpf(0.2, 1.0, vis) * lerpf(0.6, 1.0, luna_alta), _w_noche)
-	env.ambient_light_energy *= lerpf(1.0, 0.88, nub)
-	env.ambient_light_color = p.color_ambiente
+	env.ambient_light_energy *= m_amb
+	env.ambient_light_color = p.color_ambiente * tinte
 	env.ambient_light_sky_contribution = p.contribucion_cielo if on else 1.0
 
 	# niebla: profundidad (siempre) + altura (solo look activo)
-	env.fog_light_color = p.color_niebla.lerp(Color(0.5, 0.55, 0.58) * lerpf(1.0, 0.3, _w_noche), nub * 0.3)
+	env.fog_light_color = p.color_niebla.lerp(Color(0.5, 0.55, 0.58) * lerpf(1.0, 0.3, _w_noche), g_niebla)
 	# humedad del día: hay días secos y días muy húmedos (cambia la niebla baja y la de profundidad)
 	var dd: Dictionary = Time.get_date_dict_from_system()
 	var hd: float = fposmod(sin(float(int(dd.year) * 400 + int(dd.month) * 31 + int(dd.day)) * 12.9898) * 43758.5453, 1.0)
@@ -181,7 +188,7 @@ func aplicar(day: float, dusk: float, golden: float, e: float, manana: bool) -> 
 
 	# postproceso
 	env.tonemap_exposure = p.exposicion
-	env.adjustment_saturation = p.saturacion * lerpf(1.0, 0.92, nub) * (1.0 if on else 0.88)
+	env.adjustment_saturation = p.saturacion * m_sat * (1.0 if on else 0.88)
 	env.adjustment_contrast = p.contraste
 	env.glow_enabled = on and calidad >= Calidad.MEDIA
 	env.glow_intensity = p.intensidad_bloom
